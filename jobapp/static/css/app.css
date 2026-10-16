@@ -52,3 +52,8 @@ body:not(.dev) .dev-only{display:none!important}
 .package details summary{cursor:pointer;color:var(--accent);font-size:.85rem}
 .package details .task-row{margin-top:.6rem}
 .notice.warn{border-color:#76603b;background:#3b3024}
+.nav-more{position:relative}
+.nav-more-menu{position:absolute;right:0;top:calc(100% + .4rem);z-index:50;min-width:210px;display:grid;gap:.2rem;padding:.4rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:0 12px 40px #0008}
+.nav-more-menu[hidden]{display:none}
+.header nav .nav-more-menu button{text-align:left;justify-content:flex-start;border-color:transparent;background:transparent;font-size:.85rem;padding:.6rem .8rem}
+.header nav .nav-more-menu button:hover{background:#1b2b47;border-color:var(--border)}
