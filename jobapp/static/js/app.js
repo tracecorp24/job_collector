@@ -66,9 +66,8 @@ function renderChips(){
 function applyView(){ $('grid').classList.toggle('list-view',view==='list');$('view-cards').setAttribute('aria-pressed',String(view==='cards'));$('view-list').setAttribute('aria-pressed',String(view==='list'));}
 function renderJobs(){
   $('grid').innerHTML=lastJobs.map(j=>`<article class="job-card">
-    <div><h3><button class="job-open" data-action="job" data-id="${j.id}">${esc(j.title||'Unvan belirtilmemiş')}</button></h3><p class="company">${esc(j.company||'Şirket belirtilmemiş')}</p></div>
-    <div><p class="job-meta">${esc(j.location||'Konum belirtilmemiş')}</p><p class="job-meta">${esc(tr(j.workplace_type)||'Çalışma biçimi belirtilmemiş')}</p></div>
-    <div><p class="job-meta ${j.salary?'salary':''}">${esc(j.salary||'Maaş belirtilmemiş')}</p><p class="job-meta">${j.experience_years!=null?esc(j.experience_years)+'+ yıl deneyim':'Deneyim belirtilmemiş'}</p><p class="job-meta">Yayın: ${esc(date(j.posted_at))}</p><p class="job-meta">Sisteme eklenme: ${esc(date(j.created_at))}</p></div>
+    <div>${devId(j)}<h3><button class="job-open" data-action="job" data-id="${j.id}">${esc(j.title||'Unvan belirtilmemiş')}</button></h3><p class="company">${esc(j.company||'Şirket belirtilmemiş')}</p></div>
+    <div class="job-facts"><p class="job-meta">${esc([j.location||'Konum belirtilmemiş',tr(j.workplace_type)].filter(Boolean).join(' · '))}</p><p class="job-meta ${j.salary?'salary':''}">${esc(j.salary||'Maaş belirtilmemiş')} · ${j.experience_years!=null?esc(j.experience_years)+'+ yıl deneyim':'Deneyim belirtilmemiş'}</p><p class="job-meta job-dates">Yayın: ${esc(date(j.posted_at))} · Eklenme: ${esc(date(j.created_at))}</p></div>
     <div class="badges">${badge(tr(j.category))}${badge(tr(j.seniority))}${j.flag?badge(tr(j.flag),'warn'):''}${j.deleted_at?badge('Çöp kutusunda','deleted'):''}${typeof j.score==='number'?badge('Benzerlik '+Math.round(j.score*100)+'%'):''}</div>
     <div class="tags">${(j.tags||[]).slice(0,6).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
     <div class="card-actions">${button('job','İncele',`data-id="${j.id}"`)}${j.deleted_at?button('restore-job','Geri yükle',`data-id="${j.id}"`)+button('purge-job','Kalıcı sil',`data-id="${j.id}"`,'danger'):button('delete-job','Çöp kutusuna taşı',`data-id="${j.id}"`)}</div></article>`).join('');
@@ -105,7 +104,7 @@ async function openJob(id){
   currentJob=Number(id);detailController?.abort();detailController=new AbortController();const signal=detailController.signal;
   $('job-title').textContent='İlan yükleniyor…';$('job-content').innerHTML='';$('previous-job').disabled=true;$('next-job').disabled=true;$('job-position').textContent='';showDialog('job-dialog');$('job-dialog').scrollTop=0;
   try{const [j,n]=await Promise.all([api('/api/jobs/'+id,{signal}),api('/api/jobs/'+id+'/navigation?'+params(),{signal})]);if(currentJob!==Number(id))return;nav=n;$('job-title').textContent=j.title||'İlan detayı';
-    const link=safeLink(j.url);$('job-content').innerHTML=`<p class="company">${esc(j.company)}</p><p class="muted">${esc(j.location)} · ${esc(tr(j.workplace_type))}</p><div class="badges">${badge(tr(j.category))}${badge(tr(j.seniority))}${j.flag?badge(tr(j.flag),'warn'):''}${j.deleted_at?badge('Çöp kutusunda','deleted'):''}</div>
+    const link=safeLink(j.url);$('job-content').innerHTML=`<p class="dev-only id-text">İlan kimliği: #${esc(j.id)} · Kaynak kimliği: ${esc(j.external_id||'—')}</p><p class="company">${esc(j.company)}</p><p class="muted">${esc(j.location)} · ${esc(tr(j.workplace_type))}</p><div class="badges">${badge(tr(j.category))}${badge(tr(j.seniority))}${j.flag?badge(tr(j.flag),'warn'):''}${j.deleted_at?badge('Çöp kutusunda','deleted'):''}</div>
       ${j.salary?`<p class="notice salary">${esc(j.salary)}</p>`:''}${j.flag_reason?`<p class="notice">Otomatik değerlendirme: ${esc(j.flag_reason)}</p>`:''}${j.summary?`<p class="notice">${esc(j.summary)}</p>`:''}
       <div class="tags">${(j.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
       ${j.about_company?`<section class="job-section"><h3>Şirket hakkında</h3><p>${esc(j.about_company)}</p></section>`:''}${j.offerings?.length?`<section class="job-section"><h3>Sunulan olanaklar</h3><ul>${j.offerings.map(o=>`<li>${esc(o)}</li>`).join('')}</ul></section>`:''}
@@ -138,14 +137,14 @@ function addTasks(){
   if(!keywords.length||!location||limit!==null&&(!raw||!Number.isInteger(limit)||limit<=0)){$('task-error').textContent='En az bir unvan, konum ve pozitif tam sayı hedefi girin. Limitsiz seçeneğini de kullanabilirsiniz.';return false;}
   $('task-error').textContent='';for(const keyword of keywords)draft.push({id:newId(),keyword,location,limit});$('kw-input').value='';renderDraft();persist();scheduleDraftSave();return true;
 }
-async function openDrawer(fresh=false){$('new-search-form').hidden=!fresh&&!!currentRun;$('live-run').hidden=fresh||!currentRun;$('drawer-title').textContent=fresh||!currentRun?'Yeni tarama':'Tarama kuyruğu';showDialog('drawer');renderDraft();
+async function openDrawer(){$('new-search-form').hidden=false;$('drawer-title').textContent='Yeni tarama';showDialog('drawer');renderDraft();
   try{const models=await api('/api/ollama/models');$('classify-model').innerHTML='<option value="">Varsayılan model</option>'+models.models.map(m=>`<option>${esc(m)}</option>`).join('');}catch{}
 }
 async function startScrape(){
   if($('kw-input').value.trim()&&!addTasks())return;if(!draft.length){$('task-error').textContent='Önce kuyruğa en az bir görev ekleyin.';return;}
   for(const t of draft)if(!t.keyword.trim()||!t.location.trim()||t.limit!=null&&(!Number.isInteger(t.limit)||t.limit<1)){$('task-error').textContent='Görevlerdeki unvan, konum ve hedefleri kontrol edin.';return;}
   clearTimeout(draftSaveTimer);queueStarting=true;$('start-scrape').disabled=true;$('task-error').textContent='';
-  try{const runId=await saveDraft();await api(`/api/runs/${runId}/resume`,{method:'POST'});activeLogRun=runId;currentRun=await api('/api/runs/'+runId);draft=[];draftRunId=null;persist();renderDraft();$('new-search-form').hidden=true;$('live-run').hidden=false;renderRun();await pollStatus();toast('Tarama kuyruğu başlatıldı. Süreç: '+runId);}
+  try{const runId=await saveDraft();await api(`/api/runs/${runId}/resume`,{method:'POST'});activeLogRun=runId;currentRun=await api('/api/runs/'+runId);draft=[];draftRunId=null;persist();renderDraft();closeDialog('drawer');showTab('queue');renderRun();await pollStatus();toast('Tarama kuyruğu başlatıldı. Süreç: '+runId);}
   catch(e){$('task-error').textContent=e.message;}finally{queueStarting=false;renderSource();}
 }
 function renderSource(){
@@ -186,7 +185,7 @@ function taskCard(run,t,editable=false){
   return `<article class="task-row queue-task state-${esc(t.status)}" data-task-card="${t.id}"><div class="queue-task-heading"><strong>${esc(t.keyword)}</strong>${statusBadge(t.status)}</div><p class="muted">${esc(t.location)} · ${finite?t.limit+' ilan hedefi':'Limitsiz tarama'}</p>${metricHtml(stats,count)}<div class="queue-timing"><span>Başlangıç <strong>${t.started_at?esc(date(t.started_at)):'Henüz başlamadı / bilinmiyor'}</strong></span><span>Başlangıçtan geçen <strong>${clockHtml(t)}</strong></span></div>${finite?`<progress class="task-progress" max="${Math.max(1,t.limit)}" value="${Math.min(count,t.limit)}" aria-label="İlan hedefine ilerleme"></progress>`:'<p class="help">Sayı hedefi yok. İstediğiniz zaman duraklatabilir veya durdurabilirsiniz.</p>'}${reasonHtml(t)}<p class="help queue-extra">${stats.cache_hits||0} detay önbellekten · ${stats.skipped||0} işleme sırasında atlandı · ${stats.detail_failures||stats.descFailures||0} detay alınamadı</p><div class="actions">${controls}${edit}</div><details class="queue-identity"><summary>Sorgu kimliği</summary><p class="id-text">${esc(t.id)}</p></details></article>`;
 }
 function renderRun(){
-  if(!currentRun)return;const run=currentRun,active=activeStatus(run.status),resumable=['paused','error'].includes(run.status);
+  renderQueueView();if(!currentRun)return;const run=currentRun,active=activeStatus(run.status),resumable=['paused','error'].includes(run.status);
   const done=run.tasks.filter(t=>terminalStatus(t.status)).length,collected=run.tasks.reduce((sum,t)=>sum+t.count,0);
   $('live-tasks').innerHTML=run.tasks.map(t=>taskCard(run,t,resumable)).join('');
   $('pause-run').hidden=!active&&!run.automatic_resume;$('pause-run').disabled=run.status!=='running'&&!run.automatic_resume;$('pause-run').textContent=run.automatic_resume?'Otomatik devamı duraklat':'Kuyruğu duraklat';
@@ -207,7 +206,7 @@ async function controlTask(runId,taskId,action){
   if(action==='stop'&&!await confirmAction('Bu sorgu sonuçları korunarak durdurulacak. Aynı sorguya devam edilemez; gerekiyorsa yeni tarama başlatabilirsiniz. Kuyruk çalışıyorsa sonraki sorguya geçer.'))return;
   await api(`/api/runs/${runId}/tasks/${taskId}/${action}`,{method:'POST'});
   currentRun=await api('/api/runs/'+runId);renderRun();await pollStatus();if($('history-dialog').open)await loadHistory();
-  if(action==='resume'){closeDialog('history-dialog');await openDrawer();}
+  if(action==='resume'){closeDialog('history-dialog');showTab('queue');}
 }
 async function runAction(id,action){
   if(action==='purge'&&!await confirmAction('Arama geçmişi, havuzu ve logları kalıcı olarak silinecek. Ortak ilanlar sistemde kalacak. Devam edilsin mi?'))return;
@@ -216,7 +215,7 @@ async function runAction(id,action){
   await api(`/api/runs/${id}/${action}`,{method:'POST'});
   if(action==='resume'&&draftRunId===id){draft=[];draftRunId=null;clearTimeout(draftSaveTimer);persist();renderDraft();}
   if(['delete','restore','purge'].includes(action)){await loadHistory();await loadRunOptions();toast(action==='delete'?'Arama geçmişi çöp kutusuna taşındı. İlanlar korundu.':action==='restore'?'Arama geçmişi geri yüklendi.':'Arama geçmişi kalıcı silindi.',action==='delete'?async()=>{await api(`/api/runs/${id}/restore`,{method:'POST'});await loadHistory();loadRunOptions();}:null);}
-  else{currentRun=await api('/api/runs/'+id);renderRun();if(action==='resume'){closeDialog('history-dialog');await openDrawer();}await pollStatus();}
+  else{currentRun=await api('/api/runs/'+id);renderRun();if(action==='resume'){closeDialog('history-dialog');showTab('queue');}await pollStatus();}
 }
 async function editLive(taskId,action){
   const pending=currentRun.tasks.filter(t=>!terminalStatus(t.status)).map(t=>({...t}));const i=pending.findIndex(t=>t.id===taskId);if(i<0)return;
@@ -252,8 +251,8 @@ function connectEvents(){
     if(['waiting','shared_rate_wait'].includes(ev.type)){waitingUntil=Date.now()+d.seconds*1000;waitReason=d.reason;renderWait();refreshStatus();}
     if(ev.type==='job'){waitingUntil=0;refreshJobs();refreshStatus();}
     if(['task_start','task_done','job_progress','run_finished','finished','error','source_paused','task_control'].includes(ev.type)){refreshStatus();}
-    if(ev.type==='run_finished'){currentRun=d;renderRun();loadAll();loadRunOptions();if($('history-dialog').open)loadHistory();toast(`Çalışma ${tr(d.status).toLocaleLowerCase('tr')}: ${d.stats.new||0} yeni, ${d.stats.updated||0} güncellenen ilan.`,()=>{showResults('run_id',d.id);},'Sonuçları gör');}
-    if(ev.type==='notice'||ev.type==='error'){toast(d.msg||'İşlem tamamlanamadı. Sonuçlar korundu.',()=>openDrawer(),'Ayrıntılar',true);}
+    if(ev.type==='run_finished'){if(!$('view-watches').hidden)loadWatches();currentRun=d;renderRun();loadAll();loadRunOptions();if($('history-dialog').open)loadHistory();toast(`Çalışma ${tr(d.status).toLocaleLowerCase('tr')}: ${d.stats.new||0} yeni, ${d.stats.updated||0} güncellenen ilan.`,()=>{showResults('run_id',d.id);},'Sonuçları gör');}
+    if(ev.type==='notice'||ev.type==='error'){toast(d.msg||'İşlem tamamlanamadı. Sonuçlar korundu.',()=>showTab('queue'),'Ayrıntılar',true);}
     if(ev.type==='log'&&busy&&!currentRun)$('maintenance-status').textContent=localLogMessage(d.msg);
     if(ev.type==='finished'&&!d.run_id){$('maintenance-status').textContent=`İşlem tamamlandı. ${d.embedded??d.classified??0} ilan işlendi, ${d.skipped||0} ilan atlandı.`;loadAll();}
   };
@@ -279,7 +278,7 @@ function renderHistory(){
   });
 }
 function findTask(id){return historyRuns.flatMap(r=>r.tasks).find(t=>t.id===id);}
-function showResults(key,id,onlyNew=false){filters={ [key]:[id], ...(onlyNew?{discovery:'new'}:{})};syncControls();renderChips();persist(true);loadAll();closeDialog('history-dialog');closeDialog('drawer');$('main').scrollIntoView({block:'start'});}
+function showResults(key,id,onlyNew=false){filters={ [key]:[id], ...(onlyNew?{discovery:'new'}:{})};syncControls();renderChips();persist(true);loadAll();closeDialog('history-dialog');closeDialog('drawer');showTab('jobs');$('main').scrollIntoView({block:'start'});}
 async function queueTasks(tasks,restart=false){
   if(!tasks.length){toast('Önce en az bir arama seçin.');return;}
   draft.push(...tasks.map(t=>({id:newId(),keyword:t.keyword,location:t.location,limit:t.limit})));renderDraft();persist();if(!restart)scheduleDraftSave();closeDialog('history-dialog');await openDrawer(true);
@@ -338,14 +337,72 @@ async function openService(){
   }catch(e){$('service-content').textContent=e.message;}
 }
 
+const TABS=['jobs','queue','watches'];
+let devMode=false;try{devMode=localStorage.getItem('linko.dev')==='1';}catch{}
+function saveDev(){try{localStorage.setItem('linko.dev',devMode?'1':'0');}catch{}}
+function applyDev(){document.body.classList.toggle('dev',devMode);}
+function devId(j){return `<button class="dev-only dev-id" data-action="copy-id" data-id="${j.id}" title="Kimliği kopyala">#${j.id}</button>`;}
+function openDev(){
+  $('dev-content').innerHTML=devMode?'<p>Geliştirici modu açık. İlan kartlarında, ilan detayında ve düzenli taramalarda kimlikler görünür; karttaki kimliğe tıklayınca kopyalanır.</p><button class="danger" data-action="dev-off">Geliştirici modunu kapat</button>'
+    :'<form id="dev-form" novalidate><p class="muted">İlan kimliklerini görmek için şifreyi gir.</p><label>Şifre<input id="dev-password" type="password" autocomplete="off" inputmode="numeric"></label><p id="dev-error" class="field-error" role="alert"></p><button class="primary" type="submit">Geliştirici modunu aç</button></form>';
+  showDialog('dev-dialog');
+  if(!devMode){$('dev-form').onsubmit=e=>{e.preventDefault();if($('dev-password').value==='321'){devMode=true;saveDev();applyDev();closeDialog('dev-dialog');toast('Geliştirici modu açıldı. İlan kimlikleri görünüyor.');}else{$('dev-error').textContent='Şifre hatalı.';$('dev-password').select();}};$('dev-password').focus();}
+}
+function showTab(name){
+  if(!TABS.includes(name))name='jobs';
+  for(const tab of TABS)$('view-'+tab).hidden=tab!==name;
+  document.querySelectorAll('header nav [data-tab]').forEach(b=>{if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+  try{localStorage.setItem('linko.tab',name);}catch{}
+  if(name==='queue')renderQueueView();
+  if(name==='watches')loadWatches();
+}
+function renderQueueView(){const has=!!currentRun;$('queue-empty').hidden=has;$('live-run').hidden=!has;}
+
+let watchEditing=null, watchData=[];
+const intervalNames={3600:'Saatte bir',10800:'3 saatte bir',21600:'6 saatte bir',43200:'12 saatte bir',86400:'Günde bir',259200:'3 günde bir',604800:'Haftada bir'};
+const postedNames={0:'tüm ilanlar',86400:'son 24 saatte yayınlananlar',604800:'son 7 günde yayınlananlar',2592000:'son 30 günde yayınlananlar'};
+const splitLines=v=>v.split('\n').map(x=>x.trim()).filter(Boolean);
+const splitKeywords=v=>v.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
+function relTime(seconds){const a=Math.abs(Math.round(seconds));const t=a<60?'1 dakikadan az':a<3600?`${Math.round(a/60)} dakika`:a<86400?`${Math.round(a/3600)} saat`:`${Math.round(a/86400)} gün`;return seconds>=0?`${t} sonra`:`${t} önce`;}
+function watchBody(){return {name:$('watch-name').value.trim(),keywords:splitKeywords($('watch-keywords').value),locations:splitLines($('watch-locations').value),interval_seconds:Number($('watch-interval').value),limit:Number($('watch-limit').value),posted_within:Number($('watch-posted').value)};}
+function watchCombos(){const b=watchBody(),n=b.keywords.length*b.locations.length;$('watch-combos').textContent=n?`${b.keywords.length} unvan × ${b.locations.length} konum = ${n} kombinasyon${n>40?' — en fazla 40 olabilir, listeyi bölün.':'. Her tur sırayla, ortak istek aralığıyla taranır.'}`:'';}
+function resetWatchForm(){watchEditing=null;$('watch-form').reset();$('watch-locations').value='Istanbul, Turkey';$('watch-form-title').textContent='Yeni düzenli tarama';$('watch-save').textContent='Düzenli taramayı kaydet';$('watch-cancel').hidden=true;$('watch-error').textContent='';watchCombos();}
+async function saveWatch(e){e.preventDefault();$('watch-error').textContent='';const body=watchBody();$('watch-save').disabled=true;
+  try{if(watchEditing)await api('/api/watches/'+watchEditing,{method:'PUT',body});else await api('/api/watches',{method:'POST',body});toast(watchEditing?'Düzenli tarama güncellendi.':'Düzenli tarama kaydedildi. İlk tur, kuyruk ve kaynak uygun olduğunda başlar.');resetWatchForm();await loadWatches();}
+  catch(err){$('watch-error').textContent=err.message;}finally{$('watch-save').disabled=false;}}
+async function loadWatches(){
+  try{const data=await api('/api/watches');watchData=data.watches;
+    $('watch-list').innerHTML=watchData.length?watchData.map(w=>watchCard(w,data.now)).join(''):'<div class="empty"><h2>Henüz düzenli tarama yok</h2><p>Formdan unvan ve konumları ekleyerek ilk düzenli taramanı oluştur.</p></div>';}
+  catch(e){$('watch-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;}
+}
+function watchCard(w,now){
+  const last=w.last_run,running=!!last&&!['finished','cancelled','stopped'].includes(last.status);
+  const next=!w.enabled?'Duraklatıldı':running?'Tur sürüyor':w.next_due_at<=now?'Sırada — kuyruk ve kaynak uygun olunca başlar':relTime(w.next_due_at-now);
+  return `<article class="watch-card${w.enabled?'':' is-disabled'}"><div class="watch-head"><div><h3>${esc(w.name)}</h3><p class="help">${esc(intervalNames[w.interval_seconds]||'')} · ${esc(postedNames[w.posted_within]??'')} · kombinasyon başına ${w.limit} ilan</p></div>${badge(running?'Taranıyor':w.enabled?'Etkin':'Duraklatıldı',w.enabled?'':'warn')}</div>
+    <div class="tags">${w.keywords.map(k=>`<span class="tag">${esc(k)}</span>`).join('')}</div><p class="job-meta">Konum: ${w.locations.map(esc).join(' · ')} — ${w.combinations} kombinasyon</p>
+    <dl class="watch-stats"><div><dt>Son tur</dt><dd>${last?`${esc(tr(last.status))} · ${esc(date(last.created_at))}`:'Henüz çalışmadı'}</dd></div><div><dt>Son turda</dt><dd>${last?`${last.new} yeni, ${last.updated} güncellenen`:'—'}</dd></div><div><dt>Sonraki tur</dt><dd>${esc(next)}</dd></div></dl>
+    <p class="dev-only id-text">Düzenli tarama kimliği: ${esc(w.id)}${last?' · Son çalışma: '+esc(last.id):''}</p>
+    <div class="card-actions">${button('watch-run','Şimdi tara',`data-id="${w.id}"${running?' disabled':''}`)}${last?button('run-results','Son turun ilanları',`data-run="${last.id}"`):''}${button('watch-edit','Düzenle',`data-id="${w.id}"`)}${button('watch-toggle',w.enabled?'Duraklat':'Etkinleştir',`data-id="${w.id}"`)}${button('watch-delete','Sil',`data-id="${w.id}"`,'danger')}</div></article>`;
+}
+async function watchAction(action,id){
+  const w=watchData.find(x=>x.id===id);if(!w)return;
+  if(action==='edit'){watchEditing=id;$('watch-name').value=w.name;$('watch-keywords').value=w.keywords.join('\n');$('watch-locations').value=w.locations.join('\n');$('watch-interval').value=String(w.interval_seconds);$('watch-limit').value=String(w.limit);$('watch-posted').value=String(w.posted_within);$('watch-form-title').textContent='Düzenli taramayı düzenle';$('watch-save').textContent='Değişiklikleri kaydet';$('watch-cancel').hidden=false;watchCombos();$('watch-form').scrollIntoView({block:'start'});$('watch-name').focus();return;}
+  if(action==='run'){await api(`/api/watches/${id}/run-now`,{method:'POST'});toast('Tur sıraya alındı. Kuyruk ve kaynak uygun olunca başlar.');}
+  if(action==='toggle'){await api('/api/watches/'+id,{method:'PUT',body:{enabled:!w.enabled}});toast(w.enabled?'Düzenli tarama duraklatıldı. Süren tur varsa tamamlanır.':'Düzenli tarama etkinleştirildi.');}
+  if(action==='delete'){if(!await confirmAction(`“${w.name}” düzenli taraması silinecek. Toplanan ilanlar ve geçmiş turlar korunur. Devam edilsin mi?`))return;await api('/api/watches/'+id,{method:'DELETE'});if(watchEditing===id)resetWatchForm();toast('Düzenli tarama silindi.');}
+  await loadWatches();
+}
+
 async function dispatch(action,el){
   const id=el.dataset.id,run=el.dataset.run,task=el.dataset.task,index=Number(el.dataset.index);
-  if(action==='jobs-home'||action==='trash-home'){document.querySelectorAll('dialog[open]').forEach(d=>d.close());filters=action==='trash-home'?{visibility:'trash'}:{};syncControls();renderChips();persist(true);await loadAll();$('main').scrollIntoView({block:'start'});return;}
+  if(action==='jobs-home'||action==='trash-home'){document.querySelectorAll('dialog[open]').forEach(d=>d.close());showTab('jobs');filters=action==='trash-home'?{visibility:'trash'}:{};syncControls();renderChips();persist(true);await loadAll();$('main').scrollIntoView({block:'start'});return;}
   if(action==='logs-home'){const rows=await api('/api/runs');if(!rows.runs.length){toast('Henüz işlem kaydı yok.');return;}return openLogs(currentRun?.id||rows.runs[0].id);}
   if(action==='service-home')return openService();
   if(action==='disable-schedule'){await api(`/api/service/schedules/${run}/stop`,{method:'POST'});toast('Yeni tekrarlar kapatıldı.');return openService();}
   if(action==='maintenance-home'){await openDrawer();document.querySelector('.maintenance').open=true;document.querySelector('.maintenance').scrollIntoView({block:'start'});return;}
-  if(action==='new-search')return openDrawer(true);if(action==='queue')return openDrawer();if(action==='history')return openHistory();if(action==='profile')return openProfile();if(action==='reset')return resetFilters();if(action==='job')return openJob(id);if(action==='similar')return similar(id);
+  if(action==='new-search')return openDrawer();if(action==='queue')return showTab('queue');if(action==='watches')return showTab('watches');
+  if(action==='dev-menu')return openDev();if(action==='dev-off'){devMode=false;saveDev();applyDev();closeDialog('dev-dialog');toast('Geliştirici modu kapatıldı.');return;}
+  if(action.startsWith('watch-'))return watchAction(action.slice(6),id);if(action==='history')return openHistory();if(action==='profile')return openProfile();if(action==='reset')return resetFilters();if(action==='job')return openJob(id);if(action==='similar')return similar(id);
   if(action==='copy-id'){await navigator.clipboard.writeText(id);toast('Kimlik kopyalandı: '+id);return;}
   if(action==='run-report'||action==='task-report')return openReport(run,task||null);
   if(action==='run-logs')return openLogs(run);
@@ -379,7 +436,7 @@ document.addEventListener('input',event=>{
 });
 function wire(id,event,fn){$(id).addEventListener(event,async e=>{try{await fn(e);}catch(error){toast(error.message,null,'',true);}});}
 function initialize(){
-  document.querySelector('header nav').insertAdjacentHTML('beforeend',button('maintenance-home','Bakım / analiz'));
+  document.querySelector('header nav .dev-toggle').insertAdjacentHTML('beforebegin',button('maintenance-home','Bakım / analiz'));
   const queueLabel=document.createElement('p');queueLabel.id='queue-identity';queueLabel.className='id-text';$('draft-tasks').before(queueLabel);
   const reportDialog=document.createElement('dialog');reportDialog.id='report-dialog';reportDialog.className='wide-dialog';reportDialog.setAttribute('aria-labelledby','report-title');reportDialog.innerHTML='<div class="dialog-heading"><h2 id="report-title">Süreç raporu · Neden az geldi?</h2><button data-close="report-dialog" aria-label="Raporu kapat">✕</button></div><button id="refresh-report">Raporu yenile</button><div id="report-content"></div>';document.body.append(reportDialog);
   const logQuery=document.createElement('input');logQuery.id='log-query';logQuery.type='search';logQuery.placeholder='İstek / ilan / deneme kimliği veya mesaj ara';logQuery.setAttribute('aria-label','İşlem kayıtlarında ara');$('log-totals').before(logQuery);
@@ -413,6 +470,10 @@ function initialize(){
   wire('save-task','click',saveTask);
   document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
   window.addEventListener('popstate',()=>{readLocation();syncControls();renderChips();loadAll();});
+  $('queue-host').append($('live-run'));
+  wire('watch-form','submit',saveWatch);wire('watch-cancel','click',resetWatchForm);['watch-keywords','watch-locations'].forEach(id=>wire(id,'input',watchCombos));watchCombos();
+  setInterval(()=>{if(document.visibilityState==='visible'&&!$('view-watches').hidden)loadWatches();},20000);
+  applyDev();let tab='jobs';try{tab=localStorage.getItem('linko.tab')||'jobs';}catch{}showTab(tab);
   loadAll();loadRunOptions();pollStatus();connectEvents();
 }
 initialize();

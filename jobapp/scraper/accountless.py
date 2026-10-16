@@ -29,7 +29,8 @@ class AccountlessScraper:
     SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
     REQUEST_INTERVAL = config.REQUEST_INTERVAL
 
-    def __init__(self, emit=None, should_stop=None, max_retries=None, mode="incremental", refresh_details=False):
+    def __init__(self, emit=None, should_stop=None, max_retries=None, mode="incremental", refresh_details=False,
+                 search_options=None):
         self.emit = emit
         self.should_stop = should_stop or (lambda: False)
         self.require_login = False
@@ -41,6 +42,8 @@ class AccountlessScraper:
         self.coordinator = Coordinator(interval=self.REQUEST_INTERVAL)
         self.mode = mode
         self.refresh_details = refresh_details
+        # Düzenli taramalar: posted_within (sn), sort_recent, stop_when_known — istek sayısını azaltır.
+        self.search_options = search_options or {}
         self.last_request = None
 
         # Unit test compatibility: if REQUEST_INTERVAL == 0 (as mocked in test suite),
@@ -257,6 +260,7 @@ class AccountlessScraper:
         return {
             "external_id": match.group(1),
             "url": f"https://www.linkedin.com/jobs/view/{match.group(1)}",
+            "card_layout": "guest",
             "card_lines": [text(".base-search-card__title"),
                            text(".base-search-card__subtitle"),
                            text(".job-search-card__location")],
@@ -387,10 +391,12 @@ class AccountlessScraper:
             pages_scanned += 1
             self._log(f"📄 [Sayfa {page + 1}] LinkedIn istek gönderiliyor (start={start_offset})...", "info")
 
-            soup = self._get(
-                self.SEARCH_URL,
-                {"keywords": keyword, "location": location, "start": start_offset}
-            )
+            params = {"keywords": keyword, "location": location, "start": start_offset}
+            if self.search_options.get("posted_within"):
+                params["f_TPR"] = f"r{int(self.search_options['posted_within'])}"
+            if self.search_options.get("sort_recent"):
+                params["sortBy"] = "DD"
+            soup = self._get(self.SEARCH_URL, params)
 
             if soup is None:
                 self._report_page(interrupted=True)
@@ -421,6 +427,9 @@ class AccountlessScraper:
 
             new_on_page = 0
             stopped_early = False
+            stop_when_known = self.search_options.get("stop_when_known")
+            known = self.details.known([r["external_id"] for c in cards if (r := self._card(c))]) if stop_when_known else set()
+            unknown_on_page = 0
             for card in cards:
                 if self.should_stop():
                     termination_reason = "stopped_by_user"
@@ -444,7 +453,9 @@ class AccountlessScraper:
                 new_on_page += 1
                 job_id = raw["external_id"]
 
-                cached = self.details.get(raw, force=self.refresh_details)
+                if job_id not in known:
+                    unknown_on_page += 1
+                cached = self.details.get(raw, force=self.refresh_details, allow_stale=job_id in known)
                 if self.emit:
                     self.emit("cache_hit" if cached else "cache_miss", {"external_id":job_id,
                               "forced":self.refresh_details, "fetched_at":cached["fetched_at"] if cached else None})
@@ -511,6 +522,15 @@ class AccountlessScraper:
 
             self._report_page(interrupted=stopped_early)
             if stopped_early:
+                break
+
+            if stop_when_known and not unknown_on_page:
+                termination_reason = "no_new_jobs"
+                self._log(
+                    f"ℹ️ [Sayfa {page + 1}] Sayfadaki ilanların tümü zaten kayıtlı; en yeniden sıralı aramada "
+                    f"devamı da bilinen ilanlar. Kaynağı yormamak için bu kombinasyon bitirildi.",
+                    "info"
+                )
                 break
 
             if not new_on_page and page != resume_page:

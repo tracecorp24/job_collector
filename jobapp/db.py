@@ -82,6 +82,35 @@ def init_db() -> None:
     _upgrade_history()
     from .service_api import init_journal
     init_journal()
+    _repair_guest_card_fields()
+
+
+def _repair_guest_card_fields():
+    """Eski ayrıştırıcı hesapsız kartlarda konumu tahminle arıyordu: tek kelimelik konumlar
+    boş kaldı, adında "Türkiye" geçen şirketler konuma yazıldı. Ham kart satırlarından bir
+    kez yeniden türetilir; ham veri değişmez."""
+    from .models import Setting
+    from . import parse
+    marker = "repair_guest_card_fields_v1"
+    with sessionmaker(bind=engine)() as session:
+        if session.get(Setting, marker):
+            return
+        for job in session.query(Job).filter(Job.source == config.SOURCE_LINKEDIN):
+            try:
+                raw = json.loads(job.raw or "{}")
+            except ValueError:
+                continue
+            if not isinstance(raw, dict) or not parse.is_guest_card(raw):
+                continue
+            parsed = parse.parse_guest_card(raw.get("card_lines"), "")
+            if not parsed["quality_ok"]:
+                continue
+            if job.location != parsed["location"]:
+                job.location = parsed["location"]
+            if parsed["company"] and job.company != parsed["company"]:
+                job.company = parsed["company"]
+        session.add(Setting(key=marker, value=datetime.utcnow().isoformat()))
+        session.commit()
 
 
 def _backup_before_upgrade():

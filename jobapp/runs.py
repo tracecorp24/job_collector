@@ -219,7 +219,8 @@ def worker(server, run_id):
                                 use_embeddings=options.get("use_embeddings", False), emit=emit,
                                 should_stop=lambda: server.state.stop_flag or getattr(server.state, "task_stop_id", None) == task_id,
                                 checkpoint=checkpoint, resume_folder=folder or None, search_id=task_id, run_id=run_id, attempt_id=attempt_id,
-                                mode=options.get("mode", "incremental"), refresh_details=options.get("refresh_details", False))
+                                mode=options.get("mode", "incremental"), refresh_details=options.get("refresh_details", False),
+                                search_options={k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known") if options.get(k)})
             with server.SessionLocal() as session:
                 run = session.get(SearchRun, run_id)
                 stats = json.loads(run.stats)

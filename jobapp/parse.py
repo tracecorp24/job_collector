@@ -165,3 +165,27 @@ def parse_card(card_lines, description: str = "") -> dict:
         "workplace_type": workplace,
         "quality_ok": True,
     }
+
+
+def parse_guest_card(card_lines, description: str = "") -> dict:
+    """Hesapsız (guest) arama kartı: satırlar sabit sırada ``[unvan, şirket, konum]``.
+
+    Konum anlamına göre aranmaz; "Maltepe" gibi tek kelimelik konumlar ve adında
+    "Türkiye" geçen şirketler bu yüzden doğru alana düşer.
+    """
+    lines = [_norm(l) for l in (card_lines or [])] + ["", "", ""]
+    title, company, location = lines[:3]
+    if not title or is_noise(title):
+        return {"title": title, "company": "", "location": "", "workplace_type": "", "quality_ok": False}
+    workplace = detect_workplace(location) or (detect_workplace(description) if description else "")
+    return {"title": title, "company": company, "location": _strip_workplace(location),
+            "workplace_type": workplace, "quality_ok": True}
+
+
+def is_guest_card(raw: dict) -> bool:
+    """Kartın hesapsız kazıyıcıdan geldiğini (eski kayıtlarda işaret yoksa biçiminden) anlar."""
+    if raw.get("card_layout") == "guest":
+        return True
+    lines = raw.get("card_lines")
+    return (isinstance(lines, list) and len(lines) == 3 and str(raw.get("external_id", "")).isdigit()
+            and "linkedin.com/jobs/view/" in str(raw.get("url", "")))

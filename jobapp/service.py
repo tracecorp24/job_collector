@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from sqlalchemy import or_, and_, func
-from . import config, runs, audit
+from . import config, runs, audit, watches
 from .models import SearchRun, SearchTask
 from .transport import Coordinator
 
@@ -63,6 +63,8 @@ def tick(server, now=None):
                     audit.record(session, new_id, None, "scheduled_run_created", {"parent_run_id":run.id})
                     session.commit()
                     return
+            if watches.dispatch(session, now, source):
+                return
 
 
 def start(server):

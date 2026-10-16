@@ -653,3 +653,5 @@ import sys
 install(sys.modules[__name__])
 from .service_api import install as install_service_api
 install_service_api(sys.modules[__name__])
+from .watches import install as install_watches
+install_watches(sys.modules[__name__])

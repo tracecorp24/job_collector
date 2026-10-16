@@ -2,6 +2,7 @@
 import hashlib
 import json
 import math
+import random
 import time
 import uuid
 from contextlib import contextmanager
@@ -107,6 +108,7 @@ class Coordinator:
                 if wait <= 0:
                     owner = uuid.uuid4().hex
                     interval = max(self.interval, config.MIN_REQUEST_INTERVAL, row["interval_floor"])
+                    interval *= 1 + random.uniform(0, config.REQUEST_JITTER)
                     connection.execute(text("UPDATE source_policy SET lease_owner=:owner, lease_until=:lease, next_request_at=:next, interval_floor=:floor WHERE source=:source"),
                                        {"owner":owner,"lease":now+config.NETWORK_LEASE_SECONDS,"next":now+interval,"floor":max(config.MIN_REQUEST_INTERVAL,row["interval_floor"]),"source":self.source})
                     return owner
@@ -169,7 +171,16 @@ class Details:
         self.clock = clock or time.time
         DetailCache.__table__.create(self.engine, checkfirst=True)
 
-    def get(self, raw, force=False):
+    def known(self, external_ids):
+        """External ids already stored as jobs with a description."""
+        if not external_ids:
+            return set()
+        with self.factory() as session:
+            rows = session.query(Job.external_id).filter(Job.source == config.SOURCE_LINKEDIN,
+                Job.external_id.in_(list(external_ids)), Job.description.isnot(None), Job.description != "").all()
+            return {r[0] for r in rows}
+
+    def get(self, raw, force=False, allow_stale=False):
         if force:
             return None
         with self.factory() as session:
@@ -193,7 +204,7 @@ class Details:
                             cached = session.get(DetailCache, key)
                     except (ValueError,TypeError):
                         cached = None
-            if cached is None or cached.expires_at <= self.clock() or cached.fingerprint != fingerprint(raw):
+            if cached is None or (cached.expires_at <= self.clock() and not allow_stale) or cached.fingerprint != fingerprint(raw):
                 return None
             return {"description":cached.description,"status":cached.status,"fetched_at":cached.fetched_at,"expires_at":cached.expires_at}
 

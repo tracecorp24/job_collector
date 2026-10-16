@@ -27,7 +27,8 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
             emit("processing_stage", dict(stage=name, phase=phase, external_id=raw["external_id"], **data))
     started = time.monotonic()
     stage("parse", "started", card_lines=len(raw.get("card_lines", [])), description_chars=len(raw.get("description", "")))
-    parsed = parse.parse_card(raw.get("card_lines", []), raw.get("description", ""))
+    parser = parse.parse_guest_card if parse.is_guest_card(raw) else parse.parse_card
+    parsed = parser(raw.get("card_lines", []), raw.get("description", ""))
     stage("parse", "finished", quality_ok=parsed.get("quality_ok"), duration_ms=round((time.monotonic()-started)*1000))
     description = raw.get("description", "")
     started = time.monotonic()
@@ -93,7 +94,7 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
 def run_scrape(keywords, locations, limit=None, classify_backend="rules",
                use_embeddings=False, require_login=False, emit=None, should_stop=None,
                on_scraper_ready=None, output_dir=None, checkpoint=None, resume_folder=None, search_id=None, run_id=None, attempt_id=None,
-               mode="incremental", refresh_details=False):
+               mode="incremental", refresh_details=False, search_options=None):
     """Full run driven by the web button.
 
     ``keywords``: [{"keyword": str, "limit": int|None}, ...] or [str, ...]
@@ -248,7 +249,8 @@ def run_scrape(keywords, locations, limit=None, classify_backend="rules",
 
     try:
         from .scraper.accountless import AccountlessScraper
-        scraper = AccountlessScraper(emit=_emit, should_stop=should_stop, mode=mode, refresh_details=refresh_details)
+        scraper = AccountlessScraper(emit=_emit, should_stop=should_stop, mode=mode, refresh_details=refresh_details,
+                                     search_options=search_options)
         scraper.resume_checkpoint = checkpoint or {}
         if on_scraper_ready:
             on_scraper_ready(scraper)

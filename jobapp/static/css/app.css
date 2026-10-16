@@ -10,3 +10,35 @@ dialog{width:min(660px,calc(100% - 2rem));max-height:90dvh;border:1px solid var(
 @media(max-width:480px){.queue-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.queue-task-heading{align-items:flex-start}.queue-overview{padding:.85rem}.queue-task{padding:.8rem}.queue-actions>button{flex:1 1 45%}.queue-legend{gap:.3rem}}
 .header{align-items:center;gap:1rem;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:#0c1526f5;backdrop-filter:blur(12px)}.header nav{display:flex;flex-wrap:wrap;gap:.35rem;justify-content:flex-end}.header nav button{font-size:.78rem;padding:.55rem .7rem}.wait-banner{max-width:1500px;margin:1rem auto;display:flex;align-items:center;justify-content:space-between;gap:1rem;border:1px solid #b98a38;border-left:5px solid #ffd08a;background:linear-gradient(120deg,#302817,#1f2434);border-radius:14px;padding:1rem 1.3rem;color:#ffe3b3}.wait-banner p{margin:.4rem 0;font-size:.85rem}.wait-banner small{color:#d6bc91;font-size:.75rem}.wait-clock{display:flex;flex-direction:column;align-items:center;flex-shrink:0}.wait-clock>span,.queue-wait>span{font:700 2rem Consolas,monospace;letter-spacing:.04em;font-variant-numeric:tabular-nums}.queue-wait{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;background:#44371f;border:1px solid #b98a38;color:#ffda9e;border-radius:10px;padding:.8rem;margin-bottom:.8rem}.queue-wait strong{font-size:.8rem}
 @media(max-width:760px){.header nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;gap:.3rem}.header nav button{font-size:.7rem;padding:.45rem .25rem;min-width:0}.wait-banner{margin:.8rem;flex-wrap:wrap;padding:1rem}.wait-clock{align-items:flex-start}.wait-clock>span{font-size:2.2rem}}
+
+/* 2026-10-17: ortalanmış düzen, kompakt kartlar, sekmeler, düzenli taramalar, geliştirici modu */
+main{max-width:1380px}
+.header{padding-inline:max(1.2rem,calc((100vw - 1380px)/2))}
+.job-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:.85rem}
+.job-card{padding:.95rem;gap:.5rem}
+.job-card h3{font-size:.98rem}
+.job-facts{display:flex;flex-direction:column;gap:.1rem}
+.job-facts .job-meta{margin:0}
+.job-dates{font-size:.74rem;opacity:.85}
+.header nav button[aria-current="page"]{border-color:var(--accent);color:var(--accent);background:#1b2b47}
+.dev-toggle{font-size:1.1rem;line-height:1;letter-spacing:.05em;min-width:2.4rem}
+body:not(.dev) .dev-only{display:none!important}
+.dev-id{align-self:flex-start;font:600 .7rem/1.2 ui-monospace,Consolas,monospace;padding:.2rem .45rem;min-height:0;margin-bottom:.35rem;border:1px dashed var(--accent);color:var(--accent);background:transparent;border-radius:6px;cursor:copy}
+.id-text{font:.75rem/1.4 ui-monospace,Consolas,monospace;color:var(--muted);word-break:break-all}
+#queue-host #live-run>h3{display:none}
+.watch-intro{margin-bottom:1.2rem}
+.watch-layout{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:1.5rem;align-items:start}
+.watch-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;display:flex;flex-direction:column;gap:.7rem;position:sticky;top:90px}
+.watch-form h2{margin:0;font-size:1.05rem}
+.watch-form label{display:flex;flex-direction:column;gap:.3rem}
+.watch-list{display:flex;flex-direction:column;gap:.85rem}
+.watch-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;flex-direction:column;gap:.55rem}
+.watch-card.is-disabled{opacity:.7}
+.watch-head{display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start}
+.watch-head h3{margin:0;font-size:1rem}
+.watch-head .help{margin:.15rem 0 0}
+.watch-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin:0}
+.watch-stats div{background:var(--raised);border-radius:10px;padding:.5rem .65rem}
+.watch-stats dt{font-size:.7rem;color:var(--muted)}
+.watch-stats dd{margin:0;font-size:.85rem}
+@media(max-width:900px){.watch-layout{grid-template-columns:1fr}.watch-form{position:static}.watch-stats{grid-template-columns:1fr}}

@@ -225,3 +225,21 @@ class SourcePolicy(Base):
     last_violation_at = Column(Float, default=0)
     last_success_at = Column(Float, default=0)
     interval_floor = Column(Float, default=0)
+
+
+class Watch(Base):
+    """A saved title × location combination the supervisor re-scans on its own."""
+    __tablename__ = "watches"
+    id = Column(String(40), primary_key=True)
+    name = Column(String(200), default="")
+    keywords = Column(Text, default="[]")
+    locations = Column(Text, default="[]")
+    interval_seconds = Column(Integer, default=21600)
+    limit = Column(Integer, default=50)
+    posted_within = Column(Integer, default=86400)
+    enabled = Column(Boolean, default=True)
+    next_due_at = Column(Float, default=0)
+    last_run_id = Column(String(40), nullable=True)
+    last_dispatched_at = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
