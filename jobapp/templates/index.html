@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark">
   <title>İlan Merkezi · Linko Scrapper Light</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20261017.8') }}">
-  <script src="{{ url_for('static', filename='js/app.js', v='20261017.8') }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20261017.9') }}">
+  <script src="{{ url_for('static', filename='js/app.js', v='20261017.9') }}" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">İlanlara geç</a>
@@ -68,4 +68,12 @@
   <dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">İşlemi onayla</h2><p id="confirm-text"></p><div class="actions"><button id="confirm-no">Vazgeç</button><button id="confirm-yes" class="danger">Onayla</button></div></dialog>
   <dialog id="dev-dialog" aria-labelledby="dev-title"><div class="dialog-heading"><h2 id="dev-title">Geliştirici modu</h2><button data-close="dev-dialog" aria-label="Geliştirici modunu kapat">✕</button></div><div id="dev-content"></div></dialog>
   <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+  <nav id="bottom-nav" class="bottom-nav" aria-label="Alt menü">
+    <button class="bottom-tab" data-bottom-tab="jobs" data-action="jobs-home"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg><span>İlanlar</span></button>
+    <button class="bottom-tab" data-bottom-tab="watches" data-action="watches"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Düzenli</span></button>
+    <button class="bottom-tab bottom-main" data-bottom-tab="scan" data-bottom-group="scan" aria-haspopup="true" aria-expanded="false"><span class="bottom-main-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><i class="bottom-dot" hidden></i></span><span>Tarama</span></button>
+    <button class="bottom-tab" data-bottom-tab="records" data-bottom-group="records" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>Kayıtlar</span></button>
+    <button class="bottom-tab" data-bottom-tab="more" data-bottom-group="more" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>Diğer</span></button>
+  </nav>
+  <div id="bottom-sheet" class="bottom-sheet" hidden><div class="sheet-backdrop" data-sheet-close></div><section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-handle" data-sheet-close></div><h2 id="sheet-title"></h2><div id="sheet-items" class="sheet-items"></div></section></div>
 </body></html>

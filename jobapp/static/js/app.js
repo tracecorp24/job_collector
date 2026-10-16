@@ -416,8 +416,66 @@ function showTab(name){
   try{localStorage.setItem('linko.tab',name);}catch{}
   if(name==='queue')renderQueueView();
   if(name==='watches')loadWatches();
+  syncBottomNav(name);
 }
-function renderQueueView(){const has=!!currentRun;$('queue-empty').hidden=has;$('live-run').hidden=!has;}
+const VIEW_GROUP={jobs:'jobs',watches:'watches',queue:'scan'};
+const ICON=d=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+// Mobil alt menü grupları; her grupta en sık kullanılan/önemli seçenek en üstte.
+const BOTTOM_GROUPS={
+  scan:{title:'Tarama',items:[
+    ['new-search','Yeni tarama','Unvan yaz, yapay zekâ benzerleriyle çoğaltsın','<path d="M12 5v14M5 12h14"/>'],
+    ['queue','Tarama kuyruğu','Canlı süreci izle, duraklat veya durdur','<path d="M4 6h16M4 12h16M4 18h10"/>']]},
+  records:{title:'Kayıtlar',items:[
+    ['history','Geçmiş aramalar','Önceki taramaları gör, yeniden başlat','<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>'],
+    ['logs-home','İşlem kayıtları','İstekler, yanıtlar ve hatalar','<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>'],
+    ['trash-home','Çöp kutusu','Silinen ilanları gör ve geri al','<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>']]},
+  more:{title:'Diğer',items:[
+    ['profile','Profilim','Özgeçmiş ve uygunluk puanı','<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>'],
+    ['service-home','Servis / API','Toplayıcı durumu ve API erişimi','<rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01"/>'],
+    ['maintenance-home','Bakım / analiz','Kayıtlı ilanları yeniden işle','<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 6.5-6.5a4 4 0 0 1-5-5L9 9 3 3"/>'],
+    ['dev-menu','Geliştirici modu','İlan kimliklerini göster','<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>']]},
+};
+function runActive(){return !!(currentRun&&activeStatus(currentRun.status));}
+function syncBottomNav(view){
+  const nav=$('bottom-nav');if(!nav)return;
+  const sheet=$('bottom-sheet'),open=sheet&&!sheet.hidden?sheet.dataset.group:'';
+  const active=open||VIEW_GROUP[view||TABS.find(t=>!$('view-'+t).hidden)]||'jobs';
+  nav.querySelectorAll('[data-bottom-tab]').forEach(b=>{
+    if(b.dataset.bottomTab===active)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+    if(b.dataset.bottomGroup)b.setAttribute('aria-expanded',String(b.dataset.bottomGroup===open));
+  });
+  const dot=nav.querySelector('.bottom-dot');if(dot)dot.hidden=!runActive();
+}
+function openBottomSheet(name){
+  const group=BOTTOM_GROUPS[name],sheet=$('bottom-sheet');
+  $('sheet-title').textContent=group.title;
+  $('sheet-items').innerHTML=group.items.map(([action,label,hint,icon],i)=>{
+    const live=action==='queue'&&runActive()?'<span class="state-pill state-running">● Çalışıyor</span>':'';
+    return `<button class="sheet-item${i===0?' sheet-item-main':''}" data-action="${action}"><span class="sheet-icon">${ICON(icon)}</span><span class="sheet-text"><strong>${esc(label)}</strong><small>${esc(hint)}</small></span>${live}</button>`;
+  }).join('');
+  sheet.dataset.group=name;sheet.hidden=false;syncBottomNav();
+  sheet.querySelector('.sheet-item')?.focus({preventScroll:true});
+}
+function closeBottomSheet(){
+  const sheet=$('bottom-sheet');if(!sheet||sheet.hidden)return;
+  const group=sheet.dataset.group,hadFocus=sheet.contains(document.activeElement);
+  sheet.hidden=true;sheet.dataset.group='';syncBottomNav();
+  // Gizlenen öğede odak kalmasın; açılan pencere kapanınca odak menü sekmesine dönsün.
+  if(hadFocus)$('bottom-nav').querySelector(`[data-bottom-group="${group}"]`)?.focus({preventScroll:true});
+}
+function initBottomNav(){
+  $('bottom-nav').addEventListener('click',e=>{
+    const tab=e.target.closest('[data-bottom-tab]');if(!tab)return;
+    const group=tab.dataset.bottomGroup,wasOpen=$('bottom-sheet').dataset.group;
+    closeBottomSheet();
+    if(group&&group!==wasOpen)openBottomSheet(group);
+  });
+  // Öğeye tıklanınca belge düzeyindeki data-action işleyicisi işlemi yapar; burada yalnızca panel kapanır.
+  $('bottom-sheet').addEventListener('click',e=>{if(e.target.closest('[data-sheet-close],[data-action]'))closeBottomSheet();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeBottomSheet();});
+  syncBottomNav();
+}
+function renderQueueView(){const has=!!currentRun;$('queue-empty').hidden=has;$('live-run').hidden=!has;syncBottomNav();}
 
 let watchEditing=null, watchData=[];
 const intervalNames={3600:'Saatte bir',10800:'3 saatte bir',21600:'6 saatte bir',43200:'12 saatte bir',86400:'Günde bir',259200:'3 günde bir',604800:'Haftada bir'};
@@ -540,5 +598,6 @@ function initialize(){
   setInterval(()=>{if(document.visibilityState==='visible'&&!$('view-watches').hidden)loadWatches();},20000);
   applyDev();let tab='jobs';try{tab=localStorage.getItem('linko.tab')||'jobs';}catch{}showTab(tab);
   loadAll();loadRunOptions();pollStatus();connectEvents();
+  initBottomNav();
 }
 initialize();
