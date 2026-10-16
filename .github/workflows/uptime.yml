@@ -1,0 +1,23 @@
+name: Uptime
+
+# Siteyi 15 dakikada bir dışarıdan kontrol eder. Başarısız olursa GitHub
+# repo sahibine "workflow failed" e-postası gönderir.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Sağlık kontrolü
+        run: |
+          # Geçici dalgalanmada alarm vermemek için 3 deneme yapılır.
+          for i in 1 2 3; do
+            body=$(curl -fsS --max-time 20 https://ai-org.online/healthz) && echo "$body" | grep -q '"status":"ok"' && { echo "Site ayakta: $body"; exit 0; }
+            echo "Deneme $i başarısız: ${body:-yanıt yok}"; sleep 30
+          done
+          echo "::error::https://ai-org.online/healthz 3 denemede yanıt vermedi veya sağlıksız."
+          exit 1

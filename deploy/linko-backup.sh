@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# VPS'te /usr/local/bin/linko-backup olarak kurulur; linko-backup.timer günde bir çalıştırır.
+# Veritabanının sıkıştırılmış kopyasını ayrı, private bir GitHub reposuna gönderir.
+# Repo geçmişi her seferinde tek commit'e indirilir; son 7 günün kopyası tutulur.
+set -euo pipefail
+exec 9>/run/linko-backup.lock
+flock -n 9 || { echo "Başka bir yedekleme sürüyor."; exit 1; }
+
+DB=/var/lib/linko/jobs.db
+WORK=/var/lib/linko-offsite
+REMOTE=git@github-backup:tracecorp24/job_collector-backups.git
+KEEP=7
+
+[ -d "$WORK/.git" ] || git clone -q "$REMOTE" "$WORK" 2>/dev/null || { mkdir -p "$WORK"; git -C "$WORK" init -q -b main; git -C "$WORK" remote add origin "$REMOTE"; }
+cd "$WORK"
+git config user.name "linko-vps"
+git config user.email "linko-vps@users.noreply.github.com"
+
+STAMP=$(date -u +%Y%m%d)
+TMP=$(mktemp /tmp/linko-backup.XXXXXX.db)
+trap 'rm -f "$TMP"' EXIT
+sqlite3 "$DB" ".backup '$TMP'"
+sqlite3 "$TMP" "PRAGMA integrity_check;" | grep -qx ok || { echo "Bütünlük kontrolü başarısız, yedek gönderilmedi." >&2; exit 1; }
+gzip -9 -c "$TMP" > "jobs-$STAMP.db.gz"
+ls -1 jobs-*.db.gz | sort | head -n -"$KEEP" | xargs -r rm -f
+
+cat > README.md <<EOF
+# Linko veritabanı yedekleri
+
+Son güncelleme: $(date -u '+%Y-%m-%d %H:%M UTC')
+
+Her gün VPS'ten otomatik gönderilir, son $KEEP gün tutulur.
+Geri yükleme: \`gunzip -c jobs-YYYYMMDD.db.gz > jobs.db\`
+EOF
+
+git checkout -q --orphan snapshot
+git add -A
+git commit -q -m "Yedek $STAMP"
+git branch -q -D main 2>/dev/null || true
+git branch -q -m main
+git push -q -f origin main
+echo "Yedek gönderildi: jobs-$STAMP.db.gz ($(du -h "jobs-$STAMP.db.gz" | cut -f1))"

@@ -15,5 +15,11 @@ sunucusu ve otonom toplayıcı (`serve_service.py`). Arayüz `jobapp/templates/i
 
 ## Canlı ortam
 - VPS: kod `/opt/linko`, veri `/var/lib/linko`, ayarlar `/etc/linko.env`, servis `linko.service`.
-- Uygulama `127.0.0.1:8016` dinler; önünde Caddy (HTTPS + basic auth) vardır. Uygulama loopback isteklerine
-  anahtarsız güvenir, bu yüzden `JOBAPP_HOST`'u dış arayüze açma.
+- Uygulama `127.0.0.1:8016` dinler; önünde Caddy (HTTPS + basic auth, `ai-org.online`) vardır. Uygulama loopback
+  isteklerine anahtarsız güvenir, bu yüzden `JOBAPP_HOST`'u dış arayüze açma.
+- Ollama sunucuda yok; yerel yapay zekâ ve eşleştirme seçenekleri arayüzde kapalı görünür.
+- Yedek: her deploy öncesi `/var/lib/linko/backups` (son 10); günlük `linko-backup.timer` →
+  private `tracecorp24/job_collector-backups` (son 7 gün, `deploy/linko-backup.sh`).
+- İzleme: `.github/workflows/uptime.yml` 15 dakikada bir `/healthz` kontrol eder.
+- Düzenli taramalar (`jobapp/watches.py`) kaynağı korur: yakın tarihli ilanlar, en yeniden sıralama, bilinen
+  ilanın detayı yeniden indirilmez, tamamı bilinen sayfada durulur. Bu korumaları gevşetme.

@@ -138,7 +138,7 @@ function addTasks(){
   $('task-error').textContent='';for(const keyword of keywords)draft.push({id:newId(),keyword,location,limit});$('kw-input').value='';renderDraft();persist();scheduleDraftSave();return true;
 }
 async function openDrawer(){$('new-search-form').hidden=false;$('drawer-title').textContent='Yeni tarama';showDialog('drawer');renderDraft();
-  try{const models=await api('/api/ollama/models');$('classify-model').innerHTML='<option value="">Varsayılan model</option>'+models.models.map(m=>`<option>${esc(m)}</option>`).join('');}catch{}
+  try{const models=await api('/api/ollama/models');$('classify-model').innerHTML='<option value="">Varsayılan model</option>'+models.models.map(m=>`<option>${esc(m)}</option>`).join('');setOllama(true);}catch{setOllama(false);}
 }
 async function startScrape(){
   if($('kw-input').value.trim()&&!addTasks())return;if(!draft.length){$('task-error').textContent='Önce kuyruğa en az bir görev ekleyin.';return;}
@@ -146,6 +146,14 @@ async function startScrape(){
   clearTimeout(draftSaveTimer);queueStarting=true;$('start-scrape').disabled=true;$('task-error').textContent='';
   try{const runId=await saveDraft();await api(`/api/runs/${runId}/resume`,{method:'POST'});activeLogRun=runId;currentRun=await api('/api/runs/'+runId);draft=[];draftRunId=null;persist();renderDraft();closeDialog('drawer');showTab('queue');renderRun();await pollStatus();toast('Tarama kuyruğu başlatıldı. Süreç: '+runId);}
   catch(e){$('task-error').textContent=e.message;}finally{queueStarting=false;renderSource();}
+}
+function setOllama(available){
+  // Ollama yoksa (ör. VPS) yerel yapay zekâ gerektiren seçenekler seçilemez; hızlı analiz kullanılır.
+  const local=$('classify-backend').querySelector('option[value="local"]');local.disabled=!available;local.textContent=available?'Yerel yapay zekâ — Ollama':'Yerel yapay zekâ — Ollama (bu sunucuda kurulu değil)';
+  if(!available&&$('classify-backend').value==='local')$('classify-backend').value='rules';
+  $('use-embeddings').disabled=!available;if(!available)$('use-embeddings').checked=false;
+  for(const id of ['embed-jobs','classify-jobs'])$(id).dataset.ollama=available?'1':'0';
+  if(!available){$('embed-jobs').disabled=true;$('classify-jobs').disabled=true;$('maintenance-status').textContent='Ollama bu sunucuda çalışmadığı için yerel yapay zekâ işlemleri kapalı.';}
 }
 function renderSource(){
   const blocked=!!sourceState?.paused;
@@ -241,7 +249,7 @@ async function pollStatus(){
     else if(busy){$('status-bar').hidden=false;$('status-text').textContent=status.kind==='embed'?'İlan eşleştirmeleri hazırlanıyor…':'İlanlar analiz ediliyor…';$('status-detail').textContent='Bu işlem kayıtlı ilanlar üzerinde çalışır.';$('status-progress').removeAttribute('value');}
     else if(currentRun&&activeStatus(currentRun.status)){currentRun=await api('/api/runs/'+currentRun.id);renderRun();loadAll();}
     if($('history-dialog').open)loadHistory();
-    $('embed-jobs').disabled=busy;$('classify-jobs').disabled=busy;$('stop-maintenance').hidden=!busy||status.kind==='scrape';
+    $('embed-jobs').disabled=busy||$('embed-jobs').dataset.ollama==='0';$('classify-jobs').disabled=busy||$('classify-jobs').dataset.ollama==='0';$('stop-maintenance').hidden=!busy||status.kind==='scrape';
   }catch(e){$('connection').textContent='Sunucu bağlantısı bekleniyor…';}
 }
 function connectEvents(){

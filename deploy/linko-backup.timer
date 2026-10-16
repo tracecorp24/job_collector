@@ -1,0 +1,10 @@
+[Unit]
+Description=Linko günlük sunucu dışı yedek
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target

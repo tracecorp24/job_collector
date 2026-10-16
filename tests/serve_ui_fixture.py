@@ -15,11 +15,11 @@ os.environ['JOBAPP_REQUEST_INTERVAL'] = '0'
 from datetime import datetime, timedelta
 from flask import jsonify
 from jobapp import server, db
-from jobapp.models import Job, SearchRun, SearchTask, TaskJob, SearchEvent
+from jobapp.models import Job, SearchRun, SearchTask, TaskJob, SearchEvent, Watch
 
 app = server.create_app()
 with db.SessionLocal() as session:
-    for model in (TaskJob, SearchEvent, SearchTask, SearchRun, Job):
+    for model in (TaskJob, SearchEvent, SearchTask, SearchRun, Job, Watch):
         session.query(model).delete()
     session.add(SearchRun(id='fixture-run', status='finished'))
     session.add(SearchTask(id='fixture-search', run_id='fixture-run', keyword='Python Developer', location='Istanbul', status='finished', limit=10, checkpoint='{"collected":10}'))

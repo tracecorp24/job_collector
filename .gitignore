@@ -11,3 +11,6 @@ logs/
 consumer_jobs.db*
 .env
 start_server.sh
+
+# Gizli bilgiler (şifreler, API anahtarları)
+SIFRELER.txt
