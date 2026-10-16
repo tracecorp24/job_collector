@@ -1,5 +1,6 @@
 """Correlated process audit and evidence-based explanations of collection losses."""
 import json
+import logging
 from collections import Counter
 from datetime import datetime
 from sqlalchemy import func
@@ -7,6 +8,12 @@ from . import config
 from .models import SearchEvent, SearchRun, SearchTask, TaskJob, Job
 
 VERSION = "audit.v1"
+log = logging.getLogger("linko.audit")
+# Uyarı/hatalar her zaman, bu olaylar bilgi düzeyinde sunucu loguna da yazılır; istek başı olaylar yalnızca DB'de kalır.
+LOGGED = {"run_created", "run_started", "run_completed", "watch_run_created", "scheduled_run_created",
+          "automatic_resume", "automatic_retry_scheduled", "process_recovered", "source_acknowledged", "schedule_disabled"}
+SUMMARY = ("name", "keyword", "location", "status", "reason", "msg", "seconds", "remaining_seconds", "status_code",
+           "retry_at", "attempt", "previous_status", "new", "updated")
 SENSITIVE = {"authorization", "cookie", "set-cookie", "password", "api_key", "token", "secret"}
 
 
@@ -25,6 +32,10 @@ def record(session, run_id, task_id, kind, data=None, level="info"):
     data = clean(dict(data or {}, run_id=run_id, search_id=task_id, audit_version=VERSION))
     event = SearchEvent(run_id=run_id, task_id=task_id, kind=kind, level=level, data=json.dumps(data, ensure_ascii=False))
     session.add(event)
+    if level in ("warning", "error") or kind in LOGGED:
+        summary = " ".join(f"{k}={str(data[k])[:120]}" for k in SUMMARY if data.get(k) not in (None, ""))
+        log.log(logging.ERROR if level == "error" else logging.WARNING if level == "warning" else logging.INFO,
+                "%s run=%s task=%s %s", kind, (run_id or "-")[:8], (task_id or "-")[:8], summary)
     return event
 
 

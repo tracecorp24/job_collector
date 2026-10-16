@@ -21,5 +21,7 @@ sunucusu ve otonom toplayıcı (`serve_service.py`). Arayüz `jobapp/templates/i
 - Yedek: her deploy öncesi `/var/lib/linko/backups` (son 10); günlük `linko-backup.timer` →
   private `tracecorp24/job_collector-backups` (son 7 gün, `deploy/linko-backup.sh`).
 - İzleme: `.github/workflows/uptime.yml` 15 dakikada bir `/healthz` kontrol eder.
+- Loglar: `journalctl -u linko` (önemli olaylar, `audit.LOGGED`), Caddy erişim logu `/var/log/caddy/access.log`.
+  Günlük bakım (`jobapp/maintenance.py`) kayıt tablolarını budar; yedek durumu `/var/lib/linko/backup_status.json`.
 - Düzenli taramalar (`jobapp/watches.py`) kaynağı korur: yakın tarihli ilanlar, en yeniden sıralama, bilinen
   ilanın detayı yeniden indirilmez, tamamı bilinen sayfada durulur. Bu korumaları gevşetme.

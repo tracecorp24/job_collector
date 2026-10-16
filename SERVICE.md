@@ -120,3 +120,13 @@ tekrarları engeller, çalışan son taramanın toplanan verilerini korur.
 
 Hatalar: 400 geçersiz parametre, 401 yetkisiz, 404 bulunamadı, 409 kaynak
 beklemesi veya idempotency çakışması. Anahtarları URL'ye eklemeyin.
+
+## Kayıt saklama ve loglar
+
+Servis boştayken günde bir bakım çalışır: `search_events` (arama işlem kayıtları) 90 günden,
+`job_changes` (değişiklik akışı) 60 günden eski kayıtları siler (`JOBAPP_EVENT_RETENTION_DAYS`,
+`JOBAPP_CHANGES_RETENTION_DAYS`). Değişiklik akışı tüketicisi bu süreden uzun ara verirse
+`after=0` ile yeniden senkronize olmalıdır. Uyarılar, hatalar, çalışma başlangıç/bitişleri ve
+düzenli tur kararları süreç loguna da yazılır (`journalctl -u linko`); istek başı ayrıntılar
+yalnızca veritabanında ve arayüzdeki işlem kayıtlarında tutulur. Servis / API paneli veritabanı
+boyutunu, kayıt sayılarını, son bakımı ve sunucu dışı yedeğin durumunu gösterir.

@@ -51,3 +51,4 @@ body:not(.dev) .dev-only{display:none!important}
 .package-head p{margin:.2rem 0 0}
 .package details summary{cursor:pointer;color:var(--accent);font-size:.85rem}
 .package details .task-row{margin-top:.6rem}
+.notice.warn{border-color:#76603b;background:#3b3024}

@@ -40,6 +40,11 @@ NETWORK_LEASE_SECONDS = 60.0
 INLINE_RETRY_WAIT_SECONDS = 30.0
 MAX_ACCESS_PAUSE_SECONDS = max(ACCESS_PAUSE_SECONDS, float(_env("JOBAPP_MAX_ACCESS_PAUSE_SECONDS", "21600")))
 SERVICE_POLL_SECONDS = max(1.0, float(_env("JOBAPP_SERVICE_POLL_SECONDS", "5")))
+# Kayıt tablolarının saklama süreleri (gün); günlük bakım daha eskilerini siler.
+EVENT_RETENTION_DAYS = max(1, int(_env("JOBAPP_EVENT_RETENTION_DAYS", "90")))
+CHANGES_RETENTION_DAYS = max(1, int(_env("JOBAPP_CHANGES_RETENTION_DAYS", "60")))
+# linko-backup betiğinin yazdığı sunucu dışı yedek durumu.
+BACKUP_STATUS_PATH = _env("JOBAPP_BACKUP_STATUS_PATH", os.path.join(os.path.dirname(DB_PATH), "backup_status.json"))
 API_KEY = os.environ.get("JOBAPP_API_KEY", "")
 ADMIN_KEY = os.environ.get("JOBAPP_ADMIN_KEY", "")
 

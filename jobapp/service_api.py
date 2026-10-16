@@ -49,7 +49,8 @@ def install(server):
             scheduled = session.query(SearchRun).filter(SearchRun.deleted_at.is_(None),
                 func.json_extract(SearchRun.options,'$.schedule_enabled') == 1,
                 func.json_extract(SearchRun.options,'$.schedule_dispatched').is_(None)).order_by(SearchRun.created_at.desc()).limit(100).all()
-            return jsonify(supervisor_alive=bool(service.supervisor and service.supervisor.is_alive()),
+            from . import maintenance
+            return jsonify(storage=maintenance.storage(session), supervisor_alive=bool(service.supervisor and service.supervisor.is_alive()),
                 heartbeat_at=service.heartbeat, last_error=service.last_error, source=Coordinator().state(),
                 api_key_configured=bool(config.API_KEY), admin_key_configured=bool(config.ADMIN_KEY),
                 schedules=[dict(run_id=r.id,status=r.status,repeat_seconds=json.loads(r.options)['repeat_seconds'],

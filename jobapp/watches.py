@@ -9,6 +9,7 @@ import json
 import random
 import time
 from datetime import datetime
+import logging
 from flask import jsonify, request
 from . import audit, config, runs
 from .models import SearchRun, SearchTask, Watch
@@ -17,6 +18,7 @@ INTERVALS = (3600, 3*3600, 6*3600, 12*3600, 24*3600, 3*86400, 7*86400)
 POSTED_WITHIN = (0, 86400, 7*86400, 30*86400)
 MAX_KEYWORDS, MAX_LOCATIONS, MAX_COMBINATIONS, MAX_LIMIT = 20, 10, 40, 200
 JITTER = 0.1
+log = logging.getLogger(__name__)
 
 
 def _items(value, label, maximum, commas=False):
@@ -104,6 +106,7 @@ def dispatch(session, now, source):
         return None
     for watch in session.query(Watch).filter(Watch.enabled.is_(True), Watch.next_due_at <= now).order_by(Watch.next_due_at):
         if _busy(session, watch):
+            log.info("Düzenli tarama '%s' bekliyor: önceki tur (%s) henüz bitmedi.", watch.name, watch.last_run_id[:8])
             continue
         run_id = runs.identifier()
         options = dict(kind="scrape", service_managed=True, watch_id=watch.id, classify_backend="groq" if config.GROQ_API_KEY else "rules",

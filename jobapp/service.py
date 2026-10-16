@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from sqlalchemy import or_, and_, func
-from . import config, runs, audit, watches
+from . import config, runs, audit, watches, maintenance
 from .models import SearchRun, SearchTask
 from .transport import Coordinator
 
@@ -65,6 +65,8 @@ def tick(server, now=None):
                     return
             if watches.dispatch(session, now, source):
                 return
+            if maintenance.due(session, now):
+                maintenance.run(session, now)
 
 
 def start(server):
