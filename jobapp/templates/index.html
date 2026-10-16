@@ -30,7 +30,7 @@
     <section class="results" aria-label="İlan sonuçları" aria-busy="false"><div class="results-header"><p id="count" role="status">İlanlar yükleniyor…</p><label>Sayfa başına<select id="per-page"><option>24</option><option>48</option><option>100</option></select></label></div><div id="list-error" class="notice error" hidden role="alert"><p id="list-error-text"></p><button id="retry-jobs">Tekrar dene</button></div><div id="grid" class="job-grid"></div><div id="empty" class="empty" hidden></div><nav class="pager" id="pager" hidden aria-label="Sonuç sayfaları"><button id="prev">← Önceki</button><span id="page-info"></span><button id="next">Sonraki →</button></nav></section></div>
   </section>
   <section id="view-queue" class="view" hidden aria-labelledby="queue-view-title">
-    <div class="page-title"><div><p class="eyebrow">CANLI SÜREÇ</p><h1 id="queue-view-title">Tarama kuyruğu</h1></div><button class="primary" data-action="new-search">Yeni tarama</button></div>
+    <div class="page-title"><div><p class="eyebrow">CANLI SÜREÇ</p><h1 id="queue-view-title">Tarama kuyruğu</h1></div><div class="actions"><button id="cancel-all" class="danger" title="Tüm taramaları beklemeye alır, düzenli taramaları kapatır; hiçbiri kendiliğinden başlamaz.">Tüm kuyruğu iptal et</button><button class="primary" data-action="new-search">Yeni tarama</button></div></div>
     <div id="queue-empty" class="empty"><h2>Şu an kuyrukta tarama yok</h2><p>Yeni bir tarama başlatabilir veya düzenli taramaların sırasını bekleyebilirsin.</p></div>
     <div id="queue-host"></div>
   </section>

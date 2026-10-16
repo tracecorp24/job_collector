@@ -206,7 +206,7 @@ function renderSource(){
   $('start-scrape').disabled=queueStarting||blocked;
   document.querySelectorAll('[data-action="control-resume"]').forEach(el=>el.disabled=blocked);
   $('resume-run').disabled=blocked&&(!currentRun?.kind||currentRun.kind==='scrape');
-  if(blocked){$('status-bar').hidden=false;$('status-text').textContent='Kaynak için tarama duraklatıldı';$('status-detail').textContent=sourceState.message;}
+  // Kaynak beklemesi üstteki bekleme şeridinde gösterilir; durum çubuğunda tekrarlanmaz.
   renderWait();
 }
 function renderWait(){
@@ -259,6 +259,12 @@ async function controlTask(runId,taskId,action){
   await api(`/api/runs/${runId}/tasks/${taskId}/${action}`,{method:'POST'});
   currentRun=await api('/api/runs/'+runId);renderRun();await pollStatus();if($('history-dialog').open)await loadHistory();
   if(action==='resume'){closeDialog('history-dialog');showTab('queue');}
+}
+async function cancelAll(){
+  if(!await confirmAction('Çalışan ve bekleyen tüm taramalar beklemeye alınacak, düzenli taramalar kapatılacak. Hiçbiri kendiliğinden başlamaz; istediğini Geçmiş’ten "Devam et" ile veya Düzenli taramalar’dan tekrar açarak başlatabilirsin. Devam edilsin mi?'))return;
+  const r=await api('/api/queue/cancel-all',{method:'POST'});
+  toast(`${r.paused} tarama beklemeye alındı, ${r.watches_disabled} düzenli tarama kapatıldı.`);
+  if(currentRun)currentRun=await api('/api/runs/'+currentRun.id).catch(()=>currentRun);renderRun();await pollStatus();loadWatches().catch(()=>{});
 }
 async function runAction(id,action){
   if(action==='purge'&&!await confirmAction('Arama geçmişi, havuzu ve logları kalıcı olarak silinecek. Ortak ilanlar sistemde kalacak. Devam edilsin mi?'))return;
@@ -582,7 +588,7 @@ function initialize(){
   $('job-dialog').addEventListener('close',()=>{detailController?.abort();currentJob=null;});
   wire('add-tasks','click',addTasks);wire('start-scrape','click',startScrape);wire('suggest-titles','click',suggestTitles);wire('add-suggested','click',addSuggested);wire('cancel-suggested','click',closeSuggestions);$('suggest-list').addEventListener('change',updateSuggestCount);for(const [id,on] of [['suggest-all',true],['suggest-none',false]])wire(id,'click',()=>{document.querySelectorAll('#suggest-list [data-suggest]').forEach(el=>el.checked=on);updateSuggestCount();});['loc-input','limit-input'].forEach(id=>wire(id,'input',updateSuggestCount));wire('unlimited','change',()=>{$('limit-input').disabled=$('unlimited').checked;persist();updateSuggestCount();});
   ['kw-input','loc-input','limit-input','classify-backend','use-embeddings','scrape-mode','refresh-details'].forEach(id=>wire(id,'input',()=>{persist();if(draft.length&&['classify-backend','use-embeddings','scrape-mode','refresh-details'].includes(id))scheduleDraftSave();}));
-  wire('pause-run','click',()=>currentRun&&runAction(currentRun.id,'pause'));wire('resume-run','click',()=>currentRun&&runAction(currentRun.id,'resume'));wire('stop-run','click',()=>currentRun&&runAction(currentRun.id,'stop'));wire('cancel-run','click',()=>currentRun&&runAction(currentRun.id,'cancel'));wire('live-logs','click',()=>currentRun&&openLogs(currentRun.id));
+  wire('pause-run','click',()=>currentRun&&runAction(currentRun.id,'pause'));wire('resume-run','click',()=>currentRun&&runAction(currentRun.id,'resume'));wire('stop-run','click',()=>currentRun&&runAction(currentRun.id,'stop'));wire('cancel-run','click',()=>currentRun&&runAction(currentRun.id,'cancel'));wire('cancel-all','click',cancelAll);wire('live-logs','click',()=>currentRun&&openLogs(currentRun.id));
   wire('history-status','change',renderHistory);wire('history-search','input',renderHistory);wire('history-trash','change',()=>{selectedHistory.clear();loadHistory();});
   wire('history-select-all','click',()=>{const query=$('history-search').value.toLocaleLowerCase('tr');const tasks=historyRuns.filter(r=>JSON.stringify(r).toLocaleLowerCase('tr').includes(query)).flatMap(r=>r.tasks);const all=tasks.every(t=>selectedHistory.has(t.id));for(const t of tasks)if(all)selectedHistory.delete(t.id);else selectedHistory.add(t.id);renderHistory();});
   wire('queue-selected','click',()=>historyBatch('queue'));wire('restart-selected','click',()=>historyBatch('restart'));wire('restart-all','click',()=>historyBatch('all'));wire('delete-selected','click',()=>historyBatch('delete'));

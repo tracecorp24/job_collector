@@ -125,6 +125,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
     assert.equal(await page.locator('#cancel-run').isVisible(),false);
     assert.equal(await page.locator('#resume-run').isVisible(),true);
     assert.equal(await page.locator('#stop-run').isVisible(),true);
+    assert.equal(await page.locator('#cancel-all').isVisible(),true);
     assert.match(await page.locator('#live-tasks').textContent(),/Başlangıçtan geçen/);
     await page.screenshot({path:path.join(root,'.qa','queue-mobile.png'),fullPage:true});
     await page.setViewportSize({width:1500,height:1050});

@@ -176,6 +176,38 @@ class ServiceTests(unittest.TestCase):
             service.tick(server,now=time.time()+1000)
             start.assert_not_called()
 
+    def test_cancel_all_parks_everything_until_user_resumes(self):
+        waiting=self.paused()
+        draft=self.client.post('/api/queue',json={'tasks':[{'id':'draft','keyword':'Taslak'}]}).json['run_id']
+        with patch.object(config,'ADMIN_KEY','admin'):
+            service_run=self.client.post('/api/v1/collections',headers={'Authorization':'Bearer admin','Idempotency-Key':'servis'},
+                json={'tasks':[{'keyword':'Servis'}],'repeat_seconds':900}).json['run_id']
+        watch=self.client.post('/api/watches',json={'keywords':['AI'],'locations':['Istanbul']}).json['watch']['id']
+        result=self.client.post('/api/queue/cancel-all')
+        self.assertEqual(result.status_code,200)
+        self.assertEqual((result.json['paused'],result.json['watches_disabled']),(2,1))
+        with self.factory() as session:
+            for ident in (waiting['id'],service_run):
+                run=session.get(SearchRun,ident)
+                options=json.loads(run.options)
+                self.assertEqual(run.status,'paused')
+                self.assertTrue(options['user_paused'])
+                self.assertFalse(options['schedule_enabled'])
+                self.assertNotIn('auto_resume_at',options)
+            self.assertEqual(session.get(SearchRun,draft).status,'queued')
+            count=session.query(SearchRun).count()
+        self.assertFalse(self.client.get('/api/watches').json['watches'][0]['enabled'])
+        with self.engine.begin() as conn:
+            conn.execute(text('UPDATE source_policy SET blocked_until=0'))
+        with patch.object(runs,'start') as start:
+            service.tick(server,now=time.time()+100000)
+            start.assert_not_called()
+        with self.factory() as session:
+            self.assertEqual(session.query(SearchRun).count(),count)
+        with patch.object(runs,'start') as start:
+            self.assertEqual(self.client.post('/api/runs/'+waiting['id']+'/resume').status_code,200)
+            start.assert_called_once_with(server,waiting['id'])
+
     def test_cross_origin_control_rejected(self):
         result=self.client.post('/api/queue',headers={'Origin':'https://unrelated.example'},json={'tasks':[{'keyword':'AI'}]})
         self.assertEqual(result.status_code,403)

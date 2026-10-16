@@ -404,6 +404,47 @@ def install(server):
             session.commit()
             return jsonify(ok=True)
 
+    @app.post("/api/queue/cancel-all")
+    def cancel_all():
+        """Toplu iptal: her şey devam ettirilebilir kalır ama hiçbiri kendiliğinden başlamaz."""
+        from .models import Watch
+        reason = "Toplu iptal: elle başlatılana kadar bekliyor."
+        paused = schedules = 0
+        with runs.lock, server.SessionLocal() as session:
+            for run in session.query(SearchRun).filter(SearchRun.deleted_at.is_(None)):
+                options = json.loads(run.options or "{}")
+                previous = run.status
+                active = server.state.running and getattr(server.state, "run_id", None) == run.id
+                if run.status in ("finished", "stopped", "cancelled"):
+                    if not options.get("schedule_enabled"):
+                        continue
+                    schedules += 1
+                elif run.status == "queued" and not options.get("service_managed"):
+                    continue  # Kullanıcının taslak kuyruğu zaten kendiliğinden başlamaz.
+                elif active:
+                    if run.status == "running":
+                        runs.transition(run, "pausing", reason)
+                        server.state.stop_flag = True
+                    paused += 1
+                elif run.status in ("paused", "error", "queued"):
+                    runs.transition(run, "paused", reason)
+                    paused += 1
+                else:
+                    continue
+                options.pop("auto_resume_at", None)
+                options.pop("service_managed", None)
+                options["schedule_enabled"] = False
+                if run.status not in runs.TERMINAL:
+                    options["user_paused"] = True
+                run.options = json.dumps(options)
+                audit.record(session, run.id, None, "user_action", {"action":"cancel_all", "previous_status":previous})
+            watches = session.query(Watch).filter(Watch.enabled.is_(True)).all()
+            for watch in watches:
+                watch.enabled = False
+            session.commit()
+        server.state.emit("task_control", {"action":"cancel_all"})
+        return jsonify(ok=True, paused=paused, schedules_disabled=schedules, watches_disabled=len(watches))
+
     @app.post("/api/runs/<run_id>/<action>")
     def run_action(run_id, action):
         with runs.lock, server.SessionLocal() as session:
