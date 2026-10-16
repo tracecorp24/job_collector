@@ -9,3 +9,5 @@ jobapp/backup_before_ux_*/
 logs/
 .local/
 consumer_jobs.db*
+.env
+start_server.sh

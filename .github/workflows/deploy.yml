@@ -1,0 +1,38 @@
+name: Deploy
+
+# main'e her push/merge: testler geçerse VPS'e kurulur.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q -r requirements.txt
+      - run: python -m unittest discover -s tests
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: VPS'e kur
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Sunucudaki anahtar sadece linko-deploy komutunu çalıştırabilir.
+          ssh -o StrictHostKeyChecking=yes "root@$DEPLOY_HOST" deploy
