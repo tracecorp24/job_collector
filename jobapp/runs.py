@@ -86,7 +86,7 @@ def snapshot(session, run):
             "automatic_resume":run.status in ("paused", "error") and not json.loads(run.options or "{}").get("user_paused") and ("auto_resume_at" in json.loads(run.options or "{}") or any(json.loads(t.stats or "{}").get("termination_reason") == "source_paused" for t in tasks if t.status == "paused")),
             **timing(run), "has_started":has_started(run) or any(has_started(t) for t in tasks),
             "created_at": run.created_at.isoformat(), "deleted_at": run.deleted_at.isoformat() if run.deleted_at else None,
-            "tasks": [{"id": t.id, "keyword": t.keyword, "location": t.location, "limit": t.limit,
+            "tasks": [{"id": t.id, "keyword": t.keyword, "location": t.location, "limit": t.limit, "package": t.package or "",
                        "status": t.status, "folder": t.folder, "error": t.error,
                        "count": json.loads(t.checkpoint).get("collected", 0),
                        "stats":dict(json.loads(t.stats), **task_counts[t.id]), **timing(t), "has_started":has_started(t)} for t in tasks]}

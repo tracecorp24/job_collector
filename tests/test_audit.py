@@ -34,6 +34,19 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/runs/'+run_id).json['tasks'][0]['status'],'cancelled')
         self.assertEqual(self.client.get('/api/runs/'+run_id+'/logs?kind=queue_task_removed').json['events'][0]['search_id'],'stable-task')
 
+    def test_package_name_is_saved_with_each_sub_task(self):
+        tasks=[{'id':f'pkg-{i}','keyword':k,'location':'Istanbul, Turkey','limit':50,'package':'agentic ai'}
+               for i,k in enumerate(['Agentic AI Engineer','AI Agent Developer'])]+[{'id':'solo','keyword':'Python','location':'Ankara','limit':5}]
+        created=self.client.post('/api/queue',json={'tasks':tasks})
+        self.assertEqual(created.status_code,200,created.json)
+        run_id=created.json['run_id']
+        snap=self.client.get('/api/runs/'+run_id).json
+        self.assertEqual([t['package'] for t in snap['tasks']],['agentic ai','agentic ai',''])
+        self.assertEqual(sum(t['limit'] for t in snap['tasks'] if t['package']=='agentic ai'),100)
+        tasks[1]['package']='başka paket'
+        self.client.post('/api/queue',json={'run_id':run_id,'tasks':tasks})
+        self.assertEqual(self.client.get('/api/runs/'+run_id).json['tasks'][1]['package'],'başka paket')
+
     def test_duplicate_task_id_rejected_without_changing_first_queue(self):
         item={'id':'same','keyword':'AI','location':'Istanbul','limit':1}
         first=self.client.post('/api/queue',json={'tasks':[item]})

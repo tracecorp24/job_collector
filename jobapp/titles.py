@@ -8,8 +8,9 @@ from . import config, groq_client
 
 MAX_FIELD, MAX_COUNT, MAX_TITLE = 120, 10, 80
 PROMPT = (
-    "Sen bir işe alım uzmanısın. Kullanıcı bir meslek alanı verecek. LinkedIn iş ilanı aramasında "
-    "en çok sonuç getirecek, birbirinden farklı {count} adet unvan üret. Yaklaşık yarısı LinkedIn'de "
+    "Sen bir işe alım uzmanısın. Kullanıcı bir iş unvanı veya meslek alanı verecek. Aynı işi farklı "
+    "şekilde adlandıran, LinkedIn iş ilanı aramasında en çok sonuç getirecek, birbirinden farklı {count} adet "
+    "unvan üret; unvan verildiyse yakın eş anlamlılarına odaklan. Yaklaşık yarısı LinkedIn'de "
     "en çok kullanılan İngilizce ilan başlıkları, diğer yarısı Türkiye'deki ilanlarda geçen Türkçe "
     "karşılıkları olsun (örn. \"Electrical Engineer\" ve \"Elektrik Mühendisi\"). En yaygın olanları başa koy. "
     "Kıdem, şirket adı, konum veya açıklama ekleme. Yalnızca şu JSON'u döndür: "

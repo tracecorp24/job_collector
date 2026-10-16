@@ -184,6 +184,7 @@ class SearchTask(Base):
     ended_at = Column(DateTime, nullable=True)
     active_seconds = Column(Float, default=0)
     status_reason = Column(Text, default="")
+    package = Column(String(160), default="")  # Aynı paketle eklenen görevlerin ortak adı
 
 
 class TaskJob(Base):

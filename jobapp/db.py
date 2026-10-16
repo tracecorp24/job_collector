@@ -52,6 +52,8 @@ def init_db() -> None:
                            ("fit_score", "INTEGER"), ("fit_reason", "TEXT DEFAULT ''"), ("fit_profile", "VARCHAR(16) DEFAULT ''")):
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {name} {kind}"))
+        if "package" not in {row[1] for row in conn.execute(text("PRAGMA table_info(search_tasks)"))}:
+            conn.execute(text("ALTER TABLE search_tasks ADD COLUMN package VARCHAR(160) DEFAULT ''"))
         task_columns = {row[1] for row in conn.execute(text("PRAGMA table_info(task_jobs)"))}
         for name, kind in (("is_new", "BOOLEAN DEFAULT 0"), ("found_at", "DATETIME"), ("outcome", "VARCHAR(16) DEFAULT ''")):
             if name not in task_columns:

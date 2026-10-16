@@ -124,9 +124,15 @@ async function jobAction(id,action){
 }
 async function trashFiltered(){if(!total){toast('İşlem yapılacak ilan yok.');return;}if(!await confirmAction(`Mevcut filtrelere uyan ${total} ilan çöp kutusuna taşınacak. Devam edilsin mi?`))return;const data=await api('/api/jobs?'+params(),{method:'DELETE'});loadAll();toast(`${data.count} ilan çöp kutusuna taşındı.`,async()=>{await api('/api/trash/jobs',{method:'POST',body:{ids:data.ids,action:'restore'}});loadAll();});}
 
+function packageGroups(tasks){
+  // Ardışık aynı paketli görevleri tek blokta toplar; paketsiz görevler tek başına kalır.
+  const groups=[];tasks.forEach((t,i)=>{const last=groups[groups.length-1];if(t.package&&last&&last.name===t.package)last.items.push([t,i]);else groups.push({name:t.package||'',items:[[t,i]]});});return groups;
+}
+function packageTarget(items){return items.some(([t])=>t.limit==null)?'limitsiz':items.reduce((sum,[t])=>sum+t.limit,0)+' ilan hedefi';}
+function packageHead(name,items,extra=''){const places=[...new Set(items.map(([t])=>t.location))].join(', ');return `<div class="package-head"><div><strong>Paket: ${esc(name)}</strong><p class="help">${items.length} alt görev · toplam ${packageTarget(items)} · ${esc(places)}</p></div>${extra}</div>`;}
+function draftRow(t,i){return `<div class="task-row"><p class="id-text">Görev kimliği: ${esc(t.id)}</p><label>Unvan<input data-draft="${i}" data-key="keyword" value="${esc(t.keyword)}"></label><div class="field-pair"><label>Konum<input data-draft="${i}" data-key="location" value="${esc(t.location)}"></label><label>Hedef <input data-draft="${i}" data-key="limit" type="number" min="1" step="1" value="${t.limit??''}" placeholder="Limitsiz"></label></div><div class="actions">${button('draft-up','↑ Yukarı',`data-index="${i}" ${i===0?'disabled':''}`)}${button('draft-down','↓ Aşağı',`data-index="${i}" ${i===draft.length-1?'disabled':''}`)}${button('draft-remove','Kaldır',`data-index="${i}"`)}</div></div>`;}
 function renderDraft(){
-  $('draft-tasks').innerHTML=draft.map((t,i)=>`<div class="task-row"><label>Unvan<input data-draft="${i}" data-key="keyword" value="${esc(t.keyword)}"></label><div class="field-pair"><label>Konum<input data-draft="${i}" data-key="location" value="${esc(t.location)}"></label><label>Hedef <input data-draft="${i}" data-key="limit" type="number" min="1" step="1" value="${t.limit??''}" placeholder="Limitsiz"></label></div><div class="actions">${button('draft-up','↑ Yukarı',`data-index="${i}" ${i===0?'disabled':''}`)}${button('draft-down','↓ Aşağı',`data-index="${i}" ${i===draft.length-1?'disabled':''}`)}${button('draft-remove','Kaldır',`data-index="${i}"`)}</div></div>`).join('');
-  document.querySelectorAll('#draft-tasks .task-row').forEach((row,i)=>{const label=document.createElement('p');label.className='id-text';label.textContent='Görev kimliği: '+draft[i].id;row.prepend(label);});
+  $('draft-tasks').innerHTML=packageGroups(draft).map(g=>g.name?`<section class="package">${packageHead(g.name,g.items,button('draft-package-remove','Paketi kaldır',`data-index="${g.items[0][1]}" data-count="${g.items.length}"`))}<details><summary>Alt görevleri göster ve düzenle</summary>${g.items.map(([t,i])=>draftRow(t,i)).join('')}</details></section>`:draftRow(...g.items[0])).join('');
   $('queue-identity').textContent=draftRunId?'Kuyruk süreç kimliği: '+draftRunId:'Görevler düzenlendiğinde kuyruk sunucuya kaydedilir.';
 }
 function scheduleDraftSave(){clearTimeout(draftSaveTimer);if(queueStarting)return;draftSaveTimer=setTimeout(()=>saveDraft().catch(e=>{$('task-error').textContent='Kuyruk sunucuya kaydedilemedi: '+e.message;}),600);}
@@ -139,32 +145,47 @@ function addTasks(){
   if(!keywords.length||!location||limit!==null&&(!raw||!Number.isInteger(limit)||limit<=0)){$('task-error').textContent='En az bir unvan, konum ve pozitif tam sayı hedefi girin. Limitsiz seçeneğini de kullanabilirsiniz.';return false;}
   $('task-error').textContent='';for(const keyword of keywords)draft.push({id:newId(),keyword,location,limit});$('kw-input').value='';renderDraft();persist();scheduleDraftSave();return true;
 }
+// Türkçe küçük harfte "AI" → "aı" olur; ı/i farkı tekrar tespitini bozmasın.
+const titleKey=t=>t.toLocaleLowerCase('tr').replace(/ı/g,'i').replace(/\s+/g,' ').trim();
+function formLimit(){const raw=$('limit-input').value,limit=$('unlimited').checked?null:Number(raw);return limit===null||raw&&Number.isInteger(limit)&&limit>0?{ok:true,limit}:{ok:false};}
 async function suggestTitles(){
-  const field=$('field-input').value.trim();
-  if(!field){$('suggest-error').textContent='Önce bir alan yazın.';return;}
-  $('suggest-error').textContent='';$('suggest-titles').disabled=true;$('suggest-titles').textContent='Unvanlar hazırlanıyor…';
+  const typed=$('kw-input').value.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);
+  if(!typed.length){$('task-error').textContent='Önce çoğaltılacak bir unvan yazın.';return;}
+  const field=typed.join(', ').slice(0,120);
+  $('task-error').textContent='';$('suggest-titles').disabled=true;$('suggest-titles').textContent='Unvanlar hazırlanıyor…';
   try{const data=await api('/api/title-suggestions',{method:'POST',body:{field,count:10}});
-    $('suggest-list').innerHTML=data.titles.map((t,i)=>`<label class="check"><input type="checkbox" data-suggest value="${esc(t)}" ${i<5?'checked':''}>${esc(t)}</label>`).join('');
-    $('suggest-list').hidden=false;$('add-suggested').hidden=false;updateSuggestCount();}
-  catch(e){$('suggest-error').textContent=e.message;}
-  finally{$('suggest-titles').disabled=false;$('suggest-titles').textContent='10 unvan öner';}
+    // Yazılan unvan her zaman listede kalır; yapay zekâ önerileri arkasından gelir.
+    const seen=new Set(),titles=[...typed,...data.titles].filter(t=>{const k=titleKey(t);if(seen.has(k))return false;seen.add(k);return true;});
+    $('suggest-box').dataset.package=field;$('suggest-legend').textContent=`“${field}” için önerilen unvanlar`;
+    $('suggest-list').innerHTML=titles.map(t=>`<label class="check"><input type="checkbox" data-suggest value="${esc(t)}" checked>${esc(t)}</label>`).join('');
+    $('suggest-box').hidden=false;updateSuggestCount();$('suggest-box').scrollIntoView({block:'nearest'});}
+  catch(e){$('task-error').textContent=e.message;}
+  finally{$('suggest-titles').disabled=false;$('suggest-titles').textContent='Yapay zekâ ile 10 unvana çoğalt';}
 }
-function updateSuggestCount(){const n=document.querySelectorAll('#suggest-list [data-suggest]:checked').length;$('add-suggested').textContent=`Seçilen ${n} unvanı kuyruğa ekle`;$('add-suggested').disabled=!n;}
+function updateSuggestCount(){
+  if($('suggest-box').hidden)return;
+  const n=document.querySelectorAll('#suggest-list [data-suggest]:checked').length,{ok,limit}=formLimit(),location=$('loc-input').value.trim()||'konum yok';
+  $('suggest-summary').textContent=!n?'Hiç unvan seçilmedi.':!ok?'Unvan başına hedef pozitif tam sayı olmalı.':limit===null?`${n} unvan · limitsiz · ${location}`:`${n} unvan × ${limit} ilan = toplam ${n*limit} ilan hedefi · ${location}`;
+  $('add-suggested').textContent=n?`${n} unvanlık paketi kuyruğa ekle`:'Paketi kuyruğa ekle';$('add-suggested').disabled=!n||!ok;
+}
+function closeSuggestions(){$('suggest-box').hidden=true;$('suggest-list').innerHTML='';$('suggest-summary').textContent='';}
 function addSuggested(){
-  const location=$('loc-input').value.trim(),limit=Number($('suggest-limit').value);
-  if(!location||!Number.isInteger(limit)||limit<1){$('suggest-error').textContent='Konum ve pozitif tam sayı hedef girin.';return;}
+  const location=$('loc-input').value.trim(),{ok,limit}=formLimit(),pack=$('suggest-box').dataset.package||'';
+  if(!location||!ok){$('task-error').textContent='Konum ve pozitif tam sayı hedef girin. Limitsiz seçeneğini de kullanabilirsiniz.';return false;}
   const picked=[...document.querySelectorAll('#suggest-list [data-suggest]:checked')].map(el=>el.value);
-  const known=new Set(draft.map(t=>t.keyword.toLocaleLowerCase('tr')+'|'+t.location));
-  const added=picked.filter(k=>!known.has(k.toLocaleLowerCase('tr')+'|'+location));
-  for(const keyword of added)draft.push({id:newId(),keyword,location,limit});
-  $('suggest-error').textContent='';$('suggest-list').hidden=true;$('add-suggested').hidden=true;$('suggest-list').innerHTML='';
-  renderDraft();persist();scheduleDraftSave();toast(added.length?`${added.length} unvan kuyruğa eklendi.`:'Seçilen unvanlar zaten kuyrukta.');
+  if(!picked.length){$('task-error').textContent='Pakete en az bir unvan seçin.';return false;}
+  const known=new Set(draft.map(t=>titleKey(t.keyword)+'|'+t.location));
+  const added=picked.filter(k=>!known.has(titleKey(k)+'|'+location));
+  for(const keyword of added)draft.push({id:newId(),keyword,location,limit,package:pack});
+  $('task-error').textContent='';$('kw-input').value='';closeSuggestions();
+  renderDraft();persist();scheduleDraftSave();
+  toast(added.length?`“${pack}” paketi eklendi: ${added.length} alt görev${limit==null?'':' · toplam '+added.length*limit+' ilan hedefi'}.`:'Seçilen unvanlar zaten kuyrukta.');return true;
 }
 async function openDrawer(){$('new-search-form').hidden=false;$('drawer-title').textContent='Yeni tarama';showDialog('drawer');renderDraft();
   try{const models=await api('/api/ollama/models');$('classify-model').innerHTML='<option value="">Varsayılan model</option>'+models.models.map(m=>`<option>${esc(m)}</option>`).join('');setOllama(true);}catch{setOllama(false);}
 }
 async function startScrape(){
-  if($('kw-input').value.trim()&&!addTasks())return;if(!draft.length){$('task-error').textContent='Önce kuyruğa en az bir görev ekleyin.';return;}
+  if(!$('suggest-box').hidden){if(!addSuggested())return;}else if($('kw-input').value.trim()&&!addTasks())return;if(!draft.length){$('task-error').textContent='Önce kuyruğa en az bir görev ekleyin.';return;}
   for(const t of draft)if(!t.keyword.trim()||!t.location.trim()||t.limit!=null&&(!Number.isInteger(t.limit)||t.limit<1)){$('task-error').textContent='Görevlerdeki unvan, konum ve hedefleri kontrol edin.';return;}
   clearTimeout(draftSaveTimer);queueStarting=true;$('start-scrape').disabled=true;$('task-error').textContent='';
   try{const runId=await saveDraft();await api(`/api/runs/${runId}/resume`,{method:'POST'});activeLogRun=runId;currentRun=await api('/api/runs/'+runId);draft=[];draftRunId=null;persist();renderDraft();closeDialog('drawer');showTab('queue');renderRun();await pollStatus();toast('Tarama kuyruğu başlatıldı. Süreç: '+runId);}
@@ -218,7 +239,7 @@ function taskCard(run,t,editable=false){
 function renderRun(){
   renderQueueView();if(!currentRun)return;const run=currentRun,active=activeStatus(run.status),resumable=['paused','error'].includes(run.status);
   const done=run.tasks.filter(t=>terminalStatus(t.status)).length,collected=run.tasks.reduce((sum,t)=>sum+t.count,0);
-  $('live-tasks').innerHTML=run.tasks.map(t=>taskCard(run,t,resumable)).join('');
+  $('live-tasks').innerHTML=packageGroups(run.tasks).map(g=>g.name?`<section class="package">${packageHead(g.name,g.items,`<span class="help">${g.items.filter(([t])=>terminalStatus(t.status)).length}/${g.items.length} bitti · ${g.items.reduce((sum,[t])=>sum+(t.count||0),0)} çekilen</span>`)}${g.items.map(([t])=>taskCard(run,t,resumable)).join('')}</section>`:taskCard(run,g.items[0][0],resumable)).join('');
   $('pause-run').hidden=!active&&!run.automatic_resume;$('pause-run').disabled=run.status!=='running'&&!run.automatic_resume;$('pause-run').textContent=run.automatic_resume?'Otomatik devamı duraklat':'Kuyruğu duraklat';
   $('resume-run').hidden=!resumable;$('stop-run').hidden=!active&&!resumable;$('stop-run').disabled=active&&run.status!=='running';
   $('cancel-run').hidden=run.has_started||run.status!=='queued';
@@ -312,7 +333,7 @@ function findTask(id){return historyRuns.flatMap(r=>r.tasks).find(t=>t.id===id);
 function showResults(key,id,onlyNew=false){filters={ [key]:[id], ...(onlyNew?{discovery:'new'}:{})};syncControls();renderChips();persist(true);loadAll();closeDialog('history-dialog');closeDialog('drawer');showTab('jobs');$('main').scrollIntoView({block:'start'});}
 async function queueTasks(tasks,restart=false){
   if(!tasks.length){toast('Önce en az bir arama seçin.');return;}
-  draft.push(...tasks.map(t=>({id:newId(),keyword:t.keyword,location:t.location,limit:t.limit})));renderDraft();persist();if(!restart)scheduleDraftSave();closeDialog('history-dialog');await openDrawer(true);
+  draft.push(...tasks.map(t=>({id:newId(),keyword:t.keyword,location:t.location,limit:t.limit,package:t.package||''})));renderDraft();persist();if(!restart)scheduleDraftSave();closeDialog('history-dialog');await openDrawer(true);
   if(restart)await startScrape();else toast(`${tasks.length} görev kuyruğa eklendi. Konumları ve limitleri korundu.`);
 }
 async function historyBatch(action){
@@ -440,7 +461,7 @@ async function dispatch(action,el){
   if(action==='run-report'||action==='task-report')return openReport(run,task||null);
   if(action==='run-logs')return openLogs(run);
   if(['delete-job','restore-job','purge-job'].includes(action))return jobAction(id,action.split('-')[0]);
-  if(action.startsWith('draft-')){if(action==='draft-remove')draft.splice(index,1);else{const other=index+(action==='draft-up'?-1:1);if(other>=0&&other<draft.length)[draft[index],draft[other]]=[draft[other],draft[index]];}renderDraft();persist();scheduleDraftSave();return;}
+  if(action.startsWith('draft-')){if(action==='draft-package-remove')draft.splice(index,Number(el.dataset.count));else if(action==='draft-remove')draft.splice(index,1);else{const other=index+(action==='draft-up'?-1:1);if(other>=0&&other<draft.length)[draft[index],draft[other]]=[draft[other],draft[index]];}renderDraft();persist();scheduleDraftSave();return;}
   if(action.startsWith('control-'))return controlTask(run,task,action.slice(8));
   if(action.startsWith('live-'))return editLive(task,action.slice(5));
   if(action==='edit-task')return openTaskEditor(task);
@@ -490,7 +511,7 @@ function initialize(){
   for(const [id,delta] of [['prev',-1],['next',1]])wire(id,'click',()=>{filters.page=String(Math.max(1,Math.min(pages,Number(filters.page||1)+delta)));persist(true);loadJobs();$('count').scrollIntoView({block:'center'});});
   wire('previous-job','click',()=>nav.previous&&openJob(nav.previous));wire('next-job','click',()=>nav.next&&openJob(nav.next));
   $('job-dialog').addEventListener('close',()=>{detailController?.abort();currentJob=null;});
-  wire('add-tasks','click',addTasks);wire('start-scrape','click',startScrape);wire('suggest-titles','click',suggestTitles);wire('add-suggested','click',addSuggested);$('suggest-list').addEventListener('change',updateSuggestCount);$('field-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('suggest-titles').click();}});wire('unlimited','change',()=>{$('limit-input').disabled=$('unlimited').checked;persist();});
+  wire('add-tasks','click',addTasks);wire('start-scrape','click',startScrape);wire('suggest-titles','click',suggestTitles);wire('add-suggested','click',addSuggested);wire('cancel-suggested','click',closeSuggestions);$('suggest-list').addEventListener('change',updateSuggestCount);for(const [id,on] of [['suggest-all',true],['suggest-none',false]])wire(id,'click',()=>{document.querySelectorAll('#suggest-list [data-suggest]').forEach(el=>el.checked=on);updateSuggestCount();});['loc-input','limit-input'].forEach(id=>wire(id,'input',updateSuggestCount));wire('unlimited','change',()=>{$('limit-input').disabled=$('unlimited').checked;persist();updateSuggestCount();});
   ['kw-input','loc-input','limit-input','classify-backend','use-embeddings','scrape-mode','refresh-details'].forEach(id=>wire(id,'input',()=>{persist();if(draft.length&&['classify-backend','use-embeddings','scrape-mode','refresh-details'].includes(id))scheduleDraftSave();}));
   wire('pause-run','click',()=>currentRun&&runAction(currentRun.id,'pause'));wire('resume-run','click',()=>currentRun&&runAction(currentRun.id,'resume'));wire('stop-run','click',()=>currentRun&&runAction(currentRun.id,'stop'));wire('cancel-run','click',()=>currentRun&&runAction(currentRun.id,'cancel'));wire('live-logs','click',()=>currentRun&&openLogs(currentRun.id));
   wire('history-status','change',renderHistory);wire('history-search','input',renderHistory);wire('history-trash','change',()=>{selectedHistory.clear();loadHistory();});

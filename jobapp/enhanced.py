@@ -76,7 +76,8 @@ def task_data(body):
         identifier = str(item.get("id") or runs.identifier())
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,40}", identifier):
             raise ValueError("Geçersiz görev kimliği.")
-        result.append({"id":identifier, "keyword": keyword, "location": location, "limit": limit})
+        package = re.sub(r"\s+", " ", str(item.get("package") or "")).strip()[:160]
+        result.append({"id":identifier, "keyword": keyword, "location": location, "limit": limit, "package": package})
     if len({item["id"] for item in result}) != len(result):
         raise ValueError("Görev kimlikleri benzersiz olmalı.")
     return result
@@ -287,8 +288,8 @@ def install(server):
                 else:
                     if task.status in runs.TERMINAL:
                         continue  # A stale autosave must never resurrect history.
-                    before = {k:getattr(task,k) for k in ("keyword","location","limit","position","status")}
-                    after = dict(keyword=item["keyword"], location=item["location"], limit=item["limit"], position=i, status="queued")
+                    before = {k:getattr(task,k) for k in ("keyword","location","limit","position","status","package")}
+                    after = dict(keyword=item["keyword"], location=item["location"], limit=item["limit"], position=i, status="queued", package=item["package"])
                     if before != after:
                         audit.record(session, run.id, task.id, "queue_task_changed", {"before":before, "after":after})
                     for key,value in after.items():
@@ -389,6 +390,8 @@ def install(server):
             for i, raw in enumerate(submitted):
                 task = pending[raw["id"]]
                 item = task_data({"tasks": [raw]})[0]
+                if "package" not in raw:
+                    item["package"] = task.package or ""  # Düzenleme paketi bilmiyorsa paket korunur.
                 before = {k:getattr(task,k) for k in ("keyword","location","limit","position")}
                 changed = task.keyword != item["keyword"] or task.location != item["location"]
                 if changed and task.folder:
