@@ -59,6 +59,9 @@ class Job(Base):
     flag_reason = Column(Text, default="")  # short phrase explaining the flag
     classified_by = Column(String(16), default="rules")  # rules | llm | local
     embedding = Column(Text, nullable=True)  # optional JSON float array (local embeddings)
+    fit_score = Column(Integer, nullable=True)  # 0-100 profile fit (Groq), for profile fit_profile
+    fit_reason = Column(Text, default="")  # short explanation of fit_score
+    fit_profile = Column(String(16), default="")  # hash of the profile text the score was made for
 
     # Content
     description = Column(Text, default="")
@@ -112,6 +115,9 @@ class Job(Base):
             "flag": self.flag,
             "flag_reason": self.flag_reason,
             "classified_by": self.classified_by,
+            "fit_score": self.fit_score,
+            "fit_reason": self.fit_reason or "",
+            "fit_profile": self.fit_profile or "",
             "search_term": self.search_term,
             "search_location": self.search_location,
             "quality_ok": self.quality_ok,

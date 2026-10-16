@@ -160,7 +160,7 @@ def install(server):
         if isinstance(repeat, bool) or not isinstance(repeat, int) or repeat and repeat < 900:
             raise ValueError('repeat_seconds sıfır veya en az 900 saniye olmalı.')
         backend = body.get('classify_backend', 'rules')
-        if backend not in ('rules', 'local', 'claude'):
+        if backend not in ('rules', 'local', 'claude', 'groq'):
             raise ValueError('Geçersiz analiz yöntemi.')
         key = request.headers.get('Idempotency-Key', '')
         if not key or len(key)>128:

@@ -5,10 +5,10 @@ import re
 from pathlib import Path
 from datetime import datetime
 from flask import jsonify, request, Response
-from sqlalchemy import func, String
+from sqlalchemy import case, func, String
 from werkzeug.datastructures import MultiDict
 
-from . import config, runs, filters, audit
+from . import config, runs, filters, audit, fit
 from .models import Job, SearchRun, SearchTask, TaskJob, SearchEvent
 from .search_export import _write_json
 from .transport import Coordinator, SourcePaused
@@ -121,7 +121,15 @@ def install(server):
             else:
                 mode = "semantic"
         elif args.get("sort") == "fit":
-            target = server._load_profile(session)["embedding"]
+            saved = server._load_profile(session)
+            current = fit.profile_hash(saved["text"])
+            if current and q.filter(Job.fit_profile == current).first():
+                # Groq puanları: güncel profil için puanlananlar puana göre önde, kalanlar en yeni önce.
+                scored = Job.fit_profile == current
+                ordered = q.order_by(case((scored, 0), else_=1), case((scored, Job.fit_score), else_=None).desc(),
+                                     Job.scraped_at.desc(), Job.id.desc())
+                return [row[0] for row in ordered.with_entities(Job.id).all()], {}, "fit", False
+            target = saved["embedding"]
             mode = "fit" if target else ""
             fallback = not bool(target)
         if target is not None:
@@ -169,10 +177,15 @@ def install(server):
                     counts[tag] = counts.get(tag, 0) + 1
             result["skills"] = [{"value": k, "count": v} for k, v in sorted(counts.items(), key=lambda i: (-i[1], i[0]))]
             base = filters.filtered(session, request.args)
+            saved = server._load_profile(session)
+            current = fit.profile_hash(saved["text"])
             result.update(total=base.count(), active_total=session.query(Job).filter(Job.deleted_at.is_(None), Job.quality_ok.is_(True)).count(),
                           missing_embeddings=base.filter(Job.embedding.is_(None)).count(),
                           not_locally_classified=base.filter(Job.classified_by != "local").count(),
-                          has_profile=bool(server._load_profile(session)["embedding"]))
+                          not_groq_classified=base.filter(Job.classified_by != "groq").count(),
+                          has_profile=bool(saved["embedding"]) or bool(current), profile_hash=current,
+                          unscored_fit=base.filter((Job.fit_profile != current) | Job.fit_profile.is_(None) | Job.fit_score.is_(None)).count() if current else 0,
+                          groq_available=bool(config.GROQ_API_KEY))
             return jsonify(result)
     app.view_functions["api_facets"] = facets
 
@@ -217,7 +230,7 @@ def install(server):
             raise ValueError("Bu uygulama yalnızca hesapsız taramayı destekler.")
         tasks = task_data(body)
         backend = body.get("classify_backend", "rules")
-        if backend not in ("rules", "local", "claude"):
+        if backend not in ("rules", "local", "claude", "groq"):
             raise ValueError("Geçersiz analiz yöntemi.")
         with runs.lock:
             if server.state.running:
@@ -252,7 +265,7 @@ def install(server):
                 session.add(run)
                 audit.record(session, run.id, None, "run_created", {"actor":"queue_editor"})
             options = {"kind":"scrape", "audit_version":audit.VERSION, "classify_backend":body.get("classify_backend", "rules"), "use_embeddings":bool(body.get("use_embeddings")), **scrape_options(body)}
-            if options["classify_backend"] not in ("rules", "local", "claude"):
+            if options["classify_backend"] not in ("rules", "local", "claude", "groq"):
                 raise ValueError("Geçersiz analiz yöntemi.")
             if run.options != json.dumps(options):
                 audit.record(session, run.id, None, "queue_options_changed", {"before":json.loads(run.options or "{}"), "after":options})
@@ -546,14 +559,14 @@ def install(server):
                        backend=body.get("backend", "local"), model=body.get("model"), audit_version=audit.VERSION)
         if options["limit"] == 0:
             raise ValueError("İşlem limiti pozitif bir tam sayı olmalı.")
-        if options["backend"] not in ("local", "claude"):
+        if options["backend"] not in ("local", "claude", "groq"):
             raise ValueError("Geçersiz analiz yöntemi.")
         with runs.lock, server.SessionLocal() as session:
             if server.state.running:
                 raise ValueError("Başka işlem sürüyor. Önce bitmesini bekleyin veya duraklatın.")
             run_id, task_id = runs.identifier(), runs.identifier()
             session.add(SearchRun(id=run_id, options=json.dumps(options)))
-            session.add(SearchTask(id=task_id, run_id=run_id, limit=options["limit"], keyword="Eşleştirme verilerini hazırla" if kind == "embed" else "Kayıtlı ilanları analiz et"))
+            session.add(SearchTask(id=task_id, run_id=run_id, limit=options["limit"], keyword={"embed": "Eşleştirme verilerini hazırla", "fit": "Profil uygunluğunu puanla"}.get(kind, "Kayıtlı ilanları analiz et")))
             audit.record(session, run_id, None, "run_created", {"actor":"web", "options":options})
             audit.record(session, run_id, task_id, "task_queued", {"kind":kind})
             session.commit()
@@ -561,3 +574,4 @@ def install(server):
             return jsonify(ok=True, run_id=run_id, task_id=task_id)
     app.view_functions["api_embed"] = lambda: start_maintenance("embed")
     app.view_functions["api_classify"] = lambda: start_maintenance("classify")
+    app.add_url_rule("/api/fit", "api_fit", lambda: start_maintenance("fit"), methods=["POST"])

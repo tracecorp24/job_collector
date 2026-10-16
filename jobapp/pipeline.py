@@ -406,10 +406,10 @@ def run_classify_backfill(backend="local", limit=None, model=None, emit=None, sh
                 break
 
             started = time.monotonic()
-            _emit("processing_stage", {"stage":"classify", "phase":"started", "job_id":job.id, "backend":backend, "model":model or config.OLLAMA_MODEL})
+            _emit("processing_stage", {"stage":"classify", "phase":"started", "job_id":job.id, "backend":backend, "model":config.GROQ_CLASSIFY_MODEL if backend == "groq" else model or config.OLLAMA_MODEL})
             cls = classify_job(
                 job.title, job.description,
-                workplace_type=job.workplace_type, backend=backend, model=model,
+                workplace_type=job.workplace_type, backend=backend, model=model, patient=True,
             )
             if cls.get("classified_by") != expected:
                 _emit("processing_result", {"stage":"classify", "status":"failed", "job_id":job.id,

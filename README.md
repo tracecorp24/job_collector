@@ -1,5 +1,11 @@
 # Linko Scrapper Light
 
+> **Şifreler ve anahtarlar nerede?** Ana dizindeki `SIFRELER.txt` dosyasında: arayüz
+> kullanıcı/şifresi, servis API anahtarı, Groq API anahtarı. Dosya `.gitignore` içinde
+> olduğu için GitHub'a gitmez; yalnızca bu bilgisayarda durur, yedeğini kendin al.
+> Sunucudaki kopya: `/root/linko-ui-credentials`. Canlı site: https://ai-org.online
+> (kurulum: `website_kurulum.md`).
+
 ## Güncel arayüz ve kullanım
 
 Arayüz tamamen Türkçedir. Ana ekranda arama, sıralama ve kart/liste görünümü; sol panelde çok katmanlı filtreler bulunur. Seçili filtreler üstte kaldırılabilir etiketlerle gösterilir. Son form değerleri, taslak kuyruk ve görünüm tarayıcıda saklanır; filtreler URL üzerinden de korunur. Tarayıcının geri/ileri düğmeleri filtre geçmişini takip eder.

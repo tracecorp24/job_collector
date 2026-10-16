@@ -48,7 +48,8 @@ def init_db() -> None:
             end_kind = "run_completed" if table == "search_runs" else "task_done"
             conn.execute(text(f"UPDATE {table} SET ended_at=(SELECT MAX(created_at) FROM search_events WHERE {key}={table}.id AND kind=:kind) WHERE ended_at IS NULL AND status IN ('finished','stopped')"), {"kind":end_kind})
         existing = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
-        for name, kind in (("posted_at", "DATETIME"), ("experience_years", "INTEGER"), ("deleted_at", "DATETIME")):
+        for name, kind in (("posted_at", "DATETIME"), ("experience_years", "INTEGER"), ("deleted_at", "DATETIME"),
+                           ("fit_score", "INTEGER"), ("fit_reason", "TEXT DEFAULT ''"), ("fit_profile", "VARCHAR(16) DEFAULT ''")):
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {name} {kind}"))
         task_columns = {row[1] for row in conn.execute(text("PRAGMA table_info(task_jobs)"))}

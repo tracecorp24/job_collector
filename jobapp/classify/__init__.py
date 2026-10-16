@@ -8,13 +8,16 @@ rules on any error.
 
 from . import rules
 
-_BACKENDS = ("rules", "claude", "local")
+_BACKENDS = ("rules", "claude", "local", "groq")
 
 
 def classify_job(title: str, description: str, workplace_type: str = "",
-                 backend: str = "rules", model: str = None) -> dict:
+                 backend: str = "rules", model: str = None, patient: bool = False) -> dict:
     result = rules.classify(title, description, workplace_type)
-    if backend == "claude":
+    if backend == "groq":
+        from . import groq_llm
+        result = groq_llm.enrich(title, description, result, patient=patient)
+    elif backend == "claude":
         from . import llm  # imported lazily so `anthropic` stays optional
         result = llm.enrich(title, description, result)
     elif backend == "local":

@@ -352,7 +352,7 @@ def _load_profile(session):
 
 # --- Scrape control --------------------------------------------------------
 
-_CLASSIFY_BACKENDS = ("rules", "claude", "local")
+_CLASSIFY_BACKENDS = ("rules", "claude", "local", "groq")
 
 
 def _run_scrape(keywords, locations, limit, classify_backend, use_embeddings, require_login):
@@ -504,7 +504,7 @@ def api_classify():
 
     body = request.get_json(force=True, silent=True) or {}
     backend = body.get("backend", "local")
-    if backend not in ("local", "claude"):
+    if backend not in ("local", "claude", "groq"):
         backend = "local"
     model = (body.get("model") or "").strip() or None
 
@@ -655,3 +655,5 @@ from .service_api import install as install_service_api
 install_service_api(sys.modules[__name__])
 from .watches import install as install_watches
 install_watches(sys.modules[__name__])
+from .titles import install as install_titles
+install_titles(sys.modules[__name__])

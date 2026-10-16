@@ -324,7 +324,7 @@ def maintenance_worker(server, run_id):
                     stats = json.loads(run.stats)
                     if data.get("status") == "saved":
                         completed.add(data["job_id"])
-                        key = "embedded" if options["kind"] == "embed" else "classified"
+                        key = {"embed": "embedded", "fit": "scored"}.get(options["kind"], "classified")
                         stats[key] = len(completed)
                     else:
                         stats["skipped"] = stats.get("skipped", 0) + 1
@@ -344,6 +344,9 @@ def maintenance_worker(server, run_id):
             result = {"total":0, "termination_reason":"completed"}
         elif options["kind"] == "embed":
             result = run_embed_backfill(**common)
+        elif options["kind"] == "fit":
+            from .fit import run_fit_backfill
+            result = run_fit_backfill(**common)
         else:
             result = run_classify_backfill(backend=options.get("backend", "local"), model=options.get("model"), **common)
         with server.SessionLocal() as session:
@@ -360,7 +363,7 @@ def maintenance_worker(server, run_id):
                 run.status = "error"
             else:
                 run.status = "finished"
-            reason = "Kullanıcı işlemi durdurdu." if run.status == "stopped" else "Kullanıcı işlemi duraklattı." if run.status == "paused" else task.error or "Yerel model erişilemedi." if run.status == "error" else "İşlem tamamlandı."
+            reason = "Kullanıcı işlemi durdurdu." if run.status == "stopped" else "Kullanıcı işlemi duraklattı." if run.status == "paused" else task.error or "Analiz modeli erişilemedi veya kotası doldu." if run.status == "error" else "İşlem tamamlandı."
             transition(run, run.status, reason)
             transition(task, run.status, reason)
             audit.record(session, run_id, task_id, "run_completed", {"attempt_id":attempt_id, "status":run.status, "stats":result})

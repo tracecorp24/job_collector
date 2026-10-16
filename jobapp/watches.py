@@ -10,7 +10,7 @@ import random
 import time
 from datetime import datetime
 from flask import jsonify, request
-from . import audit, runs
+from . import audit, config, runs
 from .models import SearchRun, SearchTask, Watch
 
 INTERVALS = (3600, 3*3600, 6*3600, 12*3600, 24*3600, 3*86400, 7*86400)
@@ -106,7 +106,7 @@ def dispatch(session, now, source):
         if _busy(session, watch):
             continue
         run_id = runs.identifier()
-        options = dict(kind="scrape", service_managed=True, watch_id=watch.id, classify_backend="rules",
+        options = dict(kind="scrape", service_managed=True, watch_id=watch.id, classify_backend="groq" if config.GROQ_API_KEY else "rules",
                        use_embeddings=False, mode="incremental", refresh_details=False,
                        posted_within=watch.posted_within, sort_recent=True, stop_when_known=True)
         session.add(SearchRun(id=run_id, options=json.dumps(options)))

@@ -12,6 +12,7 @@ let prefs={}; try {prefs=JSON.parse(localStorage.getItem('linko.ui.v2')||'{}');}
 let filters={}, view=prefs.view||'cards', draft=Array.isArray(prefs.draft)?prefs.draft:[], form=prefs.form||{};
 const newId=()=>crypto.randomUUID();
 draft=draft.map(t=>({...t,id:t.id||newId()}));
+let profileHash='',groqAvailable=false;
 let draftRunId=prefs.draftRunId||null, draftSaveChain=Promise.resolve(), draftSaveTimer, queueStarting=false;
 let lastJobs=[], total=0, activeTotal=0, pages=0, currentRun=null, historyRuns=[], selectedHistory=new Set(), busy=false;
 let listController, facetController, detailController, requestSerial=0, facetSerial=0;
@@ -68,7 +69,7 @@ function renderJobs(){
   $('grid').innerHTML=lastJobs.map(j=>`<article class="job-card">
     <div>${devId(j)}<h3><button class="job-open" data-action="job" data-id="${j.id}">${esc(j.title||'Unvan belirtilmemiş')}</button></h3><p class="company">${esc(j.company||'Şirket belirtilmemiş')}</p></div>
     <div class="job-facts"><p class="job-meta">${esc([j.location||'Konum belirtilmemiş',tr(j.workplace_type)].filter(Boolean).join(' · '))}</p><p class="job-meta ${j.salary?'salary':''}">${esc(j.salary||'Maaş belirtilmemiş')} · ${j.experience_years!=null?esc(j.experience_years)+'+ yıl deneyim':'Deneyim belirtilmemiş'}</p><p class="job-meta job-dates">Yayın: ${esc(date(j.posted_at))} · Eklenme: ${esc(date(j.created_at))}</p></div>
-    <div class="badges">${badge(tr(j.category))}${badge(tr(j.seniority))}${j.flag?badge(tr(j.flag),'warn'):''}${j.deleted_at?badge('Çöp kutusunda','deleted'):''}${typeof j.score==='number'?badge('Benzerlik '+Math.round(j.score*100)+'%'):''}</div>
+    <div class="badges">${badge(tr(j.category))}${badge(tr(j.seniority))}${j.flag?badge(tr(j.flag),'warn'):''}${j.deleted_at?badge('Çöp kutusunda','deleted'):''}${typeof j.score==='number'?badge('Benzerlik '+Math.round(j.score*100)+'%'):''}${fitCurrent(j)?badge('Uygunluk %'+j.fit_score):''}</div>
     <div class="tags">${(j.tags||[]).slice(0,6).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
     <div class="card-actions">${button('job','İncele',`data-id="${j.id}"`)}${j.deleted_at?button('restore-job','Geri yükle',`data-id="${j.id}"`)+button('purge-job','Kalıcı sil',`data-id="${j.id}"`,'danger'):button('delete-job','Çöp kutusuna taşı',`data-id="${j.id}"`)}</div></article>`).join('');
   $('pager').hidden=pages<=1;const page=Number(filters.page||1);$('page-info').textContent=`${page} / ${pages} sayfa`;$('prev').disabled=page<=1;$('next').disabled=page>=pages;
@@ -91,6 +92,7 @@ async function loadFacets(){
       box.querySelector('.facet-options').innerHTML=items.map(item=>`<label class="check" ${tr(item.value).toLocaleLowerCase('tr').includes(query)?'':'hidden'}><input type="checkbox" data-facet="${key}" value="${esc(item.value)}" ${(filters[key]||[]).includes(item.value)?'checked':''}><span class="facet-name">${esc(tr(item.value))}</span><small>${item.count}</small></label>`).join('')||'<p class="help">Seçenek bulunamadı.</p>';
     }
     $('hint-embed').textContent=`${data.missing_embeddings} ilanın eşleştirme verisi eksik.`;$('hint-classify').textContent=`${data.not_locally_classified} ilan yerel yapay zekâyla işlenmemiş.`;
+    profileHash=data.profile_hash||'';groqAvailable=!!data.groq_available;$('hint-groq').textContent=groqAvailable?`${data.not_groq_classified} ilan Groq ile analiz edilmemiş.`:'Groq anahtarı tanımlı değil.';$('fit-hint').textContent=!groqAvailable?'Groq anahtarı tanımlı değil.':profileHash?`${data.unscored_fit} ilan güncel profile göre puanlanmamış.`:'Önce profilini kaydet.';$('classify-groq').disabled=busy||!groqAvailable;$('score-fit').disabled=busy||!groqAvailable||!profileHash;
     if(!lastJobs.length)renderJobs();
   }catch(e){if(e.name!=='AbortError')$('connection').textContent='Filtre sayıları güncellenemedi.';}
 }
@@ -105,7 +107,7 @@ async function openJob(id){
   $('job-title').textContent='İlan yükleniyor…';$('job-content').innerHTML='';$('previous-job').disabled=true;$('next-job').disabled=true;$('job-position').textContent='';showDialog('job-dialog');$('job-dialog').scrollTop=0;
   try{const [j,n]=await Promise.all([api('/api/jobs/'+id,{signal}),api('/api/jobs/'+id+'/navigation?'+params(),{signal})]);if(currentJob!==Number(id))return;nav=n;$('job-title').textContent=j.title||'İlan detayı';
     const link=safeLink(j.url);$('job-content').innerHTML=`<p class="dev-only id-text">İlan kimliği: #${esc(j.id)} · Kaynak kimliği: ${esc(j.external_id||'—')}</p><p class="company">${esc(j.company)}</p><p class="muted">${esc(j.location)} · ${esc(tr(j.workplace_type))}</p><div class="badges">${badge(tr(j.category))}${badge(tr(j.seniority))}${j.flag?badge(tr(j.flag),'warn'):''}${j.deleted_at?badge('Çöp kutusunda','deleted'):''}</div>
-      ${j.salary?`<p class="notice salary">${esc(j.salary)}</p>`:''}${j.flag_reason?`<p class="notice">Otomatik değerlendirme: ${esc(j.flag_reason)}</p>`:''}${j.summary?`<p class="notice">${esc(j.summary)}</p>`:''}
+      ${j.salary?`<p class="notice salary">${esc(j.salary)}</p>`:''}${j.flag_reason?`<p class="notice">Otomatik değerlendirme: ${esc(j.flag_reason)}</p>`:''}${fitCurrent(j)?`<p class="notice">Profil uygunluğu: %${esc(j.fit_score)}${j.fit_reason?' — '+esc(j.fit_reason):''}</p>`:''}${j.summary?`<p class="notice">${esc(j.summary)}</p>`:''}
       <div class="tags">${(j.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
       ${j.about_company?`<section class="job-section"><h3>Şirket hakkında</h3><p>${esc(j.about_company)}</p></section>`:''}${j.offerings?.length?`<section class="job-section"><h3>Sunulan olanaklar</h3><ul>${j.offerings.map(o=>`<li>${esc(o)}</li>`).join('')}</ul></section>`:''}
       <div class="actions job-section">${link?`<a class="button primary" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Kaynakta aç ↗</a>`:''}${button('similar','Benzer ilanları bul',`data-id="${j.id}"`)}${j.deleted_at?button('restore-job','Geri yükle',`data-id="${j.id}"`):button('delete-job','Çöp kutusuna taşı',`data-id="${j.id}"`)}</div>
@@ -136,6 +138,27 @@ function addTasks(){
   const keywords=$('kw-input').value.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);const location=$('loc-input').value.trim();const raw=$('limit-input').value;const limit=$('unlimited').checked?null:Number(raw);
   if(!keywords.length||!location||limit!==null&&(!raw||!Number.isInteger(limit)||limit<=0)){$('task-error').textContent='En az bir unvan, konum ve pozitif tam sayı hedefi girin. Limitsiz seçeneğini de kullanabilirsiniz.';return false;}
   $('task-error').textContent='';for(const keyword of keywords)draft.push({id:newId(),keyword,location,limit});$('kw-input').value='';renderDraft();persist();scheduleDraftSave();return true;
+}
+async function suggestTitles(){
+  const field=$('field-input').value.trim();
+  if(!field){$('suggest-error').textContent='Önce bir alan yazın.';return;}
+  $('suggest-error').textContent='';$('suggest-titles').disabled=true;$('suggest-titles').textContent='Unvanlar hazırlanıyor…';
+  try{const data=await api('/api/title-suggestions',{method:'POST',body:{field,count:10}});
+    $('suggest-list').innerHTML=data.titles.map((t,i)=>`<label class="check"><input type="checkbox" data-suggest value="${esc(t)}" ${i<5?'checked':''}>${esc(t)}</label>`).join('');
+    $('suggest-list').hidden=false;$('add-suggested').hidden=false;updateSuggestCount();}
+  catch(e){$('suggest-error').textContent=e.message;}
+  finally{$('suggest-titles').disabled=false;$('suggest-titles').textContent='10 unvan öner';}
+}
+function updateSuggestCount(){const n=document.querySelectorAll('#suggest-list [data-suggest]:checked').length;$('add-suggested').textContent=`Seçilen ${n} unvanı kuyruğa ekle`;$('add-suggested').disabled=!n;}
+function addSuggested(){
+  const location=$('loc-input').value.trim(),limit=Number($('suggest-limit').value);
+  if(!location||!Number.isInteger(limit)||limit<1){$('suggest-error').textContent='Konum ve pozitif tam sayı hedef girin.';return;}
+  const picked=[...document.querySelectorAll('#suggest-list [data-suggest]:checked')].map(el=>el.value);
+  const known=new Set(draft.map(t=>t.keyword.toLocaleLowerCase('tr')+'|'+t.location));
+  const added=picked.filter(k=>!known.has(k.toLocaleLowerCase('tr')+'|'+location));
+  for(const keyword of added)draft.push({id:newId(),keyword,location,limit});
+  $('suggest-error').textContent='';$('suggest-list').hidden=true;$('add-suggested').hidden=true;$('suggest-list').innerHTML='';
+  renderDraft();persist();scheduleDraftSave();toast(added.length?`${added.length} unvan kuyruğa eklendi.`:'Seçilen unvanlar zaten kuyrukta.');
 }
 async function openDrawer(){$('new-search-form').hidden=false;$('drawer-title').textContent='Yeni tarama';showDialog('drawer');renderDraft();
   try{const models=await api('/api/ollama/models');$('classify-model').innerHTML='<option value="">Varsayılan model</option>'+models.models.map(m=>`<option>${esc(m)}</option>`).join('');setOllama(true);}catch{setOllama(false);}
@@ -249,7 +272,7 @@ async function pollStatus(){
     else if(busy){$('status-bar').hidden=false;$('status-text').textContent=status.kind==='embed'?'İlan eşleştirmeleri hazırlanıyor…':'İlanlar analiz ediliyor…';$('status-detail').textContent='Bu işlem kayıtlı ilanlar üzerinde çalışır.';$('status-progress').removeAttribute('value');}
     else if(currentRun&&activeStatus(currentRun.status)){currentRun=await api('/api/runs/'+currentRun.id);renderRun();loadAll();}
     if($('history-dialog').open)loadHistory();
-    $('embed-jobs').disabled=busy||$('embed-jobs').dataset.ollama==='0';$('classify-jobs').disabled=busy||$('classify-jobs').dataset.ollama==='0';$('stop-maintenance').hidden=!busy||status.kind==='scrape';
+    $('embed-jobs').disabled=busy||$('embed-jobs').dataset.ollama==='0';$('classify-jobs').disabled=busy||$('classify-jobs').dataset.ollama==='0';$('stop-maintenance').hidden=!busy||status.kind==='scrape';$('classify-groq').disabled=busy||!groqAvailable;$('score-fit').disabled=busy||!groqAvailable||!profileHash;
   }catch(e){$('connection').textContent='Sunucu bağlantısı bekleniyor…';}
 }
 function connectEvents(){
@@ -334,9 +357,11 @@ async function loadLogs(older=false){if(!logContext)return;const p=new URLSearch
     if(older)$('log-list').insertAdjacentHTML('beforeend',html);else $('log-list').innerHTML=html;const t=data.totals;$('log-totals').textContent=`Sayfa yanıtları toplamı: ${t.cards_returned} kart · ${t.collected} çekilen · ${t.duplicates} tekrar · ${t.detail_failures} detay hatası · ${t.not_processed||0} işlenmeyen. Tekrarlanan isteklerde aynı ilan birden fazla kart olarak sayılabilir.`;logBefore=data.next_before;$('older-logs').hidden=!logBefore;
   }catch(e){toast(e.message,null,'',true);}
 }
-async function openProfile(){showDialog('profile-dialog');$('profile-status').textContent='Profil yükleniyor…';try{const p=await api('/api/profile');$('profile-text').value=p.text;$('profile-status').textContent=p.has_embedding?'Profil eşleştirmesi hazır.':p.text?'Profil kayıtlı; eşleştirme için Ollama çalışmalı.':'Deneyimlerini ekleyerek başlayabilirsin.';}catch(e){$('profile-status').textContent=e.message;}}
-async function saveProfile(){$('save-profile').disabled=true;$('profile-status').textContent='Kaydediliyor…';try{const data=await api('/api/profile',{method:'POST',body:{text:$('profile-text').value}});$('profile-status').textContent=data.embedded?'Profil kaydedildi, eşleştirme hazır.':'Profil kaydedildi. Eşleştirme hazırlanamadı; Ollama bağlantısını kontrol edin.';loadFacets();}catch(e){$('profile-status').textContent=e.message;}finally{$('save-profile').disabled=false;}}
-async function maintenance(kind){try{await api('/api/'+kind,{method:'POST',body:{force:$('force-recompute').checked,backend:'local',model:$('classify-model').value||null}});$('maintenance-status').textContent='İşlem başladı…';await pollStatus();}catch(e){$('maintenance-status').textContent=e.message;}}
+async function openProfile(){showDialog('profile-dialog');$('profile-status').textContent='Profil yükleniyor…';try{const p=await api('/api/profile');$('profile-text').value=p.text;$('profile-status').textContent=p.has_embedding?'Profil eşleştirmesi hazır.':p.text?'Profil kayıtlı. İlanları puanlamak için “Groq ile uygunluğu puanla”ya bas.':'Deneyimlerini ekleyerek başlayabilirsin.';}catch(e){$('profile-status').textContent=e.message;}}
+async function saveProfile(){$('save-profile').disabled=true;$('profile-status').textContent='Kaydediliyor…';try{const data=await api('/api/profile',{method:'POST',body:{text:$('profile-text').value}});$('profile-status').textContent=data.embedded?'Profil kaydedildi, eşleştirme hazır.':'Profil kaydedildi. Şimdi “Groq ile uygunluğu puanla”ya basabilirsin.';loadFacets();}catch(e){$('profile-status').textContent=e.message;}finally{$('save-profile').disabled=false;}}
+function fitCurrent(j){return j.fit_score!=null&&!!profileHash&&j.fit_profile===profileHash;}
+async function scoreFit(){$('fit-status').textContent='';try{await api('/api/fit',{method:'POST',body:{force:false}});$('fit-status').textContent='Puanlama başladı. İlerlemeyi kuyruk sekmesinden izleyebilirsin; bitince “Profilime uygunluk” sıralamasını seç.';await pollStatus();}catch(e){$('fit-status').textContent=e.message;}}
+async function maintenance(kind,backend='local'){try{await api('/api/'+kind,{method:'POST',body:{force:$('force-recompute').checked,backend,model:$('classify-model').value||null}});$('maintenance-status').textContent='İşlem başladı…';await pollStatus();}catch(e){$('maintenance-status').textContent=e.message;}}
 
 async function openService(){
   if(!$('service-dialog').open)showDialog('service-dialog');
@@ -465,7 +490,7 @@ function initialize(){
   for(const [id,delta] of [['prev',-1],['next',1]])wire(id,'click',()=>{filters.page=String(Math.max(1,Math.min(pages,Number(filters.page||1)+delta)));persist(true);loadJobs();$('count').scrollIntoView({block:'center'});});
   wire('previous-job','click',()=>nav.previous&&openJob(nav.previous));wire('next-job','click',()=>nav.next&&openJob(nav.next));
   $('job-dialog').addEventListener('close',()=>{detailController?.abort();currentJob=null;});
-  wire('add-tasks','click',addTasks);wire('start-scrape','click',startScrape);wire('unlimited','change',()=>{$('limit-input').disabled=$('unlimited').checked;persist();});
+  wire('add-tasks','click',addTasks);wire('start-scrape','click',startScrape);wire('suggest-titles','click',suggestTitles);wire('add-suggested','click',addSuggested);$('suggest-list').addEventListener('change',updateSuggestCount);$('field-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('suggest-titles').click();}});wire('unlimited','change',()=>{$('limit-input').disabled=$('unlimited').checked;persist();});
   ['kw-input','loc-input','limit-input','classify-backend','use-embeddings','scrape-mode','refresh-details'].forEach(id=>wire(id,'input',()=>{persist();if(draft.length&&['classify-backend','use-embeddings','scrape-mode','refresh-details'].includes(id))scheduleDraftSave();}));
   wire('pause-run','click',()=>currentRun&&runAction(currentRun.id,'pause'));wire('resume-run','click',()=>currentRun&&runAction(currentRun.id,'resume'));wire('stop-run','click',()=>currentRun&&runAction(currentRun.id,'stop'));wire('cancel-run','click',()=>currentRun&&runAction(currentRun.id,'cancel'));wire('live-logs','click',()=>currentRun&&openLogs(currentRun.id));
   wire('history-status','change',renderHistory);wire('history-search','input',renderHistory);wire('history-trash','change',()=>{selectedHistory.clear();loadHistory();});
@@ -474,7 +499,7 @@ function initialize(){
   wire('log-kind','change',()=>loadLogs());wire('log-level','change',()=>loadLogs());wire('refresh-logs','click',()=>loadLogs());wire('older-logs','click',()=>loadLogs(true));
   wire('legacy-log','click',legacyLog);
   wire('refresh-report','click',loadReport);wire('log-query','input',debounce(()=>loadLogs()));
-  wire('save-profile','click',saveProfile);wire('embed-jobs','click',()=>maintenance('embed'));wire('classify-jobs','click',()=>maintenance('classify'));wire('stop-maintenance','click',async()=>{await api('/api/scrape/stop',{method:'POST'});$('maintenance-status').textContent='İşlem durduruluyor…';});wire('trash-filtered','click',trashFiltered);
+  wire('save-profile','click',saveProfile);wire('embed-jobs','click',()=>maintenance('embed'));wire('classify-jobs','click',()=>maintenance('classify'));wire('classify-groq','click',()=>maintenance('classify','groq'));wire('score-fit','click',scoreFit);wire('stop-maintenance','click',async()=>{await api('/api/scrape/stop',{method:'POST'});$('maintenance-status').textContent='İşlem durduruluyor…';});wire('trash-filtered','click',trashFiltered);
   wire('save-task','click',saveTask);
   document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
   window.addEventListener('popstate',()=>{readLocation();syncControls();renderChips();loadAll();});
