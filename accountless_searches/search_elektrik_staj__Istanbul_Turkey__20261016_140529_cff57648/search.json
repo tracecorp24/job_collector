@@ -1,0 +1,24 @@
+{
+  "title": "elektrik staj",
+  "location": "Istanbul, Turkey",
+  "limit": 50,
+  "startedAt": "2026-10-16T14:05:29.139171+00:00",
+  "status": "finished",
+  "count": 50,
+  "format": "frontend/ilan_havuzu",
+  "searchId": "608b4071-15bb-42fe-ac11-b0cc904b1c1d",
+  "runId": "c7e0f8424ee84ff68acca17a534c8dce",
+  "durationSeconds": 2592.08,
+  "pauseReason": "Kaynak erişimi sınırlandırdı (HTTP 429). En az 900 saniye beklenmeli. Bekleme tamamlandıktan sonra erişim kontrolünü açıkça onaylayın.",
+  "finishedAt": "2026-10-16T14:48:41.214532+00:00",
+  "terminationReason": "reached_limit",
+  "terminationMessage": "Belirlenen hedef ilan adedine ulaşıldı ve arama tamamlandı.",
+  "stats": {
+    "pagesScanned": 1,
+    "totalCardsSeen": 10,
+    "savedCount": 50,
+    "duplicatesSkipped": 0,
+    "descFailures": 0,
+    "durationSeconds": 7.78
+  }
+}

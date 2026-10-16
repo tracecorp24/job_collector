@@ -1,0 +1,37 @@
+{
+  "id": "ap-linkedin-4466663610",
+  "title": "Electrical and Electronics Engineer",
+  "company": "Kastamonu Entegre",
+  "location": "İstanbul, Türkiye",
+  "type": "Office",
+  "source": "LinkedIn",
+  "salary": null,
+  "desc": "Kastamonu Entegre Ağaç Sanayi which is one of the two locomotive companies of Hayat Holding was established in year 1969 for production in the wooden panel industry and today became a global power which is the 1st in Türkiye, the 3rd in Europe and the 4th in the world in its field.\nKastamonu Entegre Headquarters is looking for a\n“Electrical and Electronics Engineer\"\nin Global Tecnology Directorate. The position is based in Altunizade, İstanbul.\nJob Role Details\nLead the design and development of\nembedded&acoustic\nelectronic systems, from concept to production, with a focus on high-performance processors and microcontrollers\nDevelop and maintain schematics and multilayer PCB layouts using Altium Designer, ensuring signal integrity for high-speed and differential pair routing\nProvide technical support to\nR&D on acoustic/sound insulation of equipment\n, contributing\nacoustic modeling\nand simulation expertise related to\nsound and wave behavior\nConduct feasibility studies, prototyping, and proof-of-concept designs for new product requests\nPerform hardware validation and debugging, using oscilloscopes, logic analyzers, and protocol analyzers to identify and resolve design issues\nCollaborate closely with software, mechanical, and system teams to deliver optimized embedded solutions\nWrite, test, and debug embedded firmware in C/C++, ensuring robust and reliable functionality\nDocument design specifications, validation procedures, and test reports for internal and external stakeholders\nSupport production teams during the industrialization and mass production phases, addressing design issues and ensuring manufacturability\nSkills\nBachelor's degree in Electrical & Electronics Engineering, Electronics & Communication Engineering, Mechatronics Engineering, Control & Automation Engineering, Computer Engineering, or a related engineering discipline specializing in electronic systems, embedded software, and industrial automation\nExperience in PCB design using (Altium/KiCad) and embedded systems (STM32/ESP32, RTOS/bare-metal)\nStrong knowledge of industrial communication protocols (GigE Vision, Modbus, EtherNet/IP, PROFINET) as well as 10GbE network infrastructure\nProficiency in C/C++ and Python for camera SDK integration and device driver development\nHands-on experience with field operations, system commissioning, and production line integration\nStrong communication, solid problem solving skills and result oriented approach\nFluency in English, both written and spoken\nNo restriction to travel\nMilitary service must be completed for male candidates\nPreferred Qualifications\nExperience with FPGA (VHDL/Verilog)\nExperience in PLC programming (Siemens TIA Portal)\nExperience with Real-Time Linux (RT-Preempt)\nBackground in acoustics, acoustic modeling/simulation, or wave propagation\nExperience\n3–6 years of professional experience in a similar role\nThank you for taking the time to review our job advertisement. If you think it is a match to your knowledge and interests, please apply. We are eager to learn more about you!\nClarification Text for Employee Candidate: https://www.kastamonuentegre.com/tr_tr/kvkk-aydinlatma-metni\nShow more\nShow less",
+  "skills": [
+    "Linux",
+    "Python",
+    "R",
+    "PLC",
+    "C++",
+    "Embedded Systems"
+  ],
+  "applyUrl": "https://www.linkedin.com/jobs/view/4466663610",
+  "posted": "2026-09-18",
+  "experience": "7+ yıl",
+  "_collector": {
+    "searchId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "runId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "requestedCity": "Istanbul, Turkey",
+    "requestedTitle": "elektrik mühendiliği",
+    "requestedCities": [
+      "Istanbul, Turkey"
+    ],
+    "requestedTitles": [
+      "elektrik mühendiliği"
+    ],
+    "sourceJobId": "4466663610",
+    "descriptionAvailable": true,
+    "collectedAt": "2026-10-16T12:01:38.022178+00:00",
+    "mode": "accountless"
+  }
+}

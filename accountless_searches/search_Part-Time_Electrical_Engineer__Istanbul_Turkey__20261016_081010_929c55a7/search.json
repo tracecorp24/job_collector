@@ -1,0 +1,22 @@
+{
+  "title": "Part-Time Electrical Engineer",
+  "location": "Istanbul, Turkey",
+  "startedAt": "2026-10-16T08:10:10.321067+00:00",
+  "status": "finished",
+  "count": 100,
+  "format": "frontend/ilan_havuzu",
+  "finishedAt": "2026-10-16T08:54:04.946121+00:00",
+  "durationSeconds": 2634.63,
+  "terminationReason": "reached_limit",
+  "terminationMessage": "Belirlenen hedef ilan adedine (100) ulaşıldı ve arama tamamlandı.",
+  "stats": {
+    "pagesScanned": 10,
+    "totalCardsSeen": 100,
+    "savedCount": 100,
+    "duplicatesSkipped": 0,
+    "descFailures": 0,
+    "durationSeconds": 2634.63
+  },
+  "searchId": "old-1563eb75036140f0de9141c2",
+  "runId": "old-1563eb75036140f0de9141c2"
+}

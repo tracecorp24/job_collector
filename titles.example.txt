@@ -1,0 +1,13 @@
+# Linko Scrapper Light - Örnek Kuyruk Başlık Dosyası
+# '#' ile başlayan satırlar ve boşluklar atlanır.
+
+AI Engineer
+Backend Developer
+Frontend Developer
+Full Stack Developer
+Data Scientist
+Data Analyst
+DevOps Engineer
+Machine Learning Engineer
+Product Manager
+Software Architect

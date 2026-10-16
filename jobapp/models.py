@@ -1,0 +1,227 @@
+"""SQLAlchemy models."""
+
+from datetime import datetime
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+
+class Job(Base):
+    """A single scraped, parsed and classified job posting.
+
+    Deduplication is enforced across runs by the unique ``(source,
+    external_id)`` constraint; the pipeline upserts (insert-or-update) on it.
+    """
+
+    __tablename__ = "jobs"
+    __table_args__ = (
+        UniqueConstraint("source", "external_id", name="uq_source_external"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Provenance / identity
+    source = Column(String(32), nullable=False, default="linkedin", index=True)
+    external_id = Column(String(64), nullable=False, index=True)
+    url = Column(String(512), default="")
+
+    # Parsed fields
+    title = Column(String(512), default="", index=True)
+    company = Column(String(256), default="", index=True)
+    location = Column(String(256), default="")
+    workplace_type = Column(String(32), default="", index=True)  # Remote/Hybrid/Onsite
+
+    # Classified fields
+    category = Column(String(48), default="Other", index=True)
+    seniority = Column(String(32), default="Unknown", index=True)
+    tags = Column(Text, default="[]")  # JSON array of strings
+    summary = Column(Text, default="")  # optional one-liner (LLM)
+    about_company = Column(Text, default="")  # optional company blurb (LLM)
+    formatted_description = Column(Text, default="")  # optional LLM-rewritten description
+    offerings = Column(Text, default="[]")  # optional JSON array of benefit strings (LLM)
+    salary = Column(String(128), default="")  # optional pay range/figure as stated (LLM)
+    salary_min = Column(Float, nullable=True)  # normalized numeric range, parsed from `salary`
+    salary_max = Column(Float, nullable=True)
+    salary_currency = Column(String(8), default="")  # e.g. USD, EUR, TRY
+    salary_period = Column(String(16), default="")  # e.g. year, month, hour
+    flag = Column(String(16), default="")  # "" | scam | ghost
+    flag_reason = Column(Text, default="")  # short phrase explaining the flag
+    classified_by = Column(String(16), default="rules")  # rules | llm | local
+    embedding = Column(Text, nullable=True)  # optional JSON float array (local embeddings)
+
+    # Content
+    description = Column(Text, default="")
+
+    # Search context that produced this row
+    search_term = Column(String(128), default="")
+    search_location = Column(String(128), default="")
+
+    # Quality / debugging
+    quality_ok = Column(Boolean, default=True, index=True)
+    raw = Column(Text, default="{}")  # JSON of original scraped record
+
+    # Timestamps
+    scraped_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    posted_at = Column(DateTime, nullable=True, index=True)
+    experience_years = Column(Integer, nullable=True)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+
+    def to_dict(self, include_description: bool = False) -> dict:
+        import json
+
+        try:
+            tags = json.loads(self.tags or "[]")
+        except (ValueError, TypeError):
+            tags = []
+        try:
+            offerings = json.loads(self.offerings or "[]")
+        except (ValueError, TypeError):
+            offerings = []
+        data = {
+            "id": self.id,
+            "source": self.source,
+            "external_id": self.external_id,
+            "url": self.url,
+            "title": self.title,
+            "company": self.company,
+            "location": self.location,
+            "workplace_type": self.workplace_type,
+            "category": self.category,
+            "seniority": self.seniority,
+            "tags": tags,
+            "summary": self.summary,
+            "about_company": self.about_company,
+            "offerings": offerings,
+            "salary": self.salary,
+            "salary_min": self.salary_min,
+            "salary_max": self.salary_max,
+            "salary_currency": self.salary_currency,
+            "salary_period": self.salary_period,
+            "flag": self.flag,
+            "flag_reason": self.flag_reason,
+            "classified_by": self.classified_by,
+            "search_term": self.search_term,
+            "search_location": self.search_location,
+            "quality_ok": self.quality_ok,
+            "scraped_at": self.scraped_at.isoformat() if self.scraped_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "posted_at": self.posted_at.isoformat() if self.posted_at else None,
+            "experience_years": self.experience_years,
+            "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
+        }
+        if include_description:
+            data["description"] = self.description
+            data["formatted_description"] = self.formatted_description
+        from sqlalchemy.orm import object_session
+        session = object_session(self)
+        links = session.query(TaskJob, SearchTask.run_id).join(SearchTask, TaskJob.task_id == SearchTask.id).filter(TaskJob.job_id == self.id).all() if session else []
+        data["search_ids"] = [link.task_id for link, _ in links]
+        data["run_ids"] = list(dict.fromkeys(run_id for _, run_id in links))
+        data["discoveries"] = [{"search_id": link.task_id, "run_id": run_id, "is_new": link.is_new, "outcome":link.outcome,
+                                 "found_at": link.found_at.isoformat() if link.found_at else None} for link, run_id in links]
+        return data
+
+
+class Setting(Base):
+    """Small key/value store for app-level settings (e.g. the saved resume/
+    profile text and its embedding) that don't belong on the ``jobs`` table."""
+
+    __tablename__ = "settings"
+
+    key = Column(String(64), primary_key=True)
+    value = Column(Text, default="")
+
+
+class SearchRun(Base):
+    __tablename__ = "search_runs"
+    id = Column(String(40), primary_key=True)
+    status = Column(String(24), default="queued", index=True)
+    options = Column(Text, default="{}")
+    stats = Column(Text, default="{}")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    resumed_at = Column(DateTime, nullable=True)
+    ended_at = Column(DateTime, nullable=True)
+    active_seconds = Column(Float, default=0)
+    status_reason = Column(Text, default="")
+
+
+class SearchTask(Base):
+    __tablename__ = "search_tasks"
+    id = Column(String(40), primary_key=True)
+    run_id = Column(String(40), nullable=False, index=True)
+    position = Column(Integer, default=0)
+    keyword = Column(String(512), nullable=False)
+    location = Column(String(512), default="")
+    limit = Column(Integer, nullable=True)
+    status = Column(String(24), default="queued")
+    checkpoint = Column(Text, default="{}")
+    folder = Column(Text, default="")
+    stats = Column(Text, default="{}")
+    error = Column(Text, default="")
+    started_at = Column(DateTime, nullable=True)
+    resumed_at = Column(DateTime, nullable=True)
+    ended_at = Column(DateTime, nullable=True)
+    active_seconds = Column(Float, default=0)
+    status_reason = Column(Text, default="")
+
+
+class TaskJob(Base):
+    __tablename__ = "task_jobs"
+    task_id = Column(String(40), primary_key=True)
+    job_id = Column(Integer, primary_key=True, index=True)
+    is_new = Column(Boolean, default=False)
+    found_at = Column(DateTime, default=datetime.utcnow)
+    outcome = Column(String(16), default="")
+
+
+class SearchEvent(Base):
+    __tablename__ = "search_events"
+    id = Column(Integer, primary_key=True)
+    run_id = Column(String(40), index=True)
+    task_id = Column(String(40), index=True)
+    kind = Column(String(32), index=True)
+    level = Column(String(16), default="info")
+    data = Column(Text, default="{}")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DetailCache(Base):
+    __tablename__ = "detail_cache"
+    source = Column(String(32), primary_key=True)
+    external_id = Column(String(64), primary_key=True)
+    fingerprint = Column(String(64), nullable=False)
+    description = Column(Text, default="")
+    status = Column(Integer, default=200)
+    fetched_at = Column(Float, nullable=False)
+    expires_at = Column(Float, nullable=False, index=True)
+
+
+class SourcePolicy(Base):
+    __tablename__ = "source_policy"
+    source = Column(String(32), primary_key=True)
+    next_request_at = Column(Float, default=0)
+    lease_owner = Column(String(40), default="")
+    lease_until = Column(Float, default=0)
+    blocked_until = Column(Float, default=0)
+    manual_pause = Column(Boolean, default=False)
+    reason = Column(Text, default="")
+    status_code = Column(Integer, nullable=True)
+    violation_streak = Column(Integer, default=0)
+    last_violation_at = Column(Float, default=0)
+    last_success_at = Column(Float, default=0)
+    interval_floor = Column(Float, default=0)

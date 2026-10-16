@@ -1,0 +1,37 @@
+{
+  "id": "ap-linkedin-4478458984",
+  "title": "5G R&D - SW Development Engineer",
+  "company": "Siemens",
+  "location": "İstanbul",
+  "type": "Remote",
+  "source": "LinkedIn",
+  "salary": null,
+  "desc": "We are the catalyst for the industrial world’s digital transformation.\nFor more than 35 years, groundbreaking technologies and business models engineered and developed by Siemens Turkey R&D department contributes to the global success of Siemens\nOur R&D activities focused on the fields of electrification, automation and digitalization, provides end-to-end support to our global customers on their unique digital transformation journey.\nWe aim to increase our strength on solution and product development with world class SW development experts, with the vision to be the digitalization partner for our global customers.\nWe need game changers like you, to bring the next level of smart manufacturing and infrastructure from mere concept to reality, develop tomorrow’s smart cities, and address the most critical digitalization challenges across a comprehensive range of industries.\nWhat are my responsibilities?\nSoftware design and development activities for industrial communication and new generation wireless communication projects,\nSoftware design and documentation\nParticipating in code-review process\nTaking part in the complete product life cycle\nSoftware design, implementation, documentation, unit tests, module tests, debugging and release tasks in a multi-site, international software development environment\nContribution to solutions architectures, requirements elicitation and development processes improvement\nProducing high-quality project deliverables within planned time and effort\nConforming to Siemens processes, quality standards, and guidelines\nWhat do I need to qualify for this job?\nBSc., MSc. Or PhD in Computer Science, Electronics, Telecommunication Engineering or related areas\nProven 3+ years of experience in software development\nStrong knowledge in C / C++\nStrong knowledge in programming, analysis, and design of embedded SW products\nDevelopment experience for 4G / 5G - new generation communication systems & solutions is a big plus\nDevelopment experience in Linux environment is a must\nExperience with Embedded Linux build systems such as ISAR, Yocto or Buildroot is a plus\nExperience in development of industrial communication network protocols, tools, and libraries (Switching & Routing Protocols, Netlink, Netfilter, Iproute2, CONFD, NETCONF, SNMP, etc.)\nKnowledge and experience in computer architecture is a plus\nKnowledge and experience in Real-time concepts and RTOS are a plus\nBeing familiar with using git-based repositories (Azure DevOps, GitHub, Gitlab, etc.) and CI/CD systems is a plus\nVery good command of English\nKnowledge in software life cycle and agile methodologies is appreciated\nExcellent interpersonal communication skills\nStrong problem solving and analytical skills\nOpen minded and highly collaborative\nNo restriction for travelling\nWhat We Offer?\nSpeaking up Culture\nRespectful Workplace\nBeing part of a global work environment\nAttractive remuneration package\nExcellent recognition tools providing spot awards\nLearning & Development opportunities for both personal and professional growth\nLeave days for parents and a variety of flexible working models that allow time off for yourself and your family\nCreche allowance for mothers\nShare matching programs to become a shareholder of Siemens AG\nRemote working and remote living flexibility only for relevant positions\nFind more benefits here\nIndividual benefits are adapted to meet local legal regulations, the requirements of different job profiles, locations, and individual preferences.\nAt Siemens we are always challenging ourselves to build a better future. We need the most innovative and diverse Digital Minds to develop tomorrow ‘s reality.\nAs Siemens we believe physical barriers are not related to potential. Only the potential matters to us. Therefore, we look forward to receiving applications from candidates with physical barriers and chronic illnesses. We support healthy relationships between candidates with barriers and their colleagues because we believe we can create differences together.\nSiemens is dedicated to quality, equality, and valuating diversity and we welcome applications that reflect the diversity of the communities within which we work.\nWe are looking forward to receiving your online application. Please ensure you complete all areas of the application form to the best of your ability as we will use the data to review your suitability for the role.\nPlease find more information from our web site:\nhttps://new.siemens.com/tr/tr.html\nExplore our website to learn more about life at Siemens:\nhttps://www.siemens.com/en-us/company/jobs/life-at-siemens/\nShow more\nShow less",
+  "skills": [
+    "Azure",
+    "CI/CD",
+    "Linux",
+    "R",
+    "C++",
+    "Embedded Systems"
+  ],
+  "applyUrl": "https://www.linkedin.com/jobs/view/4478458984",
+  "posted": "2026-10-14",
+  "experience": "Belirtilmemiş",
+  "_collector": {
+    "searchId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "runId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "requestedCity": "Istanbul, Turkey",
+    "requestedTitle": "elektrik mühendiliği",
+    "requestedCities": [
+      "Istanbul, Turkey"
+    ],
+    "requestedTitles": [
+      "elektrik mühendiliği"
+    ],
+    "sourceJobId": "4478458984",
+    "descriptionAvailable": true,
+    "collectedAt": "2026-10-16T12:58:16.781804+00:00",
+    "mode": "accountless"
+  }
+}

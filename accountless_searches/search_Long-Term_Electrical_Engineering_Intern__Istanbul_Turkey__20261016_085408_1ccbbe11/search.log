@@ -1,0 +1,22 @@
+======================================================================
+LINKEDIN PUBLIC ARAMA DETAY LOGU
+Başlık     : Long-Term Electrical Engineering Intern
+Konum      : Istanbul, Turkey
+Hedef Limit: Limitsiz
+Başlangıç  : 2026-10-16T08:54:08.450048+00:00 UTC
+======================================================================
+
+[08:54:08 UTC] [INFO   ] 🔎 'Long-Term Electrical Engineering Intern' (Istanbul, Turkey) LinkedIn araması başlatıldı.
+[08:54:08 UTC] [INFO   ] 📄 [Sayfa 1] LinkedIn istek gönderiliyor (start=0)...
+[08:54:08 UTC] [INFO   ] 📄 [Sayfa 1] 14 ilan kartı bulundu ve başarıyla kaydedildi.
+[08:54:32 UTC] [INFO   ] ℹ️ [Sayfa 3] LinkedIn bu sayfa için sonuç döndürmedi (0 kart). Bu arama için tüm açık ilanlar tüketildi.
+[08:54:32 UTC] [SUCCESS] 🏁 'Long-Term Electrical Engineering Intern' araması bitti. Toplanan: 14 ilan | Sebep: exhausted_results | Süre: 24.12s
+
+----------------------------------------------------------------------
+ARAMA TAMAMLANDI
+Durum       : finished
+Bitiş Nedeni: LinkedIn'de bu arama kriterine uyan tüm kamuya açık ilanlar başarıyla toplandı (sayfalamada yeni ilan kalmadı).
+Toplam İlan : 14
+Geçen Süre  : 24.12 saniye
+İstatistik  : Taranan Sayfa: 2 | Görülen Kart: 14 | Mükerrer Elenen: 0
+======================================================================

@@ -1,0 +1,19 @@
+[Unit]
+Description=Linko autonomous job collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=linko
+WorkingDirectory=/opt/linko
+EnvironmentFile=/etc/linko.env
+ExecStart=/opt/linko/.venv/bin/python -B /opt/linko/serve_service.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

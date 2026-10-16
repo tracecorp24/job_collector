@@ -1,0 +1,7 @@
+flask>=3.0,<4
+sqlalchemy>=2.0,<3
+requests>=2.31,<3
+beautifulsoup4>=4.12,<5
+waitress>=3.0,<4        # Tek süreçli üretim HTTP sunucusu (Windows/Linux)
+gunicorn>=21.0,<24       # Production WSGI — Linux sunucu deploy için
+# Optional cloud classification: pip install anthropic

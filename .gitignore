@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+jobapp/jobs.db*
+accountless_searches/
+imports/
+.qa/
+jobapp/backup_before_ux_*/
+logs/
+.local/
+consumer_jobs.db*

@@ -1,0 +1,36 @@
+{
+  "id": "ap-linkedin-4451407472",
+  "title": "Software Development Engineer C++",
+  "company": "Siemens",
+  "location": "İstanbul",
+  "type": "Remote",
+  "source": "LinkedIn",
+  "salary": null,
+  "desc": "We are the catalyst for the industrial world’s digital transformation.\nFor more than 35 years, ground breaking technologies and business models engineered and developed by Siemens Turkey R&D department contributes to the global success of Siemens\nOur R&D activities focused on the fields of electrification, automation and digitalization, provides end-to-end support to our global customers on their unique digital transformation journey.\nWe aim to increase our strength on solution and product development with world class SW development experts, with the vision to be the digitalization partner for our global customers.\nWe need game changers like you, to bring the next level of smart manufacturing and infrastructure from mere concept to reality, develop tomorrow’s smart cities, and address the most critical digitalization challenges across a comprehensive range of industries.\nWhat are my responsibilities?\nContribute to end-to-end software development of a failsafe runtime platform within an industrial-edged environment, including design, implementation, documentation, and testing\nDevelop and maintain C++-based runtime components with focus on robustness, reliability, and performance\nSupport the implementation of container-based applications running on edge infrastructure\nContribute to system and software architecture, requirements engineering, and technical design discussions\nWork as part of an Agile development team to deliver high-quality and maintainable software\nCollaborate with product owners and stakeholders to ensure alignment with functional and non-functional requirements\nFollow established development processes, coding standards, testing strategies, and CI/CD practices\nSupport analysis and resolution of software defects and system-level issues, including performance and communication aspects\nContribute to continuous improvement of development practices and team efficiency\nWhat do I need to qualify for this job?\nBSc., MSc., or PhD in Computer Science or a related field\nMinimum 3 years of professional experience in software development\nStrong programming skills in C++\nSolid understanding of object-oriented design and software engineering principles\nGood knowledge of multi-threading and concurrency, Inter-process communication, Data structures and algorithms\nExperience in Linux-based development environments\nFamiliarity with container technologies (e.g., Docker)\nUnderstanding of distributed systems or microservice-based architectures is an advantage\nExperience with version control systems (Git) and CI/CD pipelines\nBasic scripting skills (e.g., Bash) are a plus\nKnowledge of real-time or safety-critical systems is an asset\nExperience with Agile methodologies\nVery good command of English\nStrong analytical thinking and problem-solving skills\nGood communication and teamwork abilities\nNo restriction for travelling abroad\nWhat We Offer?\nSpeaking up Culture\nRespectful Workplace\nBeing part of a global work environment\nAttractive remuneration package\nExcellent recognition tools providing spot awards\nLearning & Development opportunities for both personal and professional growth\nLeave days for parents and a variety of flexible working models that allow time off for yourself and your family\nCreche allowance for mothers\nShare matching programs to become a shareholder of Siemens AG\nRemote working and remote living flexibility only for relevant positions\nFind more benefits here\nIndividual benefits are adapted to meet local legal regulations, the requirements of different job profiles, locations, and individual preferences.\nAt Siemens we are always challenging ourselves to build a better future. We need the most innovative and diverse Digital Minds to develop tomorrow ‘s reality.\nAs Siemens we believe physical barriers are not related to potential. Only the potential matters to us. Therefore, we look forward to receiving applications from candidates with physical barriers and chronic illnesses. We support healthy relationships between candidates with barriers and their colleagues because we believe we can create differences together.\nSiemens is dedicated to quality, equality, and valuating diversity and we welcome applications that reflect the diversity of the communities within which we work.\nWe are looking forward to receiving your online application. Please ensure you complete all areas of the application form to the best of your ability as we will use the data to review your suitability for the role.\nPlease find more information from our web site:\nhttps://new.siemens.com/tr/tr.html\nShow more\nShow less",
+  "skills": [
+    "Docker",
+    "CI/CD",
+    "Linux",
+    "R",
+    "C++"
+  ],
+  "applyUrl": "https://www.linkedin.com/jobs/view/4451407472",
+  "posted": "2026-10-02",
+  "experience": "Belirtilmemiş",
+  "_collector": {
+    "searchId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "runId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "requestedCity": "Istanbul, Turkey",
+    "requestedTitle": "elektrik mühendiliği",
+    "requestedCities": [
+      "Istanbul, Turkey"
+    ],
+    "requestedTitles": [
+      "elektrik mühendiliği"
+    ],
+    "sourceJobId": "4451407472",
+    "descriptionAvailable": true,
+    "collectedAt": "2026-10-16T13:48:09.885774+00:00",
+    "mode": "accountless"
+  }
+}

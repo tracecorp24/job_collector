@@ -1,0 +1,36 @@
+{
+  "id": "ap-linkedin-4475853175",
+  "title": "Autonomous Driving Software Engineer - Vehicle Interface & Redundant Systems",
+  "company": "ADASTEC Corp.",
+  "location": "İstanbul, Türkiye",
+  "type": "Office",
+  "source": "LinkedIn",
+  "salary": null,
+  "desc": "ADASTEC delivers SAE Level-4 Automated Driving Software Platform for commercial vehicles to enable OEMs to develop modern, automated, shared, and connected commercial vehicles. ADASTEC flowride.ai SAE Level-4 Automated Driving Software Platform integrated buses are on public roads in 14 countries in Europe & North America.\nflowride.ai is designed with the fusion of different high-precision sensors available in the global market and complies with safety standards and regulations.\nADASTEC has an HQ and operation office in Michigan, USA, an EU Operations office in the Netherlands, Germany, and an R&D Office in Türkiye. For more information, visit www.adastec.com\nAs an Autonomous Driving Software Engineer in the Vehicle Interface & Redundant Systems (VIR) team, you will take the ownership of software modules crucial to vehicle safety and autonomy. This is a full-time, on-site role where you will design and implement robust redundancy architectures, develop CAN bus and Ethernet communication clients, and ensure the seamless execution of Redundant Collision Avoidance Systems. You will play a key role in problem definition, system reliability, and mentoring junior team members.\nRESPONSIBILITIES\nFeature Development:\nDesign, implement, and maintain high-performance C++ and Python applications for ECU interfacing and collision avoidance\nArchitecture & Redundancy:\nCollaborate on designing fail-safe mechanisms, identifying critical system components, and developing software that seamlessly switches to backup systems during failures\nIssue Mining & Resolution:\nActively identify, triage, and solve complex software and communication issues in deployed systems and new rollouts\nQuality Assurance:\nDrive software quality through comprehensive unit/integration testing, code reviews, and structured documentation\nDeployment & Travel:\nOpen to occasional domestic and international travel for vehicle integration, testing tracks, or partner workshops\nTechnical Mentorship:\nContribute to problem definition, recommend technical solutions, and help guide junior engineers/interns\nQUALIFICATIONS\nBachelor’s or master’s degree in Mechatronics, Control, Computer, Electrical/Electronics, Automotive Engineering\nMinimum 3 years of strong professional experience in related field\nProven proficiency in C++ and Python within a Linux environment\nAutomotive & Embedded Focus: Practical experience with embedded systems development. Prior automotive industry experience, particularly with ECU development, is a strong plus\nRobotics & Frameworks: Strong practical experience with ROS (Robot Operating System) and modern robotic software development paradigms\nTools & Systems: Strong command of Git workflows, Linux command-line tools, bash scripting, and system services\nDomain Knowledge: Familiarity with vehicle networks (CAN bus, Automotive Ethernet) andsafety-critical software principles\nExcellent command of English, both written and spoken is a must\nHaving no travel restriction\nShow more\nShow less",
+  "skills": [
+    "Linux",
+    "Python",
+    "R",
+    "C++",
+    "Embedded Systems"
+  ],
+  "applyUrl": "https://www.linkedin.com/jobs/view/4475853175",
+  "posted": "2026-10-05",
+  "experience": "1+ yıl",
+  "_collector": {
+    "searchId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "runId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "requestedCity": "Istanbul, Turkey",
+    "requestedTitle": "elektrik mühendiliği",
+    "requestedCities": [
+      "Istanbul, Turkey"
+    ],
+    "requestedTitles": [
+      "elektrik mühendiliği"
+    ],
+    "sourceJobId": "4475853175",
+    "descriptionAvailable": true,
+    "collectedAt": "2026-10-16T12:42:24.296616+00:00",
+    "mode": "accountless"
+  }
+}

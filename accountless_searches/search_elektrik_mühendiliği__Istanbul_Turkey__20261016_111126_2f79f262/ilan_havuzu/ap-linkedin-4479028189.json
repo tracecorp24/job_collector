@@ -1,0 +1,33 @@
+{
+  "id": "ap-linkedin-4479028189",
+  "title": "Yazılım Test ve Saha Entegrasyon Mühendisi",
+  "company": "Andasis",
+  "location": "İstanbul, Türkiye",
+  "type": "Office",
+  "source": "LinkedIn",
+  "salary": null,
+  "desc": "PAVO GROUP,\nteknolojik gelişmeleri sürekli takip eden, bu gelişmeleri ürün ve hizmetlerine yansıtarak öncü olmaya çalışan, kendisine ve çevresine değer katan, ekibiyle birlikte temel değerleri koruyan, tercih edilen işletme olma hedefiyle ilerlemektedir. Etik kurallarından, iş ahlakından ve dürüstlüğünden taviz vermeden pazarda ortak olmayı hedefleyen Pavo Group; Aviyonik Sistemler, Veri Merkezi & Altyapı Çözümleri, Katma Değerli Endüstriyel Yapılar ve Bilgi Teknolojileri, Yapay Zeka, Siber Güvenlik, Ethernet Çözümleri, savunma ve sivil sektörde sistem entegratörü olarak yerli ve yabancı stratejik ortaklarına sistem çözümleri sunmaktadır.\nANDASİS,\nolarak haberleşme alanında Otomotiv, Endüstri ve Telekomünikasyon sektörlerine gömülü elektronik sistem çözümleri sunmaktayız. Ağ Altyapı cihazları sektöründe küresel devlerle rekabet edebilen cihazları tasarlayıp üreterek, ülke olarak %100 dışa bağımlı olduğumuz bu alanda dışa bağımlılığa son veriyoruz; yerli cihazlarımız sayesinde haberleşme güvenliğini garanti altına alıyoruz. Yüksek nitelikli mühendislik ekibimizle tasarım ve üretim faaliyetlerimize devam ediyor, küresel rekabette ülkemizi temsil etmeyi vizyonumuzun merkezine yerleştiriyoruz.\nGENEL NİTELİKLER\nÜniversitelerin Elektrik-Elektronik, Elektronik ve Haberleşme, Bilgisayar Mühendisliği veya ilgili mühendislik bölümlerinden mezun,\nYazılım testi veya sistem entegrasyonu alanında en az 2–5 yıl deneyimine sahip,\nTCP/IP, OSI modeli ve temel ağ protokolleri (Ethernet, VLAN, STP/RSTP, LACP, ARP, DHCP) konusunda bilgili,\nLayer 2/Layer 3 switch ve router konfigürasyonu deneyimi (CLI üzerinden),\nMC-LAG (Multi-Chassis Link Aggregation) yapılarının çalışma prensiplerine hakim olan; kurulum, konfigürasyon ve test deneyimine sahip,\nRadyo link sistemlerinin çalışma prensipleri hakkında temel bilgiye sahip olma (frekans bantları, kanal genişliği, modülasyon türleri, ACM)\nRadyo link cihazlarının kurulumu, konfigürasyonu ve devreye alınması konusunda deneyim sahibi,\nRadyo link ile switch/router arasındaki Ethernet/VLAN entegrasyonunu kurgulayıp test edebilme yetkinliğine sahip,\nTest senaryosu yazma, test koşturma ve hata raporlama süreçlerine hakim,\nLinux işletim sistemi ve temel komut satırı kullanım yetkinliğine sahip,\nWireshark ile paket yakalama ve analiz yapabilmek,\nTeknik dokümanları okuyup anlayabilecek düzeyde İngilizce bilgisine sahip,\nSahada kurulum ve devreye alma süreçleri için yurt içi seyahat engeli bulunmayan.\nGÖREV VE SORUMLULUKLAR\nSwitch, router ve radyo link ürünlerinin yazılım/firmware sürümlerine yönelik fonksiyonel, performans ve regresyon testlerinin planlanması ve yürütülmesi,\nTest senaryolarını hazırlamak, test yönetim araçlarında takip etmek ve test sonuç raporlarının oluşturulması,\nTespit edilen hataları analiz ederek yazılım ekibine raporlamak ve çözüm sürecinin takip edilmesi,\nRadyo link ve switch/router sistemlerinin uçtan uca entegrasyon testlerinin gerçekleştirilmesi,\nMüşteri sahalarında kurulum, devreye alma, arıza tespiti ve saha kabul testlerinin yürütülmesi,\nFabrika kabul testlerinin hazırlık ve uygulama süreçlerinin yürütülmesi,\nTest otomasyon altyapısının geliştirilmesine katkı sağlanması,\nTest ve entegrasyon süreçlerine ilişkin teknik dokümantasyonların hazırlanması.\nTERCİH SEBEBİ ÖZELLİKLER\nRouting protokolleri (OSPF, BGP), QoS, Multicast (IGMP Snooping), SNMP, Syslog, NTP, 802.1X, RADIUS/TACACS+ hakkında bilgi sahibi,\nMC-LAG peer-link / ICCL, keepalive mekanizmaları ve topolojileri hakkında bilgi sahibi,\nMC-LAG ile STP/MSTP etkileşimi, split-brain senaryoları ve failover/failback testlerini yürütebilme kabiliyeti,\nEthernet OAM (Y.1731, 802.1ag CFM), ERPS (G.8032) ve senkronizasyon (SyncE, PTP/IEEE 1588) protokolleri deneyimi,\nRFC 2544 ve Y.1564 throughput/latency/jitter testlerini yürütebilme kabiliyeti,\nTrafik üreteci ve test cihazlarıyla çalışmış olmak (Spirent, Ixia/Keysight veya benzeri)\nSpektrum analizörü, güç ölçer ve RF test cihazlarını kullanabilmek,\nPython, Bash ya da benzeri bir dille test otomasyonu deneyimi (Pytest, Robot Framework vb.)\nJira, Zephyr, TestRail gibi test yönetim ve hata takip araçlarını kullanmış olmak,\nGömülü sistem / firmware testi ve firmware yükseltme süreçlerinde deneyimli,\nISTQB Foundation, CCNA veya muadili sertifikalara sahip,\nSavunma sanayii, taktik/askeri haberleşme veya kritik altyapı projelerinde çalışmış olmak.\nPAVOGROUP OLARAK EKİP ARKADAŞLARIMIZA NELER SUNUYORUZ?\nSavunma sanayii ekosistemini deneyimleme fırsatı,\nDostane ve pozitif çalışma kültürü,\nİnisiyatif ve sorumluluk alabileceğiniz iş ekosistemi,\nGelişim imkanı veren uluslararası projeler ve süreçleri deneyimleme fırsatı,\nYüksek lisans ve doktora öğrencilerine bir tam gün akademik izin,\nGenişletilmiş özel sağlık sigorta poliçesi,\nYemek kartı,\nUlaşım yardımı ya da servis hizmetinden yararlanma,\nPavo Group\n, ırk, etnik köken, din, aile ilişkileri, cinsiyete dayalı ayrımcılık yapmaksızın tüm adaylara eşit fırsat sağlar. Değişken şartlarda çalışan takım arkadaşlarımızın süreç odaklı yaklaşımlarına saygı duyuyor ve bizimle aynı motivasyona sahip olabilecek ekip arkadaşları arıyoruz.\nTeknopark İstanbul\nofisimizde mühendislik ve yeni nesil teknolojiler alanında fark yaratmaya çalışan ekibimizde yer alma fırsatını seninle paylaşıyoruz. Büyük bir heyecanla takıma katılmanı bekliyoruz!\nShow more\nShow less",
+  "skills": [
+    "Linux",
+    "Python"
+  ],
+  "applyUrl": "https://www.linkedin.com/jobs/view/4479028189",
+  "posted": "2026-10-13",
+  "experience": "5+ yıl",
+  "_collector": {
+    "searchId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "runId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "requestedCity": "Istanbul, Turkey",
+    "requestedTitle": "elektrik mühendiliği",
+    "requestedCities": [
+      "Istanbul, Turkey"
+    ],
+    "requestedTitles": [
+      "elektrik mühendiliği"
+    ],
+    "sourceJobId": "4479028189",
+    "descriptionAvailable": true,
+    "collectedAt": "2026-10-16T12:47:12.367662+00:00",
+    "mode": "accountless"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "ap-linkedin-4442703747",
+  "title": "Digital Design Engineer",
+  "company": "Pavotek",
+  "location": "İstanbul, Türkiye",
+  "type": "Office",
+  "source": "LinkedIn",
+  "salary": null,
+  "desc": "PAVO GROUP\n, which constantly follows technological developments, strives to be a pioneer by reflecting these developments to its products and services, adds value to itself and its environment, protects the core values with its team, and progresses with the aim of becoming a preferred business partner in the market without compromising its ethical rules, business ethics and honesty; Avionic Systems, Data Center & Infrastructure Solutions, Value-Added Industrial Structures and Information Technologies, Artificial Intelligence, Cyber Security, Ethernet Solutions, as a system integrator in the defense and civil sector, offers system solutions to its domestic and foreign strategic partners.\nPAVOTEK\ndesigns and manufactures first-class electronic and embedded system solutions to meet the needs of stakeholders. These solutions include IP network communication devices, communication/control systems, power transmission/distribution units, unmanned avionics systems and systems that make energy distribution efficient.\nRESPONSIBILITIES\nDevelop FPGA-based digital system architectures in compliance with company standards.\nTake an active role in simulation, testing, and debugging processes to ensure design correctness.\nExecute system integration and verification processes for designed hardware.\nPrepare comprehensive technical documentation for digital hardware designs throughout the project lifecycle.\nTake active responsibility across all phases of hardware development (analysis, design, test, integration).\nProvide on-site technical support and failure/root-cause analysis when required.\nMaintain and update design files using Git version control and track project tasks via JIRA.\nPerform travel-related duties for on-site verification, deployment, or technical meetings as needed.\nREQUIREMENTS\nBS or MS in Computer Science, Electronics Engineering, or other related engineering discipline with FPGA emphasis.\nGreat understanding of Digital Design Fundamentals.\nHands-on experience in Logic Design and Verification.\nVerilog/SystemVerilog or VHDL development with industry tools in an FPGA, SoC, or ASIC environment.\nFamiliarity with AMBA AXI Protocol Specifications.\nFamiliarity with Xilinx and/or Intel and/or Microchip architecture.\nFamiliarity with high-speed and low-latency logic design.\nAbility to write detailed, clear microarchitecture and verification reports.\nStrong problem-solving and debugging skills.\nFamiliarity with TCL Scripting Language.\nExperience with project management and environment.\nProficiency in using SVN/Git version control system and project management tools like JIRA.\nGood communication skills\nPREFERRED/PLUS IF YOU HAVE\nPrior experience in Ethernet-based FPGA projects.\nExperience in high-speed digital signal processing during the hardware design process.\nAdvanced knowledge and proficiency in FPGA development tools (e.g., AMD/Xilinx Vivado, Intel Quartus, etc.).\nHands-on experience working with high-speed interfaces such as PCIe, DDR, and USB.\nWHAT WE OFFER\nOpportunity to experience the defense industry ecosystem,\nFriendly and positive work culture,\nA business ecosystem where you can take initiative and responsibility,\nOpportunity to experience international projects and processes that offer opportunities for development,\nOne full day of academic leave for master's and doctoral students,\nExtended private health insurance policy,\nMeal card,\nUse of transportation assistance or shuttle service,\nPavo Group\noffers the opportunity to work with its team that makes a difference in the field of engineering and new generation technologies in its Istanbul Teknopark office; It provides equal opportunities to all candidates without discrimination based on race, ethnicity, religion, family relations, gender. However, it respects teammates working under variable conditions, process-oriented approaches and is looking for new teammates who can have the same motivation as Pavo Group.\nShow more\nShow less",
+  "skills": [
+    "Embedded Systems"
+  ],
+  "applyUrl": "https://www.linkedin.com/jobs/view/4442703747",
+  "posted": "2026-09-15",
+  "experience": "Belirtilmemiş",
+  "_collector": {
+    "searchId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "runId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "requestedCity": "Istanbul, Turkey",
+    "requestedTitle": "elektrik mühendiliği",
+    "requestedCities": [
+      "Istanbul, Turkey"
+    ],
+    "requestedTitles": [
+      "elektrik mühendiliği"
+    ],
+    "sourceJobId": "4442703747",
+    "descriptionAvailable": true,
+    "collectedAt": "2026-10-16T12:19:13.054810+00:00",
+    "mode": "accountless"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "id": "ap-linkedin-4457795912",
+  "title": "Üretim Takip Sistemleri (MES) Mühendisi",
+  "company": "SKYDAGGER",
+  "location": "İstanbul",
+  "type": "Office",
+  "source": "LinkedIn",
+  "salary": null,
+  "desc": "Ekibimizde görev almak üzere; yazılım mimarisi, tasarım, geliştirme, test ve entegrasyon süreçlerinde aktif sorumluluk üstlenecek, güvenli ve sürdürülebilir yazılım geliştirme prensiplerini benimseyen Kıdemli Yazılım Uzmanı arıyoruz.\nAranan Nitelikler\nBilgisayar, Yazılım, Elektrik-Elektronik, Mekatronik veya Endüstri Mühendisliği lisans mezunu olmak,\nEn az 3 yıl uygulama geliştirme deneyimine sahip olmak; masaüstü veya web uygulamalarından en az birinde derin bilgi ve deneyim sahibi olmak,\nREST API tasarımı ve geliştirme konusunda deneyimli olmak (FastAPI, Django, Flask),\nLinux sunucu yönetimi ve servis işletimi konusunda deneyimli olmak,\nİlişkisel veritabanı tasarımı ve SQL konusunda bilgi sahibi olmak (PostgreSQL tercih sebebidir),\nGit ile sürüm kontrolü, kod inceleme kültürü ve otomatik test yazma konusunda deneyimli olmak (pytest vb.),\nTCP/IP, UDP, socket programming ve haberleşme protokolleri konusunda bilgi sahibi olmak,\nYazılım Geliştirme Yaşam Döngüsü (SDLC) süreçlerine hâkim olmak,\nYazılım seviyesinde güvenlik risklerinin değerlendirilmesi konusunda farkındalık sahibi olmak,\nTeknik dokümantasyon hazırlayabilecek ve teknik literatürü takip edebilecek seviyede İngilizce bilgisine sahip olmak,\nÜretim/atölye ortamında çalışan sistemlerin gereksinimlerini anlayabilmek; kesintiye dayanıklılık, operatör ergonomisi ve veri kaybetmeme gibi konularda farkındalık sahibi olmak.\nTercih Edilen Nitelikler\nMES / SCADA / ERP entegrasyonu veya kalite kayıt sistemleri (e-DHR, izlenebilirlik) konusunda deneyimli olmak,\nHavacılık ve savunma sanayii süreçleri hakkında bilgi sahibi olmak (AS/EN 9100, ISO 9001, FAI, NCR/uygunsuzluk yönetimi, konfigürasyon yönetimi),\nKonteynerizasyon ve dağıtım süreçleri konusunda deneyimli olmak (Docker, CI/CD),\nKimlik doğrulama ve yetkilendirme konularında bilgi sahibi olmak (JWT, RBAC, parola güvenliği, Argon2, denetim izi/audit log),\nOffline-first ve senkronizasyon tasarımı konusunda deneyimli olmak.\nGörev ve Sorumluluklar\nCihaz ve test entegrasyonlarını geliştirmek,\nERP, PLM ve kalite sistemleriyle entegrasyon arayüzlerini tasarlamak ve uygulamak,\nSürüm çıkarma ve kurulum paketleme süreçlerini yürütmek,\nYedekleme, erişim yetkileri ve veri saklama politikalarını uygulamak,\nÜretim, montaj, test ve kalite adımlarını sahada gözlemleyerek dijital iş akışlarına dönüştürmek,\nÜretim, kalite, tasarım ve saha ekipleriyle gereksinim toplamak; süreç sahipleriyle kabul kriterlerini yazılı hâle getirmek.\nYetkinlikler\nGüçlü analitik düşünme ve problem çözme becerisi,\nKarmaşık teknik problemlerde sistematik hata analizi yapabilme,\nTemiz, okunabilir, test edilebilir ve sürdürülebilir kod geliştirme yaklaşımı,\nSecurity by Design yaklaşımını benimseme,\nERP, PLM ve kalite sistemleriyle entegrasyon arayüzleri geliştirme,\nOffline çalışma, senkronizasyon ve çökme sonrası kurtarma gibi dayanıklılık tasarımı konularında yetkinlik,\nÜretim süreçleri konusunda bilgi sahibi olma: iş emri, rota, operasyon, tork/ölçüm kayıtları, ara kontrol ve son muayene.\nShow more\nShow less",
+  "skills": [
+    "PostgreSQL",
+    "Django",
+    "Flask",
+    "FastAPI",
+    "Docker",
+    "CI/CD",
+    "Linux",
+    "SQL",
+    "SCADA",
+    "ISO 9001",
+    "ERP"
+  ],
+  "applyUrl": "https://www.linkedin.com/jobs/view/4457795912",
+  "posted": "2026-08-27",
+  "experience": "3+ yıl",
+  "_collector": {
+    "searchId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "runId": "old-3a91c0ff7f8d26d7cdd313a0",
+    "requestedCity": "Istanbul, Turkey",
+    "requestedTitle": "elektrik mühendiliği",
+    "requestedCities": [
+      "Istanbul, Turkey"
+    ],
+    "requestedTitles": [
+      "elektrik mühendiliği"
+    ],
+    "sourceJobId": "4457795912",
+    "descriptionAvailable": true,
+    "collectedAt": "2026-10-16T13:45:57.491467+00:00",
+    "mode": "accountless"
+  }
+}

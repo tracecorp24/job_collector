@@ -1,0 +1,210 @@
+"""Persistent cache and a SQLite coordinator shared by web and CLI processes."""
+import hashlib
+import json
+import math
+import time
+import uuid
+from contextlib import contextmanager
+from datetime import timezone
+from email.utils import parsedate_to_datetime
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.dialects.sqlite import insert
+
+from . import config, db
+from .models import DetailCache, SourcePolicy, Job
+
+
+def retry_after_seconds(value, now=None):
+    """RFC 9110 delay-seconds / HTTP-date. Invalid values return None."""
+    if value is None or not str(value).strip():
+        return None
+    value = str(value).strip()
+    try:
+        if value.isascii() and value.isdigit():
+            seconds = float(int(value))
+        else:
+            date = parsedate_to_datetime(value)
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=timezone.utc)
+            seconds = max(0.0, date.timestamp() - (time.time() if now is None else now))
+        return seconds if math.isfinite(seconds) else None
+    except (ValueError, TypeError, OverflowError):
+        return None
+
+
+def fingerprint(raw):
+    card = [str(v).strip() for v in raw.get("card_lines", [])]
+    payload = json.dumps([card, raw.get("posted") or ""], ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+class SourcePaused(RuntimeError):
+    def __init__(self, state):
+        self.state = state
+        super().__init__(state.get("message") or "Kaynak için tarama duraklatıldı.")
+
+
+class Coordinator:
+    def __init__(self, source="linkedin", interval=None, engine=None, clock=None, sleeper=None):
+        self.source = source
+        self.engine = engine or db.engine
+        self.interval = max(config.MIN_REQUEST_INTERVAL, config.REQUEST_INTERVAL if interval is None else interval)
+        self.clock = clock or time.time
+        self.sleep = sleeper or time.sleep
+        SourcePolicy.__table__.create(self.engine, checkfirst=True)
+
+    @contextmanager
+    def transaction(self):
+        with self.engine.connect() as connection:
+            connection.exec_driver_sql("BEGIN IMMEDIATE")
+            try:
+                connection.execute(text("INSERT OR IGNORE INTO source_policy (source, next_request_at, lease_owner, lease_until, blocked_until, manual_pause, reason, violation_streak, last_violation_at, last_success_at, interval_floor) VALUES (:source,0,'',0,0,0,'',0,0,0,:floor)"), {"source":self.source,"floor":config.MIN_REQUEST_INTERVAL})
+                yield connection
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
+
+    def row(self, connection):
+        return dict(connection.execute(text("SELECT * FROM source_policy WHERE source=:source"), {"source":self.source}).mappings().one())
+
+    def state(self):
+        with self.transaction() as connection:
+            return self.describe(self.row(connection))
+
+    def describe(self, row):
+        now = self.clock()
+        remaining = max(0.0, row["blocked_until"] - now)
+        paused = remaining > 0
+        message = row["reason"] if paused else "Kaynak erişime hazır."
+        if paused and remaining > 0:
+            message += f" En az {math.ceil(remaining)} saniye beklenmeli."
+        if paused:
+            message += " Süre dolunca sistem otomatik devam edecek."
+        return {"source":self.source,"paused":paused,"manual_pause":False,"automatic_resume":True,
+                "blocked_until":row["blocked_until"],"remaining_seconds":math.ceil(remaining),
+                "reason":row["reason"],"message":message,"status_code":row["status_code"],
+                "violation_streak":row["violation_streak"],"interval_floor":max(config.MIN_REQUEST_INTERVAL,row["interval_floor"]),
+                "acknowledge_allowed":False}
+
+    def ensure_allowed(self):
+        state = self.state()
+        if state["paused"]:
+            raise SourcePaused(state)
+        return state
+
+    def acquire(self, should_stop=lambda:False, emit=None):
+        announced = False
+        while not should_stop():
+            now = self.clock()
+            with self.transaction() as connection:
+                row = self.row(connection)
+                state = self.describe(row)
+                if state["paused"]:
+                    raise SourcePaused(state)
+                wait = max(0.0, row["next_request_at"] - now, row["lease_until"] - now if row["lease_owner"] else 0.0)
+                if wait <= 0:
+                    owner = uuid.uuid4().hex
+                    interval = max(self.interval, config.MIN_REQUEST_INTERVAL, row["interval_floor"])
+                    connection.execute(text("UPDATE source_policy SET lease_owner=:owner, lease_until=:lease, next_request_at=:next, interval_floor=:floor WHERE source=:source"),
+                                       {"owner":owner,"lease":now+config.NETWORK_LEASE_SECONDS,"next":now+interval,"floor":max(config.MIN_REQUEST_INTERVAL,row["interval_floor"]),"source":self.source})
+                    return owner
+            if not announced and emit:
+                emit("shared_rate_wait", {"source":self.source,"seconds":round(wait,3),"reason":"Web ve CLI için ortak istek sırası bekleniyor."})
+                announced = True
+            self.sleep(min(0.25, wait))
+        return None
+
+    def release(self, owner):
+        with self.transaction() as connection:
+            connection.execute(text("UPDATE source_policy SET lease_owner='', lease_until=0 WHERE source=:source AND lease_owner=:owner"), {"source":self.source,"owner":owner})
+
+    def success(self):
+        with self.transaction() as connection:
+            row = self.row(connection)
+            # One successful request must not immediately undo throttling.
+            stable = self.clock() - row["last_violation_at"] > config.ACCESS_FAILURE_WINDOW_SECONDS
+            connection.execute(text("UPDATE source_policy SET last_success_at=:now, manual_pause=0, violation_streak=:streak, interval_floor=:floor WHERE source=:source"),
+                {"source":self.source,"now":self.clock(), "streak":0 if stable else row["violation_streak"],
+                 "floor":max(config.MIN_REQUEST_INTERVAL, row["interval_floor"]*.95) if stable else row["interval_floor"]})
+
+    def pause(self, reason, status_code=None, retry_after=None, hard=False, violation=True, minimum=None):
+        now = self.clock()
+        requested = retry_after_seconds(retry_after, now)
+        with self.transaction() as connection:
+            row = self.row(connection)
+            streak = row["violation_streak"]
+            if violation:
+                streak = streak + 1 if now-row["last_violation_at"] <= config.ACCESS_FAILURE_WINDOW_SECONDS else 1
+            escalated = hard or streak >= config.ACCESS_FAILURE_THRESHOLD
+            fallback = min(config.MAX_ACCESS_PAUSE_SECONDS,
+                config.RETRY_BASE_COOLDOWN * 2 ** min(max(0, streak-1), 16))
+            if escalated:
+                fallback = max(fallback, config.ACCESS_PAUSE_SECONDS)
+            delay = max(0.0, requested if requested is not None else fallback, minimum or 0.0)
+            if escalated:
+                delay = max(delay, fallback)
+            deadline = max(row["blocked_until"], now+delay)
+            floor = min(120.0, max(config.MIN_REQUEST_INTERVAL, row["interval_floor"]) * (1.5 if violation else 1))
+            connection.execute(text("UPDATE source_policy SET blocked_until=:deadline, manual_pause=0, interval_floor=:floor, reason=:reason, status_code=:status, violation_streak=:streak, last_violation_at=:last WHERE source=:source"),
+                               {"deadline":deadline,"floor":floor,"reason":reason,"status":status_code,"streak":streak,
+                                "last":now if violation else row["last_violation_at"],"source":self.source})
+            return self.describe(self.row(connection))
+
+    def acknowledge(self):
+        with self.transaction() as connection:
+            row = self.row(connection)
+            state = self.describe(row)
+            if state["remaining_seconds"] > 0:
+                raise SourcePaused(state)
+            connection.execute(text("UPDATE source_policy SET manual_pause=0, blocked_until=0, reason='', status_code=NULL, violation_streak=0 WHERE source=:source"), {"source":self.source})
+            return self.describe(self.row(connection))
+
+
+class Details:
+    def __init__(self, engine=None, clock=None):
+        self.engine = engine or db.engine
+        self.factory = sessionmaker(bind=self.engine)
+        self.clock = clock or time.time
+        DetailCache.__table__.create(self.engine, checkfirst=True)
+
+    def get(self, raw, force=False):
+        if force:
+            return None
+        with self.factory() as session:
+            key = (config.SOURCE_LINKEDIN, raw["external_id"])
+            cached = session.get(DetailCache,key)
+            if cached is None:
+                job = session.query(Job).filter_by(source=key[0],external_id=key[1]).first()
+                if job and job.description:
+                    try:
+                        previous = json.loads(job.raw or "{}")
+                        stamp = previous.get("detail_fetched_at")
+                        if stamp is None and job.scraped_at:
+                            stamp = job.scraped_at.replace(tzinfo=timezone.utc).timestamp()
+                        if stamp is not None:
+                            cached = DetailCache(source=key[0],external_id=key[1],fingerprint=fingerprint(previous),
+                                                 description=job.description,status=200,fetched_at=stamp,expires_at=stamp+config.DETAIL_CACHE_TTL_SECONDS)
+                            session.execute(insert(DetailCache).values(source=cached.source, external_id=cached.external_id,
+                                fingerprint=cached.fingerprint, description=cached.description, status=cached.status,
+                                fetched_at=cached.fetched_at, expires_at=cached.expires_at).on_conflict_do_nothing())
+                            session.commit()
+                            cached = session.get(DetailCache, key)
+                    except (ValueError,TypeError):
+                        cached = None
+            if cached is None or cached.expires_at <= self.clock() or cached.fingerprint != fingerprint(raw):
+                return None
+            return {"description":cached.description,"status":cached.status,"fetched_at":cached.fetched_at,"expires_at":cached.expires_at}
+
+    def put(self, raw, description, status=200):
+        now = self.clock()
+        ttl = config.DETAIL_CACHE_TTL_SECONDS if status == 200 else config.DETAIL_MISSING_TTL_SECONDS
+        with self.factory() as session:
+            values = dict(source=config.SOURCE_LINKEDIN,external_id=raw["external_id"],fingerprint=fingerprint(raw),
+                          description=description or "",status=status,fetched_at=now,expires_at=now+ttl)
+            statement = insert(DetailCache).values(**values)
+            session.execute(statement.on_conflict_do_update(index_elements=["source", "external_id"],
+                set_={k:v for k,v in values.items() if k not in ("source", "external_id")}))
+            session.commit()
+        return {"description":description,"status":status,"fetched_at":now,"expires_at":now+ttl}
