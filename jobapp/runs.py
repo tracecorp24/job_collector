@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .models import SearchRun, SearchTask, TaskJob, SearchEvent
 from sqlalchemy import func
-from . import audit
+from . import audit, config
 from .transport import Coordinator
 
 lock = threading.RLock()
@@ -220,7 +220,8 @@ def worker(server, run_id):
                                 should_stop=lambda: server.state.stop_flag or getattr(server.state, "task_stop_id", None) == task_id,
                                 checkpoint=checkpoint, resume_folder=folder or None, search_id=task_id, run_id=run_id, attempt_id=attempt_id,
                                 mode=options.get("mode", "incremental"), refresh_details=options.get("refresh_details", False),
-                                search_options={k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known") if options.get(k)})
+                                search_options=dict({k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known") if options.get(k)},
+                                    defer_details=options.get("defer_details", config.DEFER_DETAILS)))
             with server.SessionLocal() as session:
                 run = session.get(SearchRun, run_id)
                 stats = json.loads(run.stats)

@@ -137,3 +137,4 @@ main{padding:1.1rem 1.2rem 2rem}
 dialog{padding:1.1rem}
 .watch-form{padding:.95rem;gap:.55rem}
 @media(max-width:760px){.wait-banner,.status-bar{width:calc(100% - 1.6rem)}.wait-clock>span{font-size:1.3rem}main{padding:.9rem .8rem 1.5rem}}
+.badge.pending{color:#ffd08a;background:#3b3024;border:1px dashed #76603b}

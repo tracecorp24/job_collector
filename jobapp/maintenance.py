@@ -62,5 +62,6 @@ def storage(session):
         backup = json.loads(status_file.read_text(encoding="utf-8")) if status_file.exists() else None
     except (OSError, ValueError):
         backup = {"ok": False, "message": "Yedek durum dosyası okunamadı."}
-    return dict(db_bytes=size, counts=counts, maintenance=json.loads(row.value) if row else None, offsite_backup=backup,
+    from .details import pending_count
+    return dict(db_bytes=size, counts=counts, details_pending=pending_count(session), maintenance=json.loads(row.value) if row else None, offsite_backup=backup,
                 event_retention_days=config.EVENT_RETENTION_DAYS, changes_retention_days=config.CHANGES_RETENTION_DAYS)

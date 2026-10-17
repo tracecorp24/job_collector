@@ -29,6 +29,8 @@ MAX_RETRIES = int(_env("JOBAPP_MAX_RETRIES", "10"))
 RETRY_BASE_COOLDOWN = float(_env("JOBAPP_RETRY_BASE_COOLDOWN", "60.0"))
 DEFAULT_LOCATION = _env("JOBAPP_DEFAULT_LOCATION", "Istanbul, Turkey")
 MIN_REQUEST_INTERVAL = max(1.0, float(_env("JOBAPP_MIN_REQUEST_INTERVAL", "6.0")))
+# Önce kart: taramada yeni ilanın detayı istenmez, arka planda tamamlanır (jobapp/details.py).
+DEFER_DETAILS = _env("JOBAPP_DEFER_DETAILS", "1") not in ("0", "false", "False")
 # İstek aralığına eklenen rastgele pay (0.3 = %0–30); düzenli ritim bot gibi görünür.
 REQUEST_JITTER = max(0.0, float(_env("JOBAPP_REQUEST_JITTER", "0.3")))
 DETAIL_CACHE_TTL_SECONDS = max(0.0, float(_env("JOBAPP_DETAIL_CACHE_TTL_SECONDS", "86400")))

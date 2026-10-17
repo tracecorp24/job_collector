@@ -428,7 +428,9 @@ class AccountlessScraper:
             new_on_page = 0
             stopped_early = False
             stop_when_known = self.search_options.get("stop_when_known")
-            known = self.details.known([r["external_id"] for c in cards if (r := self._card(c))]) if stop_when_known else set()
+            # Önce kart: yeni ilanın detayı burada istenmez, arka planda tamamlanır (jobapp/details.py).
+            defer_details = self.search_options.get("defer_details") and not self.refresh_details
+            known = self.details.known([r["external_id"] for c in cards if (r := self._card(c))]) if stop_when_known or defer_details else set()
             unknown_on_page = 0
             for card in cards:
                 if self.should_stop():
@@ -456,11 +458,16 @@ class AccountlessScraper:
                 if job_id not in known:
                     unknown_on_page += 1
                 cached = self.details.get(raw, force=self.refresh_details, allow_stale=job_id in known)
+                deferred = cached is None and defer_details and job_id not in known
+                if deferred:
+                    cached = {"description": "", "status": 200, "fetched_at": None}
+                    self.page_report["deferred_details"] = self.page_report.get("deferred_details", 0) + 1
                 if self.emit:
-                    self.emit("cache_hit" if cached else "cache_miss", {"external_id":job_id,
+                    self.emit("detail_deferred" if deferred else "cache_hit" if cached else "cache_miss", {"external_id":job_id,
                               "forced":self.refresh_details, "fetched_at":cached["fetched_at"] if cached else None})
-                cache_key = "cache_hits" if cached else "cache_misses"
-                self.page_report[cache_key] = self.page_report.get(cache_key, 0) + 1
+                if not deferred:
+                    cache_key = "cache_hits" if cached else "cache_misses"
+                    self.page_report[cache_key] = self.page_report.get(cache_key, 0) + 1
                 if cached is None:
                     detail = self._get(raw["url"])
                     if self.should_stop():
@@ -485,6 +492,8 @@ class AccountlessScraper:
                     continue
                 raw.update(description=cached["description"], detail_fetched_at=cached["fetched_at"],
                            search_term=keyword, search_location=location)
+                if deferred:
+                    raw["detail_pending"] = True
                 outcome = on_job(raw)
                 if outcome == "failed":
                     save_checkpoint()

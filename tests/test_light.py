@@ -51,6 +51,7 @@ class FullLightTests(unittest.TestCase):
                      patch.object(config, "ACCOUNTLESS_OUTPUT_DIR", str(Path(self.tmp.name) / "searches")),
                      patch.object(AccountlessScraper, "REQUEST_INTERVAL", 0),
                      patch.object(config, "MIN_REQUEST_INTERVAL", 0),
+                     patch.object(config, "DEFER_DETAILS", False),  # eski yol; ertelenen yol: test_details
                      patch.object(server.state, "running", False)):
             item.start()
             self.addCleanup(item.stop)

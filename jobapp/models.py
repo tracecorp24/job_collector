@@ -92,7 +92,12 @@ class Job(Base):
             offerings = json.loads(self.offerings or "[]")
         except (ValueError, TypeError):
             offerings = []
+        try:
+            detail_pending = bool(json.loads(self.raw or "{}").get("detail_pending"))
+        except (ValueError, TypeError, AttributeError):
+            detail_pending = False
         data = {
+            "detail_pending": detail_pending,
             "id": self.id,
             "source": self.source,
             "external_id": self.external_id,
