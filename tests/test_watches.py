@@ -30,6 +30,23 @@ class GuestCardTests(unittest.TestCase):
         parsed = parse.parse_guest_card(["Dev", "Firma", "İstanbul, Türkiye (Hibrit)"])
         self.assertEqual((parsed["location"], parsed["workplace_type"]), ("İstanbul, Türkiye", "Hybrid"))
 
+    def test_real_titles_with_noise_words_are_kept(self):
+        for title in ("Applied Scientist", "Applied AI Engineer", "Incident Response Analyst",
+                      "Emergency Response Coordinator", "Bağlantı Elemanı", "Promoted Products Manager",
+                      "Network Connection Engineer", "Okuldan Mezun Stajyer"):
+            parsed = parse.parse_guest_card([title, "Firma", "İstanbul"])
+            self.assertTrue(parsed["quality_ok"], title)
+            self.assertEqual(parsed["title"], title)
+
+    def test_empty_or_badge_only_guest_title_is_rejected(self):
+        for lines in ([], ["", "Firma", "İstanbul"], ["Promoted", "Firma", "İstanbul"], ["Tanıtıldı", "F", "L"]):
+            self.assertFalse(parse.parse_guest_card(lines)["quality_ok"], lines)
+
+    def test_logged_in_card_still_filters_noise_lines(self):
+        parsed = parse.parse_card(["Promoted", "Data Engineer", "Firma", "Ankara, Türkiye"])
+        self.assertEqual((parsed["title"], parsed["company"]), ("Data Engineer", "Firma"))
+        self.assertFalse(parse.parse_card(["2 former employees work here"])["quality_ok"])
+
     def test_legacy_import_lines_still_use_meaning_based_parser(self):
         raw = {"external_id": "abc", "card_lines": ["T", "T with verification", "Şirket", "Ankara, Türkiye"]}
         self.assertFalse(parse.is_guest_card(raw))
@@ -181,6 +198,33 @@ class WatchTests(unittest.TestCase):
         db._repair_guest_card_fields()
         with self.factory() as session:
             self.assertEqual(session.query(Job).filter_by(external_id="9").one().location, "elle değişti")
+
+    def test_startup_repair_restores_hidden_guest_titles_once(self):
+        def raw(i, lines):
+            return json.dumps({"external_id": str(i), "url": f"https://www.linkedin.com/jobs/view/{i}", "card_lines": lines})
+        with self.factory() as session:
+            session.add(Job(source=config.SOURCE_LINKEDIN, external_id="21", title="Applied Scientist", company="",
+                            location="", quality_ok=False, raw=raw(21, ["Applied Scientist", "Amazon", "İstanbul, Türkiye (Hibrit)"])))
+            session.add(Job(source=config.SOURCE_LINKEDIN, external_id="22", title="", company="",
+                            location="", quality_ok=False, raw=raw(22, ["", "Firma", "Ankara"])))
+            session.add(Job(source=config.SOURCE_LINKEDIN, external_id="23", title="Promoted", company="",
+                            location="", quality_ok=False, raw=json.dumps({"external_id": "x23", "card_lines": ["Promoted"]})))
+            session.query(Setting).filter_by(key="repair_guest_noise_titles_v1").delete()
+            session.commit()
+        db._repair_guest_noise_titles()
+        with self.factory() as session:
+            job = session.query(Job).filter_by(external_id="21").one()
+            self.assertTrue(job.quality_ok)
+            self.assertEqual((job.title, job.company, job.location), ("Applied Scientist", "Amazon", "İstanbul, Türkiye"))
+            self.assertFalse(session.query(Job).filter_by(external_id="22").one().quality_ok)
+            self.assertFalse(session.query(Job).filter_by(external_id="23").one().quality_ok)
+            self.assertEqual(session.query(Job).count(), 3)
+            self.assertIsNotNone(session.get(Setting, "repair_guest_noise_titles_v1"))
+            job.quality_ok = False
+            session.commit()
+        db._repair_guest_noise_titles()
+        with self.factory() as session:
+            self.assertFalse(session.query(Job).filter_by(external_id="21").one().quality_ok)
 
 
 if __name__ == "__main__":
