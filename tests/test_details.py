@@ -4,8 +4,8 @@ import unittest
 from unittest.mock import patch
 import test_light
 from test_light import response, card, DETAIL
-from jobapp import config, details, pipeline, server
-from jobapp.models import Job
+from jobapp import audit, config, details, pipeline, server
+from jobapp.models import Job, SearchEvent
 from jobapp.scraper.accountless import AccountlessScraper
 from jobapp.transport import Coordinator
 
@@ -104,6 +104,57 @@ class DeferredDetailTests(unittest.TestCase):
         job, raw = self.job()
         self.assertTrue(raw["detail_pending"])
         self.assertNotIn("detail_attempts", raw)
+
+    def events(self, run_id):
+        with self.factory() as session:
+            return [(e.kind, e.level, json.loads(e.data)) for e in
+                    session.query(SearchEvent).filter_by(run_id=run_id).order_by(SearchEvent.id)]
+
+    def filler_events(self, run_id):
+        return [e for e in self.events(run_id) if e[2].get("source") == "detail_filler"]
+
+    def test_filler_requests_are_recorded_on_the_jobs_run(self):
+        self.deferred()
+        run_id = self.job()[1]["run_id"]
+        self.assertTrue(run_id)
+        self.fill(response(DETAIL))
+        events = self.filler_events(run_id)
+        self.assertEqual([e[0] for e in events], ["request_started", "request_finished", "detail_filled"])
+        self.assertEqual(events[1][2]["status"], 200)
+        self.assertEqual(events[0][2]["search_id"], self.job()[1]["search_id"])
+        with self.factory() as session:
+            metrics = audit.report(session, run_id)["metrics"]
+        self.assertEqual((metrics["detail_requests"], metrics["rate_429"]), (1, 0.0))
+
+    def test_rate_limit_during_fill_records_source_pause(self):
+        self.deferred()
+        run_id = self.job()[1]["run_id"]
+        with self.assertLogs("linko.audit", "WARNING") as logs:
+            self.fill(response(status=429, **{"Retry-After": "120"}))
+        events = self.filler_events(run_id)
+        self.assertEqual([e[0] for e in events], ["request_started", "request_finished", "source_paused"])
+        kind, level, data = events[-1]
+        self.assertEqual((level, data["status_code"]), ("warning", 429))
+        self.assertGreater(data["remaining_seconds"], 0)
+        self.assertTrue(data["reason"])
+        self.assertTrue(any("source_paused" in line for line in logs.output))
+        with self.factory() as session:
+            metrics = audit.report(session, run_id)["metrics"]
+        # 2 arama sayfası (200) + 1 detay isteği (429)
+        self.assertEqual((metrics["detail_requests"], metrics["rate_429"], metrics["source_pauses"]), (1, 0.3333, 1))
+
+    def test_job_without_run_uses_system_run_id(self):
+        self.deferred()
+        with self.factory() as session:
+            job = session.query(Job).one()
+            raw = json.loads(job.raw)
+            raw.pop("run_id"), raw.pop("search_id")
+            job.raw = json.dumps(raw)
+            session.commit()
+        self.fill(response(status=404))
+        self.assertEqual([e[0] for e in self.events(details.SYSTEM_RUN)],
+                         ["request_started", "request_finished", "detail_missing"])
+        self.assertEqual(self.client.get("/api/runs").status_code, 200)
 
 
 if __name__ == "__main__":
