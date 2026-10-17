@@ -222,3 +222,49 @@ dialog{background:var(--surface);border-color:var(--border)}
   .list-view .job-card{grid-template-columns:1fr}
   .wait-banner{flex-wrap:nowrap;align-items:center}.wait-banner small{display:none}.wait-clock{flex-direction:column;align-items:flex-end;gap:0}.wait-clock small{order:0}
 }
+
+/* 2026-10-17d: kullanıcı dostu gezinme — sade menü, durum göstergesi, yeni ilanlar, karar odaklı ilan detayı */
+.header{flex-wrap:nowrap}
+.header .brand{margin-right:auto}
+.header nav{flex-wrap:nowrap}
+.header nav button{font-size:.86rem;padding:.45rem .9rem}
+.header nav button[data-tab][aria-current="page"]{background:transparent;border-color:transparent;color:#fff;box-shadow:inset 0 -2px 0 var(--accent);border-radius:0}
+.header nav>button:not(.primary){background:transparent;border-color:transparent;color:var(--muted)}
+.header nav>button:not(.primary):hover{color:var(--text);background:var(--raised)}
+.nav-system{background:transparent;border-color:var(--border);color:var(--muted)}
+.nav-system.is-current,.nav-system[aria-expanded="true"]{color:var(--text);border-color:var(--accent)}
+.nav-more-menu{min-width:230px;padding:.35rem}
+.menu-label{margin:.45rem .8rem .15rem;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.menu-label:first-child{margin-top:.2rem}
+.header nav .nav-more-menu button[aria-current="page"]{color:var(--accent);background:#17263d}
+.sys-pill{min-height:32px;padding:.25rem .8rem;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;background:#14304a;border-color:#2e5f8f;color:#cfe3ff}
+.sys-pill::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pillPulse 1.6s ease-in-out infinite}
+.sys-pill[data-state=wait]{background:#2b2414;border-color:#6b5427;color:#ffe2a8}.sys-pill[data-state=wait]::before{background:var(--warn);animation:none}
+.sys-pill:hover{filter:brightness(1.15)}
+@keyframes pillPulse{50%{opacity:.35}}
+body[data-view=jobs] #wait-banner,body[data-view=jobs] #status-bar,body[data-view=watches] #status-bar{display:none!important}
+.new-strip{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:0 0 .8rem;padding:.6rem .8rem;border:1px solid #23466e;background:linear-gradient(90deg,#132a45,#111a27);border-radius:12px;font-size:.88rem}
+.new-strip strong{color:#fff}
+.new-strip .actions{gap:.35rem}
+.badge.new{background:#3b7bf0;color:#fff;font-weight:700}
+.job-card.seen .job-open{color:#aab6c7;font-weight:600}
+.job-card.seen .company-avatar{opacity:.6}
+.job-card.seen .badge.new{display:none}
+.job-hero{display:flex;gap:.8rem;align-items:center;margin-bottom:.9rem}
+.job-hero .company{font-size:1rem;margin:0}.job-hero .muted{margin:0;font-size:.85rem}
+.job-hero .company-avatar{flex-basis:46px;height:46px;font-size:1.15rem}
+.job-primary{margin:.2rem 0 1rem}
+.job-primary .button.primary{font-size:.95rem;padding:.55rem 1.1rem}
+.job-facts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.5rem;margin:0 0 .9rem}
+.job-facts-grid div{background:var(--raised);border-radius:10px;padding:.55rem .7rem}
+.job-facts-grid dt{font-size:.7rem;color:var(--muted)}
+.job-facts-grid dd{margin:.1rem 0 0;font-weight:600;font-size:.9rem}
+.job-summary{background:#122338;border:1px solid #23466e;border-radius:12px;padding:.8rem 1rem;margin:.9rem 0}
+.job-summary h3{margin:0 0 .3rem;font-size:.85rem;color:var(--accent)}.job-summary p{margin:0;line-height:1.6}
+.job-section h3{font-size:.95rem}
+.job-meta-more summary{cursor:pointer;color:var(--muted);font-size:.84rem}
+@media(max-width:760px){
+  .sys-pill{font-size:.72rem;padding:.2rem .65rem;max-width:58vw;overflow:hidden;text-overflow:ellipsis}
+  .new-strip{font-size:.82rem}
+  .new-strip .actions{width:100%}.new-strip .actions button{flex:1}
+}
