@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const debounce = (fn, ms=350) => { let timer; return (...args) => {clearTimeout(timer); timer=setTimeout(()=>fn(...args),ms);}; };
 const names = {category:'Genel kategori',seniority:'Kıdem',workplace:'Çalışma biçimi',location:'Konum',company:'Şirket',skills:'Yetenek',flag:'İlan değerlendirmesi',backend:'Analiz yöntemi',source:'Kaynak',search_term:'Aranan unvan',search_location:'Aranan konum',search:'Arama',semantic:'Anlama göre arama',title:'Unvanda',description:'Açıklamada',company_text:'Şirket adında',phrase:'Tam ifade',exclude:'Hariç kelimeler',exclude_skills:'Hariç yetenekler',skill_mode:'Yetenek koşulu',salary_min:'En az maaş',salary_max:'En çok maaş',currency:'Para birimi',period:'Maaş dönemi',has_salary:'Maaş bilgisi',experience_min:'En az deneyim',experience_max:'En çok deneyim',experience_missing:'Deneyim bilinmiyor',run_id:'Çalışma',task_id:'Arama',discovery:'Bulunma türü',has_description:'Açıklama',has_summary:'Özet',has_embedding:'Eşleştirme verisi',quality:'Ayrıştırma kalitesi',visibility:'Görünürlük',posted_from:'Yayın başlangıcı',posted_to:'Yayın bitişi',posted_missing:'Yayın tarihi bilinmiyor',created_from:'İlk eklenme başlangıcı',created_to:'İlk eklenme bitişi',scraped_from:'Son tarama başlangıcı',scraped_to:'Son tarama bitişi'};
-const translations = {Engineering:'Mühendislik / Yazılım',Data:'Veri ve yapay zekâ',Design:'Tasarım',Product:'Ürün',Finance:'Finans',Sales:'Satış',Marketing:'Pazarlama',HR:'İnsan kaynakları',Operations:'Operasyon',Other:'Diğer',Intern:'Stajyer',Junior:'Başlangıç',Mid:'Orta seviye',Senior:'Kıdemli',Lead:'Lider',Manager:'Yönetici',Unknown:'Belirtilmemiş',Remote:'Uzaktan',Hybrid:'Hibrit',Onsite:'Ofiste',Office:'Ofiste',rules:'Hızlı analiz',local:'Yerel yapay zekâ',llm:'Bulut yapay zekâ',claude:'Bulut yapay zekâ',scam:'Şüpheli ilan',ghost:'Aktifliği şüpheli',clean:'İşaretlenmemiş',__missing__:'Belirtilmemiş',queued:'Bekliyor',running:'Çalışıyor',pausing:'Duraklatılıyor',paused:'Duraklatıldı',stopping:'Durduruluyor',stopped:'Durduruldu',cancelling:'İptal ediliyor',cancelled:'İptal edildi',finished:'Tamamlandı',error:'Hata oluştu',active:'Aktif',trash:'Çöp kutusu',all:'Tümü',any:'Herhangi biri',valid:'Geçerli',invalid:'Eksik ayrıştırılan',new:'İlk kez eklenenler',month:'Aylık',year:'Yıllık',hour:'Saatlik'};
+const translations = {Engineering:'Mühendislik / Yazılım',Data:'Veri ve yapay zekâ',Design:'Tasarım',Product:'Ürün',Finance:'Finans',Sales:'Satış',Marketing:'Pazarlama',HR:'İnsan kaynakları',Operations:'Operasyon',Other:'Diğer',Intern:'Stajyer',Junior:'Başlangıç',Mid:'Orta seviye',Senior:'Kıdemli',Lead:'Lider',Manager:'Yönetici',Unknown:'Belirtilmemiş',Remote:'Uzaktan',Hybrid:'Hibrit',Onsite:'Ofiste',Office:'Ofiste',rules:'Hızlı analiz',local:'Yerel yapay zekâ',llm:'Bulut yapay zekâ',claude:'Bulut yapay zekâ',groq:'Groq yapay zekâ',scam:'Şüpheli ilan',ghost:'Aktifliği şüpheli',clean:'İşaretlenmemiş',__missing__:'Belirtilmemiş',queued:'Bekliyor',running:'Çalışıyor',pausing:'Duraklatılıyor',paused:'Duraklatıldı',stopping:'Durduruluyor',stopped:'Durduruldu',cancelling:'İptal ediliyor',cancelled:'İptal edildi',finished:'Tamamlandı',error:'Hata oluştu',active:'Aktif',trash:'Çöp kutusu',all:'Tümü',any:'Herhangi biri',valid:'Geçerli',invalid:'Eksik ayrıştırılan',new:'İlk kez eklenenler',month:'Aylık',year:'Yıllık',hour:'Saatlik'};
 names.profession_group='Ana meslek grubu';names.profession_subgroup='Meslek alt grubu';
 const tr = value => translations[value] || value;
 const languageNames = {tr:'Türkçe',en:'İngilizce',other:'Diğer'};
@@ -435,7 +435,7 @@ function connectEvents(){
     if(['waiting','shared_rate_wait'].includes(ev.type)){waitingUntil=Date.now()+d.seconds*1000;waitReason=d.reason;renderWait();refreshStatus();}
     if(ev.type==='job'){waitingUntil=0;refreshJobs();refreshStatus();}
     if(['task_start','task_done','job_progress','run_finished','finished','error','source_paused','task_control'].includes(ev.type)){refreshStatus();}
-    if(ev.type==='run_finished'){if(!$('view-watches').hidden)loadWatches();currentRun=d;renderRun();loadAll();loadRunOptions();if($('history-dialog').open)loadHistory();toast(`Çalışma ${tr(d.status).toLocaleLowerCase('tr')}: ${d.stats.new||0} yeni, ${d.stats.updated||0} güncellenen ilan.`,()=>{showResults('run_id',d.id);},'Sonuçları gör');}
+    if(ev.type==='run_finished'){if(!$('view-watches').hidden)loadWatches();if(Dash.visible())Dash.load(true);currentRun=d;renderRun();loadAll();loadRunOptions();if($('history-dialog').open)loadHistory();toast(`Çalışma ${tr(d.status).toLocaleLowerCase('tr')}: ${d.stats.new||0} yeni, ${d.stats.updated||0} güncellenen ilan.`,()=>{showResults('run_id',d.id);},'Sonuçları gör');}
     if(ev.type==='notice'||ev.type==='error'){toast(d.msg||'İşlem tamamlanamadı. Sonuçlar korundu.',()=>showTab('queue'),'Ayrıntılar',true);}
     if(ev.type==='log'&&busy&&!currentRun)$('maintenance-status').textContent=localLogMessage(d.msg);
     if(ev.type==='finished'&&!d.run_id){$('maintenance-status').textContent=`İşlem tamamlandı. ${d.embedded??d.classified??0} ilan işlendi, ${d.skipped||0} ilan atlandı.`;loadAll();}
@@ -544,7 +544,7 @@ async function openService(){
   }catch(e){$('service-content').textContent=e.message;}
 }
 
-const TABS=['jobs','queue','watches'];
+const TABS=['jobs','dashboard','queue','watches'];
 let devMode=false;try{devMode=localStorage.getItem('linko.dev')==='1';}catch{}
 function saveDev(){try{localStorage.setItem('linko.dev',devMode?'1':'0');}catch{}}
 function applyDev(){document.body.classList.toggle('dev',devMode);}
@@ -562,10 +562,11 @@ function showTab(name){
   document.querySelectorAll('header nav [data-tab]').forEach(b=>{if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   try{localStorage.setItem('linko.tab',name);}catch{}
   if(name==='queue')renderQueueView();
+  if(name==='dashboard')Dash.load();
   if(name==='watches')loadWatches();
   syncBottomNav(name);
 }
-const VIEW_GROUP={jobs:'jobs',watches:'watches',queue:'scan'};
+const VIEW_GROUP={jobs:'jobs',dashboard:'more',watches:'watches',queue:'scan'};
 const ICON=d=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 // Mobil alt menü grupları; her grupta en sık kullanılan/önemli seçenek en üstte.
 const BOTTOM_GROUPS={
@@ -577,6 +578,7 @@ const BOTTOM_GROUPS={
     ['logs-home','İşlem kayıtları','İstekler, yanıtlar ve hatalar','<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>'],
     ['trash-home','Çöp kutusu','Silinen ilanları gör ve geri al','<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>']]},
   more:{title:'Diğer',items:[
+    ['dashboard','Panel','İlan havuzunun ve toplayıcının özet metrikleri','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
     ['service-home','Servis / API','Toplayıcı durumu ve API erişimi','<rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01"/>'],
     ['daily-summary','Günlük rapor','Son aramaları ve verimlilik karşılaştırmalarını gör','<path d="M4 4h16v16H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['maintenance-home','Bakım / analiz','Kayıtlı ilanları yeniden işle','<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 6.5-6.5a4 4 0 0 1-5-5L9 9 3 3"/>'],
@@ -667,7 +669,7 @@ async function dispatch(action,el){
   if(action==='service-home')return openService();
   if(action==='disable-schedule'){await api(`/api/service/schedules/${run}/stop`,{method:'POST'});toast('Yeni tekrarlar kapatıldı.');return openService();}
   if(action==='maintenance-home'){await openDrawer();document.querySelector('.maintenance').open=true;document.querySelector('.maintenance').scrollIntoView({block:'start'});return;}
-  if(action==='new-search')return openDrawer();if(action==='queue')return showTab('queue');if(action==='watches')return showTab('watches');
+  if(action==='new-search')return openDrawer();if(action==='dashboard')return showTab('dashboard');if(action==='queue')return showTab('queue');if(action==='watches')return showTab('watches');
   if(action==='dev-menu')return openDev();if(action==='dev-off'){devMode=false;saveDev();applyDev();closeDialog('dev-dialog');toast('Geliştirici modu kapatıldı.');return;}
   if(action.startsWith('watch-'))return watchAction(action.slice(6),id);if(action==='history')return openHistory();if(action==='daily-summary')return openDailySummary();if(action==='reset')return resetFilters();if(action==='job')return openJob(id);if(action==='similar')return similar(id);
   if(action==='copy-id'){await navigator.clipboard.writeText(id);toast('Kimlik kopyalandı: '+id);return;}
@@ -689,6 +691,7 @@ async function dispatch(action,el){
 document.addEventListener('click',async event=>{
   const close=event.target.closest('[data-close]');if(close){closeDialog(close.dataset.close);return;}
   const chip=event.target.closest('[data-remove-filter]');if(chip){const key=chip.dataset.removeFilter;const value=filters[key];setFilter(key,Array.isArray(value)?value.filter(v=>v!==chip.dataset.value):'');return;}
+  const dash=event.target.closest('[data-dash-filter],[data-dash-window]');if(dash){openJobsFromDashboard(dash);return;}
   const quick=event.target.closest('[data-quick]');if(quick){toggleQuick(quick.dataset.quick);return;}
   const more=event.target.closest('[data-facet-more]');if(more){const key=more.dataset.facetMore;if(expandedFacets.has(key))expandedFacets.delete(key);else expandedFacets.add(key);facetCollapse($('facet-'+key));return;}
   // Kartın boş bir yerine tıklamak ilanı açar; metin seçimi ve iç düğmeler/bağlantılar etkilenmez.
@@ -706,6 +709,14 @@ document.addEventListener('input',event=>{
   if(el.id==='profession-filter-search')renderProfessionFacets();if(el.dataset.filter&&el.tagName==='INPUT'&&el.type!=='checkbox')scheduleFilters(el.dataset.filter,el.value);
   if(el.classList.contains('facet-search')){const query=el.value.toLocaleLowerCase('tr');el.closest('.filter-group').querySelectorAll('.facet-options label').forEach(label=>{label.hidden=!label.textContent.toLocaleLowerCase('tr').includes(query);});facetCollapse(el.closest('.filter-group'));}
 });
+// Panel kartları ilgili filtreyle İlanlar sekmesini açar: bir değer, ya da "created_from:7" gibi son N gün penceresi.
+function openJobsFromDashboard(el){
+  const next={};
+  if(el.dataset.dashWindow!=null){const [key,days]=el.dataset.dashWindow.split(':');const d=new Date();d.setDate(d.getDate()-Number(days));next[key]=d.toISOString();}
+  else if(el.dataset.dashFilter){const key=el.dataset.dashFilter,value=el.dataset.dashValue;next[key]=multiKeys.has(key)?[value]:value;}
+  document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+  filters=next;showTab('jobs');syncControls();renderChips();persist(true);loadAll();$('main').scrollIntoView({block:'start'});
+}
 function setNavMore(open){$('nav-more-menu').hidden=!open;$('nav-more-toggle').setAttribute('aria-expanded',String(open));}
 function wire(id,event,fn){$(id).addEventListener(event,async e=>{try{await fn(e);}catch(error){toast(error.message,null,'',true);}});}
 function initialize(){
@@ -749,6 +760,8 @@ function initialize(){
   window.addEventListener('popstate',()=>{readLocation();syncControls();renderChips();loadAll();});
   $('queue-host').append($('live-run'));
   $('waiting-list').addEventListener('toggle',e=>{const id=e.target.dataset?.waiting;if(id){if(e.target.open)openWaiting.add(id);else openWaiting.delete(id);}},true);
+  Dash.initTips();wire('dash-refresh','click',()=>Dash.load(true));wire('dash-retry','click',()=>Dash.load(true));
+  setInterval(()=>{if(document.visibilityState==='visible'&&Dash.visible())Dash.load();},30000);
   wire('watch-form','submit',saveWatch);wire('watch-cancel','click',resetWatchForm);['watch-keywords','watch-locations'].forEach(id=>wire(id,'input',watchCombos));watchCombos();
   setInterval(()=>{if(document.visibilityState==='visible'&&!$('view-watches').hidden)loadWatches();},20000);
   applyDev();let tab='jobs';try{tab=localStorage.getItem('linko.tab')||'jobs';}catch{}showTab(tab);

@@ -618,3 +618,5 @@ from .titles import install as install_titles
 install_titles(sys.modules[__name__])
 from .logs_api import install as install_logs_api
 install_logs_api(sys.modules[__name__])
+from .dashboard import install as install_dashboard
+install_dashboard(sys.modules[__name__])

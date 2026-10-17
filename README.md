@@ -24,6 +24,8 @@ Arayüz tamamen Türkçedir. Ana ekranda arama, sıralama ve kart/liste görün�
 
 Kuyruğa eklenen görevler çalıştırılmadan önce de `/api/queue` üzerinden sunucuya kaydedilir. Süreç kimliği (`run_id`), görev/arama kimliği (`search_id`), her çalıştırma veya devam etmenin kimliği (`attempt_id`), HTTP istek kimliği (`request_id`) ve tekil log kayıt numarası ayrı ayrı izlenir. Kuyruk sıralaması/ayar değişiklikleri, çıkarılan görevler, kullanıcı işlemleri ve sunucu kesintisinden kurtarma olayları geçmişte korunur.
 
+**Panel sekmesi:** İlanlar'ın sağındaki *Panel* sekmesi (telefonda Diğer menüsü) havuzun ve toplayıcının özetini gösterir: etkin ilan sayısı, günlük eklenme akışı, meslek/çalışma biçimi/kıdem/yetenek/şirket/konum dağılımları, ilan yaşı, maaş aralıkları, veri kalitesi, son tarama turları, eklenme saatleri ısı haritası ve kaynak/iş alarmı durumu. Veri tek uçtan (`GET /api/dashboard`, 20 sn önbellekli, yalnızca okur) gelir; satır ve kartlara tıklamak İlanlar'ı ilgili filtreyle açar, her grafiğin altında tablo görünümü vardır.
+
 Geçmişteki **Süreç raporu / Neden az geldi?** düğmesi; kart ve ilan sayılarını, tekrarları, detay hatalarını, kayıt/kalite nedeniyle elenenleri, görünür/çöp kutusundaki kayıtları ve durma nedenlerini bir arada gösterir. Bulgular dayanaklarıyla ve uygulanabilir sonraki adımlarla sunulur. Eski süreçlerin kaydedilmemiş ayrıntıları tahmin edilmez. Tarama yanında eşleştirme ve yeniden analiz işleri de süreç kimliği ve devam noktası taşır.
 
 `GET /api/runs/<id>/report?task_id=<görev>` raporu JSON verir; `download=1` ile indirilebilir. Loglar `kind`, `level`, `query`, `request_id`, `job_id`, `attempt_id` ve `task_id` ile süzülebilir. Ayrıştırma, sınıflandırma, eşleştirme ve veritabanı aşamaları; süre, gerçek analiz yöntemi, geri dönüş, hata türü ve hata iziyle kaydedilir. API anahtarları ve kimlik doğrulama değerleri loglarda gizlenir.
@@ -453,6 +455,11 @@ Sistemin detay çekme mimarisi standart ağır web sayfası (`/jobs/view/<id>`) 
   - *CENGİZ İNŞAAT - Harita Mühendisi (ID: 4467554988):* 14.4 KB yanıt, 0.94s süre, 796 karakter açıklama başarıyla çekildi.
   - *Kalyon Holding - Harita Mühendisi (ID: 4460773998):* 15.0 KB yanıt, 0.35s süre, 1.238 karakter açıklama başarıyla çekildi.
 - **Kullanıcı Deneyimi Korunması:** Arayüzde ve veritabanında kullanıcının tıkladığı bağlantı (`applyUrl`, `url`) orijinal tarayıcı görünüm URL'si (`https://www.linkedin.com/jobs/view/<id>`) olarak korunurken, motorun arka planda yaptığı çekimler hafif API üzerinden gerçekleşir.
+
+### Performans Limitleri ve Sıralı Benchmark Sonuçları:
+- **WAF Eşik Sınırı:** Kısa 2'şerli patlamalarda 6.0s – 9.0s tolere edilse de, LinkedIn'in IP bazlı *Sliding Window* algoritması nedeniyle uzun kuyruklarda 429 almamak için **10.0 saniye ritim** sınır tavanıdır.
+- **Canlı Detay Hızı (Inline):** Hafif API ile anlık detay çekimi ortalama **0.37 saniye** sürmüş ve **65 KB** veriyle 2.400 – 6.900 karakter tam açıklama başarıyla kaydedilmiştir.
+- **Canlı Üretim Doğrulaması:** `https://job.ai-org.online` üzerinde 200 hedefli canlı taramada **102 ilan (85 yeni)** sıfır hatayla toplanmış ve doğrulanmıştır.
 
 ---
 
