@@ -142,3 +142,30 @@ Kullanıcı talebi doğrultusunda canlı LinkedIn misafir arayüzü üzerinde **
    - Hafif API ile 1.000 ilan detayı ~**15 – 60 MB** tüketmektedir (%76–94 tasarruf).
    - GB bazlı proxy maliyetini yaklaşık **6 kat** ucuzlatır.
 
+### 5.3 Kapsamlı Performans ve Limit Deneyleri (Sıralı 3 Deney)
+
+Sistemin hız tavanını, WAF kırılma eşiklerini ve hafif mimarinin uç limitlerini belirlemek için 3 aşamalı sıralı benchmark yürütülmüştür:
+
+#### [Deney A] Milimetrik WAF Eşik ve Pacing Testi:
+Farklı bekleme aralıkları (9s, 8s, 7s, 6s) canlı isteklerle test edilmiştir:
+* **9.0s:** İstek #1: 200 OK (1.01s) | İstek #2: 200 OK (0.54s)
+* **8.0s:** İstek #1: 200 OK (0.51s) | İstek #2: 200 OK (0.55s)
+* **7.0s:** İstek #1: 200 OK (0.47s) | İstek #2: 200 OK (0.53s)
+* **6.0s:** İstek #1: 200 OK (0.53s) | İstek #2: 200 OK (0.46s)
+* **WAF Analizi:** Kısa 2'şerli patlamalarda (burst) Cloudflare WAF 6.0 saniyeye kadar izin vermektedir. Ancak kümülatif istek sayısı 10-12'yi aştığında Kayan Pencere (Sliding Window Log) dolmakta ve HTTP 429 fırlatmaktadır. Uzun soluklu kuyruklarda sıfır 429 ile çalışabilmek için **10.0 saniye altın standarttır**.
+
+#### [Deney B] Canlı Inline Hafif Detay Çekim Benchmark'ı:
+İlan kartları toplanırken detayların anında Hafif API üzerinden çekilmesi ölçülmüştür:
+* **İlan 1 (#4477093983 - Holly Palm):** 200 OK | **0.28s** | 63.1 KB | 2.488 karakter açıklama
+* **İlan 2 (#4469429916 - IQVIA):** 200 OK | **0.31s** | 65.7 KB | 4.878 karakter açıklama
+* **İlan 3 (#4470015222 - IQVIA Biotech):** 200 OK | **0.51s** | 68.1 KB | 6.924 karakter açıklama
+* **İlan 4 (#4479091938 - Fichtner):** 200 OK | **0.40s** | 64.0 KB | 2.860 karakter açıklama
+* **Ortalama Metrikler:** **0.37 saniye** yanıt süresi (eski sayfaya göre 3 kat hızlı), **65 KB** veri boyutu (250 KB yerine %74 tasarruf), sıfır DOM parse maliyeti.
+
+#### [Deney C] Çoklu Görev Kuyruğu ve Otonom Koruma:
+3 farklı görev ("Veri Analisti", "Sistem Mühendisi", "İş Analisti") arka arkaya çalıştırılmış; ilk görev başarıyla hedefe ulaşıp sonraki göreve anında geçmiş, WAF penceresi dolduğunda ise sistemin `source_paused` koruma modunu 60s geri sayımla kusursuz devreye soktuğu doğrulanmıştır.
+
+#### [Canlı Üretim Doğrulaması]
+Canlı sitede (`https://job.ai-org.online`) 200 hedefli *"Proje Yöneticisi"* taraması koşturulmuş; 11 sayfa boyunca tek bir 429 veya detay hatası almadan **102 adet ilan (85'i yepyeni)** başarıyla toplanıp veritabanına işlenmiştir.
+
+
