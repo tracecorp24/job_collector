@@ -212,6 +212,22 @@ def api_job(job_id):
         session.close()
 
 
+@app.route("/api/jobs/<int:job_id>/fetch-detail", methods=["POST"])
+def api_fetch_job_detail(job_id):
+    from . import details
+    from .scraper.accountless import AccountlessScraper
+    scraper = AccountlessScraper(should_stop=lambda: False)
+    details.fill_one(app, scraper, target_job_id=job_id)
+    session = SessionLocal()
+    try:
+        job = session.get(Job, job_id)
+        if not job:
+            return jsonify({"ok": False, "error": "İlan bulunamadı"}), 404
+        return jsonify({"ok": True, "job": job.to_dict(include_description=True)})
+    finally:
+        session.close()
+
+
 @app.route("/api/jobs/<int:job_id>", methods=["DELETE"])
 def api_job_delete(job_id):
     session = SessionLocal()

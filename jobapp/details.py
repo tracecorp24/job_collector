@@ -57,16 +57,19 @@ def recorder(server, raw, job_id):
     return emit
 
 
-def fill_one(server, scraper):
-    """En yeni bekleyen ilanın detayını çeker. Bir ilan işlendiyse True döner."""
-    if server.state.running or Coordinator().state()["paused"]:
+def fill_one(server, scraper, target_job_id=None):
+    """En yeni bekleyen ilanın (veya belirtilen target_job_id'nin) detayını çeker. Bir ilan işlendiyse True döner."""
+    if not target_job_id and (server.state.running or Coordinator().state()["paused"]):
         return False
     with server.SessionLocal() as session:
-        ids = pending_ids(session)
+        ids = [target_job_id] if target_job_id else pending_ids(session)
         if not ids:
             return False
         job_id = ids[0]
-        requested_raw = json.loads(session.get(Job, job_id).raw or "{}")
+        row = session.get(Job, job_id)
+        if not row:
+            return False
+        requested_raw = json.loads(row.raw or "{}")
         url = requested_raw.get("url")
     scraper.last_status = None
     scraper.emit = recorder(server, requested_raw, job_id)
@@ -81,7 +84,7 @@ def fill_one(server, scraper):
     except Exception as exc:  # ağ/kaynak hatası: deneme sayılır, sonsuz döngüye girmez
         log.warning("İlan %s detayı alınamadı: %s", job_id, exc)
         detail = None
-    if detail is None and cached is None and server.state.running:
+    if detail is None and cached is None and server.state.running and not target_job_id:
         return False  # tarama başladığı için istek bırakıldı; deneme sayılmaz
     box = detail.select_one(DESCRIPTION_SELECTOR) if detail is not None else None
     description = cached["description"] if cached and cached["status"] == 200 else (

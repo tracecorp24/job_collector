@@ -179,7 +179,7 @@ async function openJob(id){
       <div class="actions job-primary">${link?`<a class="button primary" href="${esc(link)}" target="_blank" rel="noopener noreferrer">İlana git ve başvur ↗</a>`:''}${button('similar','Benzer ilanlar',`data-id="${j.id}"`)}${j.deleted_at?button('restore-job','Geri yükle',`data-id="${j.id}"`):`<button data-action="delete-job" data-id="${j.id}" class="ghost" title="Çöp kutusuna taşır, geri alınabilir">Gizle</button>`}</div>
       ${facts.length?`<dl class="job-facts-grid">${facts.map(([k,v])=>`<div><dt>${k}</dt><dd${k==='Maaş'?' class="salary"':''}>${esc(v)}</dd></div>`).join('')}</dl>`:''}
       <div class="badges">${badge(tr(j.category))}${j.flag?badge(tr(j.flag),'warn'):''}${j.deleted_at?badge('Çöp kutusunda','deleted'):''}</div>
-      ${j.detail_pending?`<p class="notice">İlanın açıklaması birazdan gelecek; kaynak uygun oldukça arka planda tamamlanır. O zamana kadar “İlana git” ile kaynağında okuyabilirsin.</p>`:''}
+      ${j.detail_pending?`<div class="notice pending-box"><p>İlanın açıklaması sırayla arka planda tamamlanacak.</p><div class="actions"><button data-action="fetch-detail" data-id="${j.id}" class="primary small">Açıklamayı şimdi getir</button></div></div>`:''}
       ${j.summary?`<section class="job-summary"><h3>Kısaca</h3><p>${esc(j.summary)}</p></section>`:''}${j.flag_reason?`<p class="notice warn">Dikkat: ${esc(j.flag_reason)}</p>`:''}
       ${j.tags?.length?`<section class="job-section"><h3>İstenen yetenekler</h3><div class="tags">${j.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div></section>`:''}
       ${j.detail_pending?'':`<section class="job-section job-desc"><h3>İlan açıklaması</h3>${descriptionHtml(j.formatted_description||j.description)}</section>${j.formatted_description?`<details class="job-section"><summary>Kaynak açıklamayı göster</summary><div class="job-desc">${descriptionHtml(j.description)}</div></details>`:''}`}
@@ -673,6 +673,7 @@ async function dispatch(action,el){
   if(action==='new-search')return openDrawer();if(action==='dashboard')return showTab('dashboard');if(action==='queue')return showTab('queue');if(action==='watches')return showTab('watches');
   if(action==='dev-menu')return openDev();if(action==='dev-off'){devMode=false;saveDev();applyDev();closeDialog('dev-dialog');toast('Geliştirici modu kapatıldı.');return;}
   if(action.startsWith('watch-'))return watchAction(action.slice(6),id);if(action==='history')return openHistory();if(action==='daily-summary')return openDailySummary();if(action==='reset')return resetFilters();if(action==='job')return openJob(id);if(action==='similar')return similar(id);
+  if(action==='fetch-detail'){el.disabled=true;el.textContent='Yükleniyor…';try{const res=await api(`/api/jobs/${id}/fetch-detail`,{method:'POST'});if(res.job&&!res.job.detail_pending){openJob(id);loadAll();toast('İlan açıklaması yüklendi.');}else{toast('Açıklama henüz alınamadı; kaynak yoğun olabilir.');el.textContent='Açıklamayı şimdi getir';el.disabled=false;}}catch(err){toast(err.message,null,'',true);el.textContent='Açıklamayı şimdi getir';el.disabled=false;}return;}
   if(action==='copy-id'){await navigator.clipboard.writeText(id);toast('Kimlik kopyalandı: '+id);return;}
   if(action==='run-report'||action==='task-report')return openReport(run,task||null);
   if(action==='run-logs')return openLogs(run);
