@@ -12,6 +12,9 @@ sunucusu ve otonom toplayıcı (`serve_service.py`). Arayüz `jobapp/templates/i
 - Kaynak bekleme/hız sınırı politikasını (`SERVICE_PLAN.md`) gevşetme; bekleme süreleri kısaltılmaz, güvenlik doğrulaması aşılmaz.
 - Tek collector süreci varsayımını bozma (çok worker'lı sunucu ekleme).
 - Anahtar, şifre veya `.env` içeriğini koda/commit'e koyma.
+- Geliştirme canlı loglara dayanır (`CALISMA_YONTEMI.md`): işe başlarken
+  `python scripts/linko_logs.py incidents` ve `logs --since 1d --level warning` ile bak; sorun bildirilince ilgili
+  aralığı `download` ile indir. Hata kaydını düzelten commit'e `Fixes #<issue>` yaz; hata kayıtlarını ve issue'ları silme.
 
 ## Canlı ortam
 - VPS: kod `/opt/linko`, veri `/var/lib/linko`, ayarlar `/etc/linko.env`, servis `linko.service`.

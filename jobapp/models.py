@@ -250,3 +250,37 @@ class Watch(Base):
     last_dispatched_at = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AppLog(Base):
+    """Sunucu süreç logu (journald'daki satırların kalıcı, sorgulanabilir kopyası)."""
+    __tablename__ = "app_logs"
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    level = Column(String(16), index=True)
+    logger = Column(String(80), default="")
+    message = Column(Text, default="")
+    traceback = Column(Text, default="")
+    incident_id = Column(Integer, nullable=True, index=True)
+
+
+class Incident(Base):
+    """Aynı parmak izli hataların kalıcı kaydı; loglar budansa da silinmez."""
+    __tablename__ = "incidents"
+    id = Column(Integer, primary_key=True)
+    fingerprint = Column(String(64), unique=True, index=True)
+    level = Column(String(16), default="error")
+    logger = Column(String(80), default="")
+    title = Column(String(200), default="")
+    sample = Column(Text, default="")
+    traceback = Column(Text, default="")
+    count = Column(Integer, default=0)
+    first_seen = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(16), default="open", index=True)  # open | resolved
+    issue_number = Column(Integer, nullable=True)
+    issue_state = Column(String(16), default="")  # GitHub tarafının bildiği durum: "", open, closed
+    resolved_at = Column(DateTime, nullable=True)
+    resolution = Column(Text, default="")
+    reopen_count = Column(Integer, default=0)
+    history = Column(Text, default="[]")

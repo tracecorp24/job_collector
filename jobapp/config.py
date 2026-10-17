@@ -43,6 +43,7 @@ SERVICE_POLL_SECONDS = max(1.0, float(_env("JOBAPP_SERVICE_POLL_SECONDS", "5")))
 # Kayıt tablolarının saklama süreleri (gün); günlük bakım daha eskilerini siler.
 EVENT_RETENTION_DAYS = max(1, int(_env("JOBAPP_EVENT_RETENTION_DAYS", "90")))
 CHANGES_RETENTION_DAYS = max(1, int(_env("JOBAPP_CHANGES_RETENTION_DAYS", "60")))
+APP_LOG_RETENTION_DAYS = max(1, int(_env("JOBAPP_APP_LOG_RETENTION_DAYS", "90")))
 # linko-backup betiğinin yazdığı sunucu dışı yedek durumu.
 BACKUP_STATUS_PATH = _env("JOBAPP_BACKUP_STATUS_PATH", os.path.join(os.path.dirname(DB_PATH), "backup_status.json"))
 API_KEY = os.environ.get("JOBAPP_API_KEY", "")

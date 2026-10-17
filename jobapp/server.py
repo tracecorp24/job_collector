@@ -657,3 +657,5 @@ from .watches import install as install_watches
 install_watches(sys.modules[__name__])
 from .titles import install as install_titles
 install_titles(sys.modules[__name__])
+from .logs_api import install as install_logs_api
+install_logs_api(sys.modules[__name__])

@@ -13,6 +13,9 @@ def main():
         raise SystemExit('Dış ağ için JOBAPP_API_KEY ve JOBAPP_ADMIN_KEY ayarlayın.')
     from waitress import create_server
     application = server.create_app()
+    # Loglar journald'a ek olarak app_logs tablosuna yazılır; /api/v1/logs ile yerelden okunur.
+    from jobapp import logstore
+    logstore.install()
     http = create_server(application, host=config.HOST, port=config.PORT, threads=12,
         channel_timeout=120, max_request_body_size=1024*1024)
     service.start(server)

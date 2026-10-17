@@ -1,0 +1,33 @@
+name: Hata kayıtları
+
+# Canlı sitedeki hata kayıtlarını GitHub issue'larıyla eşler (scripts/incident_sync.py):
+# yeni hata → issue, issue kapandı → kayıt "çözüldü", hata tekrar görüldü → issue yeniden açılır.
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  issues:
+    types: [closed, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: incident-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'hata-kaydı')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Senkronize et
+        env:
+          LINKO_URL: https://ai-org.online
+          LINKO_ADMIN_KEY: ${{ secrets.LINKO_ADMIN_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/incident_sync.py
