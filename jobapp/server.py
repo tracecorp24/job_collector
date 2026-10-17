@@ -214,10 +214,11 @@ def api_job(job_id):
 
 @app.route("/api/jobs/<int:job_id>/fetch-detail", methods=["POST"])
 def api_fetch_job_detail(job_id):
+    import sys
     from . import details
     from .scraper.accountless import AccountlessScraper
     scraper = AccountlessScraper(should_stop=lambda: False)
-    details.fill_one(app, scraper, target_job_id=job_id)
+    details.fill_one(sys.modules[__name__], scraper, target_job_id=job_id)
     session = SessionLocal()
     try:
         job = session.get(Job, job_id)
