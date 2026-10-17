@@ -647,6 +647,7 @@ function watchCard(w,now){
   return `<article class="watch-card${w.enabled?'':' is-disabled'}"><div class="watch-head"><div><h3>${esc(w.name)}</h3><p class="help">${esc(intervalNames[w.interval_seconds]||'')} · ${esc(postedNames[w.posted_within]??'')} · kombinasyon başına ${w.limit} ilan</p></div>${badge(running?'Taranıyor':w.enabled?'Etkin':'Duraklatıldı',w.enabled?'':'warn')}</div>
     <div class="tags">${w.keywords.map(k=>`<span class="tag">${esc(k)}</span>`).join('')}</div><p class="job-meta">Konum: ${w.locations.map(esc).join(' · ')} — ${w.combinations} kombinasyon</p>
     <dl class="watch-stats"><div><dt>Son tur</dt><dd>${last?`${esc(tr(last.status))} · ${esc(date(last.created_at))}`:'Henüz çalışmadı'}</dd></div><div><dt>Son turda</dt><dd>${last?`${last.new} yeni, ${last.updated} güncellenen`:'—'}</dd></div><div><dt>Sonraki tur</dt><dd>${esc(next)}</dd></div></dl>
+    ${w.blocked?`<p class="notice error">${esc(w.blocked_reason||'Önceki tur duraklatılmış; devam ettirin ya da durdurun.')} Alarm o tur bitene kadar yeni tur açmaz.</p>`:''}
     <p class="dev-only id-text">Alarm kimliği: ${esc(w.id)}${last?' · Son çalışma: '+esc(last.id):''}</p>
     <div class="card-actions">${button('watch-run','Şimdi tara',`data-id="${w.id}"${running?' disabled':''}`)}${last?button('run-results','Son turun ilanları',`data-run="${last.id}"`):''}${button('watch-edit','Düzenle',`data-id="${w.id}"`)}${button('watch-toggle',w.enabled?'Duraklat':'Etkinleştir',`data-id="${w.id}"`)}${button('watch-delete','Sil',`data-id="${w.id}"`,'danger')}</div></article>`;
 }
@@ -654,7 +655,7 @@ async function watchAction(action,id){
   const w=watchData.find(x=>x.id===id);if(!w)return;
   if(action==='edit'){watchEditing=id;$('watch-name').value=w.name;$('watch-keywords').value=w.keywords.join('\n');$('watch-locations').value=w.locations.join('\n');$('watch-interval').value=String(w.interval_seconds);$('watch-limit').value=String(w.limit);$('watch-posted').value=String(w.posted_within);$('watch-form-title').textContent='Alarmı düzenle';$('watch-save').textContent='Değişiklikleri kaydet';$('watch-cancel').hidden=false;watchCombos();$('watch-form').scrollIntoView({block:'start'});$('watch-name').focus();return;}
   if(action==='run'){await api(`/api/watches/${id}/run-now`,{method:'POST'});toast('Tur sıraya alındı. Kuyruk ve kaynak uygun olunca başlar.');}
-  if(action==='toggle'){await api('/api/watches/'+id,{method:'PUT',body:{enabled:!w.enabled}});toast(w.enabled?'İş alarmı duraklatıldı. Süren tur varsa tamamlanır.':'İş alarmı etkinleştirildi.');}
+  if(action==='toggle'){const r=await api('/api/watches/'+id,{method:'PUT',body:{enabled:!w.enabled}});toast(w.enabled?'İş alarmı duraklatıldı. Süren tur varsa tamamlanır.':r.warning?`İş alarmı etkinleştirildi, ancak: ${r.warning}`:'İş alarmı etkinleştirildi.');}
   if(action==='delete'){if(!await confirmAction(`“${w.name}” iş alarmı silinecek. Toplanan ilanlar ve geçmiş turlar korunur. Devam edilsin mi?`))return;await api('/api/watches/'+id,{method:'DELETE'});if(watchEditing===id)resetWatchForm();toast('İş alarmı silindi.');}
   await loadWatches();
 }

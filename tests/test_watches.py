@@ -88,6 +88,55 @@ class WatchTests(unittest.TestCase):
             self.assertIsNone(watches.dispatch(session, now, {"paused": True}))
             self.assertIsNotNone(watches.dispatch(session, now, {"paused": False}))
 
+    def test_waiting_watch_logs_once_not_every_tick(self):
+        ident = self.create().json["watch"]["id"]
+        watches._waiting.clear()
+        now = time.time()
+        with self.factory() as session:
+            watches.dispatch(session, now, {"paused": False})
+            session.get(Watch, ident).next_due_at = 0
+            session.commit()
+            with self.assertLogs("jobapp.watches", level="INFO") as logs:
+                for tick in range(12):
+                    self.assertIsNone(watches.dispatch(session, now + 5 * tick, {"paused": False}))
+            self.assertEqual(len(logs.records), 1)
+            # Seyrek hatırlatma: bir saat sonra yeniden yazılır.
+            with self.assertLogs("jobapp.watches", level="INFO") as logs:
+                watches.dispatch(session, now + watches.WAIT_LOG_SECONDS + 60, {"paused": False})
+            self.assertEqual(len(logs.records), 1)
+
+    def test_user_paused_previous_run_marks_watch_blocked(self):
+        ident = self.create().json["watch"]["id"]
+        watches._waiting.clear()
+        now = time.time()
+        with self.factory() as session:
+            run_id = watches.dispatch(session, now, {"paused": False})
+            self.assertFalse(watches.serialize(session, session.get(Watch, ident))["blocked"])
+            run = session.get(SearchRun, run_id)
+            run.status = "paused"
+            run.options = json.dumps({**json.loads(run.options), "user_paused": True})
+            session.get(Watch, ident).next_due_at = 0
+            session.commit()
+            with self.assertLogs("jobapp.watches", level="INFO") as logs:
+                for tick in range(12):
+                    self.assertIsNone(watches.dispatch(session, now + 5 * tick, {"paused": False}))
+            self.assertEqual([r.levelname for r in logs.records], ["WARNING"])
+        watch = self.client.get("/api/watches").json["watches"][0]
+        self.assertTrue(watch["blocked"])
+        self.assertIn("duraklatılmış", watch["blocked_reason"])
+        reply = self.client.post(f"/api/watches/{ident}/run-now")
+        self.assertEqual(reply.status_code, 409)
+        self.assertTrue(reply.json["blocked"])
+        self.client.put(f"/api/watches/{ident}", json={"enabled": False})
+        self.assertIn("duraklatılmış", self.client.put(f"/api/watches/{ident}", json={"enabled": True}).json["warning"])
+        # Eski tur otomatik iptal edilmez; kullanıcı durdurunca izleme serbest kalır.
+        with self.factory() as session:
+            self.assertEqual(session.get(SearchRun, run_id).status, "paused")
+            session.get(SearchRun, run_id).status = "stopped"
+            session.commit()
+            self.assertFalse(watches.serialize(session, session.get(Watch, ident))["blocked"])
+            self.assertIsNotNone(watches.dispatch(session, time.time(), {"paused": False}))
+
     def test_disabled_watch_is_not_dispatched_and_run_now_reenables(self):
         ident = self.create().json["watch"]["id"]
         self.assertEqual(self.client.put(f"/api/watches/{ident}", json={"enabled": False}).status_code, 200)

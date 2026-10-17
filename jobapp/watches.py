@@ -18,6 +18,8 @@ INTERVALS = (3600, 3*3600, 6*3600, 12*3600, 24*3600, 3*86400, 7*86400)
 POSTED_WITHIN = (0, 86400, 7*86400, 30*86400)
 MAX_KEYWORDS, MAX_LOCATIONS, MAX_COMBINATIONS, MAX_LIMIT = 20, 10, 40, 200
 JITTER = 0.1
+WAIT_LOG_SECONDS = 3600
+PAUSED_REASON = "Önceki tur duraklatılmış; devam ettirin ya da durdurun."
 log = logging.getLogger(__name__)
 
 
@@ -80,7 +82,7 @@ def validate(body, current=None):
 def serialize(session, watch):
     keywords, locations = json.loads(watch.keywords), json.loads(watch.locations)
     last = session.get(SearchRun, watch.last_run_id) if watch.last_run_id else None
-    last_info = None
+    last_info, blocked = None, _blocked_reason(session, watch)
     if last and not last.deleted_at:
         snap = runs.snapshot(session, last)
         last_info = dict(id=last.id, status=last.status, new=snap["stats"].get("new", 0),
@@ -90,14 +92,44 @@ def serialize(session, watch):
                 combinations=len(keywords) * len(locations), interval_seconds=watch.interval_seconds,
                 limit=watch.limit, posted_within=watch.posted_within, enabled=bool(watch.enabled),
                 next_due_at=watch.next_due_at, last_dispatched_at=watch.last_dispatched_at, last_run=last_info,
-                created_at=watch.created_at.isoformat() if watch.created_at else None)
+                created_at=watch.created_at.isoformat() if watch.created_at else None,
+                blocked=bool(blocked), blocked_reason=blocked)
+
+
+def _previous(session, watch):
+    """Bitmemiş önceki tur; yoksa None."""
+    if not watch.last_run_id:
+        return None
+    run = session.get(SearchRun, watch.last_run_id)
+    return run if run and not run.deleted_at and run.status not in runs.TERMINAL else None
 
 
 def _busy(session, watch):
-    if not watch.last_run_id:
-        return False
-    run = session.get(SearchRun, watch.last_run_id)
-    return bool(run and not run.deleted_at and run.status not in runs.TERMINAL)
+    return _previous(session, watch) is not None
+
+
+def _blocked_reason(session, watch):
+    """Kullanıcı önceki turu duraklattıysa tur kendiliğinden bitmez; izleme kullanıcı kararını bekler."""
+    run = _previous(session, watch)
+    return PAUSED_REASON if run and json.loads(run.options or "{}").get("user_paused") else None
+
+
+# Bekleyen izlemeler için son log: {watch_id: (run_id, user_paused, logged_at)}. Supervisor her
+# birkaç saniyede bir çağırdığından aynı bekleme yalnızca durum değişince veya saatte bir yazılır.
+_waiting = {}
+
+
+def _log_waiting(session, watch, now):
+    paused = _blocked_reason(session, watch) is not None
+    previous = _waiting.get(watch.id)
+    if previous and previous[:2] == (watch.last_run_id, paused) and now - previous[2] < WAIT_LOG_SECONDS:
+        return
+    _waiting[watch.id] = (watch.last_run_id, paused, now)
+    if paused:
+        log.warning("Düzenli tarama '%s' bloke: önceki tur (%s) kullanıcı tarafından duraklatılmış; "
+                    "devam ettirilmesi ya da durdurulması bekleniyor.", watch.name, watch.last_run_id[:8])
+    else:
+        log.info("Düzenli tarama '%s' bekliyor: önceki tur (%s) henüz bitmedi.", watch.name, watch.last_run_id[:8])
 
 
 def dispatch(session, now, source):
@@ -106,8 +138,9 @@ def dispatch(session, now, source):
         return None
     for watch in session.query(Watch).filter(Watch.enabled.is_(True), Watch.next_due_at <= now).order_by(Watch.next_due_at):
         if _busy(session, watch):
-            log.info("Düzenli tarama '%s' bekliyor: önceki tur (%s) henüz bitmedi.", watch.name, watch.last_run_id[:8])
+            _log_waiting(session, watch, now)
             continue
+        _waiting.pop(watch.id, None)
         run_id = runs.identifier()
         options = dict(kind="scrape", service_managed=True, watch_id=watch.id, classify_backend="groq" if config.GROQ_API_KEY else "rules",
                        use_embeddings=False, mode="incremental", refresh_details=False,
@@ -171,7 +204,8 @@ def install(server):
             watch.locations = json.dumps(data["locations"], ensure_ascii=False)
             watch.updated_at = datetime.utcnow()
             session.commit()
-            return jsonify(watch=serialize(session, watch))
+            result = serialize(session, watch)
+            return jsonify(watch=result, warning=result["blocked_reason"] if watch.enabled else None)
 
     @app.post("/api/watches/<watch_id>/run-now")
     def run_watch_now(watch_id):
@@ -179,6 +213,9 @@ def install(server):
             watch = session.get(Watch, watch_id)
             if not watch:
                 return jsonify(ok=False, error="Düzenli tarama bulunamadı."), 404
+            reason = _blocked_reason(session, watch)
+            if reason:
+                return jsonify(ok=False, blocked=True, error=reason), 409
             if _busy(session, watch):
                 return jsonify(ok=False, error="Bu düzenli taramanın önceki turu henüz bitmedi."), 409
             watch.enabled = True
