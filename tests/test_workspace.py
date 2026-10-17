@@ -257,7 +257,7 @@ class WorkspaceTests(unittest.TestCase):
                 conn.execute(text('DROP TRIGGER IF EXISTS '+trigger))
             for column in ('posted_at','experience_years','deleted_at'):
                 conn.execute(text('ALTER TABLE jobs DROP COLUMN '+column))
-        db.init_db()
+        db.init_db(force=True)
         backup=next(Path(self.tmp.name).glob('backup_before_ux_*'))
         self.assertTrue((backup/'accountless_searches'/'legacy-search'/'search.json').exists())
         with closing(sqlite3.connect(backup/'jobs.db')) as connection:

@@ -3,6 +3,8 @@
 import json
 import sqlite3
 import shutil
+import threading
+import weakref
 from contextlib import closing
 from pathlib import Path
 from datetime import datetime
@@ -19,7 +21,7 @@ engine = create_engine(
     config.DB_URL,
     echo=False,
     future=True,
-    connect_args={"check_same_thread": False, "timeout":30},
+    connect_args={"check_same_thread": False, "timeout": config.DB_BUSY_TIMEOUT_MS / 1000},
 )
 
 
@@ -30,7 +32,7 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
         try:
             cursor.execute("PRAGMA journal_mode = WAL")
             cursor.execute("PRAGMA synchronous = NORMAL")
-            cursor.execute("PRAGMA busy_timeout = 5000")
+            cursor.execute(f"PRAGMA busy_timeout = {int(config.DB_BUSY_TIMEOUT_MS)}")
             cursor.execute("PRAGMA cache_size = -64000")
         finally:
             cursor.close()
@@ -38,20 +40,41 @@ def _set_sqlite_pragma(dbapi_connection, connection_record):
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, future=True)
 
+# init_db göçleri süreç başına, engine başına bir kez çalışır (testler engine'i değiştirir).
+_initialized = weakref.WeakSet()
+_init_lock = threading.RLock()
 
-def init_db() -> None:
+
+def once_per_engine(cache, bind, setup):
+    """``setup(bind)``'i engine başına bir kez çalıştırır; başarısızsa tekrar denenir."""
+    if bind in cache:
+        return
+    with _init_lock:
+        if bind not in cache:
+            setup(bind)
+            cache.add(bind)
+
+
+def init_db(force: bool = False) -> None:
     """Create tables if they don't exist, and add any new columns to old DBs.
 
     ``create_all`` only creates missing tables, not missing columns on tables
     that already exist — so columns added after a DB was first created (e.g.
-    ``embedding``) need an explicit lightweight migration.
+    ``embedding``) need an explicit lightweight migration. Runs once per engine
+    per process; ``force=True`` runs the migrations again.
     """
+    if force:
+        _initialized.discard(engine)
+    once_per_engine(_initialized, engine, lambda _: _migrate())
+
+
+def _migrate() -> None:
     _backup_before_upgrade()
     Base.metadata.create_all(engine)
     with engine.begin() as conn:
         conn.execute(text("PRAGMA journal_mode = WAL"))
         conn.execute(text("PRAGMA synchronous = NORMAL"))
-        conn.execute(text("PRAGMA busy_timeout = 5000"))
+        conn.execute(text(f"PRAGMA busy_timeout = {int(config.DB_BUSY_TIMEOUT_MS)}"))
         conn.execute(text("PRAGMA cache_size = -64000"))
         for table in ("search_runs", "search_tasks"):
             columns = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}
