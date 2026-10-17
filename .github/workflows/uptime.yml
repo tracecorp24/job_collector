@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
-      SITE: https://ai-org.online
+      SITE: https://job.ai-org.online
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       LINKO_LOG_KEY: ${{ secrets.LINKO_LOG_KEY || secrets.LINKO_ADMIN_KEY }}

@@ -44,7 +44,7 @@ Aktif sorunlar `/api/v1/status` içinde `problems` olarak görünür.
 `.local/linko_cli.env` (gitignore'da):
 
 ```
-LINKO_URL=https://ai-org.online
+LINKO_URL=https://job.ai-org.online
 LINKO_LOG_KEY=<sunucudaki /etc/linko.env içindeki JOBAPP_LOG_KEY>
 ```
 

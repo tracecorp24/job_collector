@@ -1,7 +1,7 @@
 """Canlı sitenin loglarını ve hata kayıtlarını yerelden sorgular / indirir.
 
 Ayar: ortam değişkenleri ya da gitignore'daki `.local/linko_cli.env` (KEY=VALUE satırları)
-  LINKO_URL        varsayılan https://ai-org.online
+  LINKO_URL        varsayılan https://job.ai-org.online
   LINKO_LOG_KEY    sunucudaki JOBAPP_LOG_KEY (geçişte LINKO_ADMIN_KEY de kabul edilir)
 
 Örnekler:
@@ -32,7 +32,7 @@ def settings():
             if "=" in line and not line.lstrip().startswith("#"):
                 key, value = line.split("=", 1)
                 values[key.strip()] = value.strip()
-    url = os.environ.get("LINKO_URL") or values.get("LINKO_URL") or "https://ai-org.online"
+    url = os.environ.get("LINKO_URL") or values.get("LINKO_URL") or "https://job.ai-org.online"
     key = next((v for v in (os.environ.get("LINKO_LOG_KEY"), values.get("LINKO_LOG_KEY"),
                             os.environ.get("LINKO_ADMIN_KEY"), values.get("LINKO_ADMIN_KEY")) if v), None)
     if not key:

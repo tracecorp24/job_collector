@@ -3,7 +3,7 @@
 > **Şifreler ve anahtarlar nerede?** Ana dizindeki `SIFRELER.txt` dosyasında: arayüz
 > kullanıcı/şifresi, servis API anahtarı, Groq API anahtarı. Dosya `.gitignore` içinde
 > olduğu için GitHub'a gitmez; yalnızca bu bilgisayarda durur, yedeğini kendin al.
-> Sunucudaki kopya: `/root/linko-ui-credentials`. Canlı site: https://ai-org.online
+> Sunucudaki kopya: `/root/linko-ui-credentials`. Canlı site: https://job.ai-org.online
 > (kurulum: `website_kurulum.md`).
 
 ## Güncel arayüz ve kullanım

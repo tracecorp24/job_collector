@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Senkronize et
         env:
-          LINKO_URL: https://ai-org.online
+          LINKO_URL: https://job.ai-org.online
           LINKO_LOG_KEY: ${{ secrets.LINKO_LOG_KEY || secrets.LINKO_ADMIN_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
