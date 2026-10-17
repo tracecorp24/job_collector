@@ -152,6 +152,25 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(incidents[0]["status"], "open")
         self.assertIn(("PATCH", "/repos/o/r/issues/5", {"state": "open"}), calls)
 
+    def test_flood_is_capped_per_run_and_listed_in_one_issue(self):
+        incidents = [self.incident(id=n, title=f"[linko] Hata {n}") for n in range(1, 8)]
+        http, calls = self.fake(incidents, {})
+        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
+        created = [c for c in calls if c[0] == "POST" and c[1].endswith("/issues")]
+        self.assertEqual(len(created), incident_sync.MAX_NEW_ISSUES + 1)
+        self.assertIn(incident_sync.FLOOD, created[-1][2]["body"])
+        self.assertIn("#6", created[-1][2]["body"])
+        self.assertIn("#7", created[-1][2]["body"])
+        self.assertEqual([i["issue_number"] for i in incidents[5:]], [None, None])
+
+    def test_issue_body_masks_secrets(self):
+        incidents = [self.incident(sample="istek Bearer abcdefghijkl1234 api_key=hunter22hunter22 gsk_abcdefgh12345678")]
+        http, calls = self.fake(incidents, {})
+        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
+        body = next(c for c in calls if c[0] == "POST" and c[1].endswith("/issues"))[2]["body"]
+        for secret in ("abcdefghijkl1234", "hunter22hunter22", "gsk_abcdefgh12345678"):
+            self.assertNotIn(secret, body)
+
     def test_reopened_incident_reopens_existing_issue(self):
         incidents = [self.incident(issue_number=5, issue_state="closed")]
         http, calls = self.fake(incidents, {})

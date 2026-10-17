@@ -267,6 +267,7 @@ class AppLog(Base):
     message = Column(Text, default="")
     traceback = Column(Text, default="")
     incident_id = Column(Integer, nullable=True, index=True)
+    version = Column(String(16), default="")
 
 
 class Incident(Base):
@@ -289,3 +290,5 @@ class Incident(Base):
     resolution = Column(Text, default="")
     reopen_count = Column(Integer, default=0)
     history = Column(Text, default="[]")
+    first_version = Column(String(16), default="")
+    last_version = Column(String(16), default="")

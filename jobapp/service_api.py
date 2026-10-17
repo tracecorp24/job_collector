@@ -112,16 +112,19 @@ def install(server):
                 session.execute(text('SELECT 1'))
             alive = bool(service.supervisor and service.supervisor.is_alive())
             healthy = alive and time.time()-service.heartbeat < max(30, config.SERVICE_POLL_SECONDS*3) and not service.last_error
-            return jsonify(status='ok' if healthy else 'degraded', database='ok', collector=alive), 200 if healthy else 503
+            return jsonify(status='ok' if healthy else 'degraded', database='ok', collector=alive,
+                           version=config.version_info().get('sha')), 200 if healthy else 503
         except Exception:
             return jsonify(status='unavailable', database='error'), 503
 
     @app.get('/api/v1/status')
     def status():
         from .transport import Coordinator
+        from . import logstore
         return jsonify(api_version='1', running=server.state.running, run_id=server.state.run_id,
             source=Coordinator().state(), supervisor_alive=bool(service.supervisor and service.supervisor.is_alive()),
-            heartbeat_at=service.heartbeat, last_error=service.last_error)
+            heartbeat_at=service.heartbeat, last_error=service.last_error,
+            version=config.version_info(), logging=logstore.stats())
 
     @app.get('/api/v1/jobs')
     def jobs():

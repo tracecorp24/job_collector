@@ -46,6 +46,27 @@ SERVICE_POLL_SECONDS = max(1.0, float(_env("JOBAPP_SERVICE_POLL_SECONDS", "5")))
 EVENT_RETENTION_DAYS = max(1, int(_env("JOBAPP_EVENT_RETENTION_DAYS", "90")))
 CHANGES_RETENTION_DAYS = max(1, int(_env("JOBAPP_CHANGES_RETENTION_DAYS", "60")))
 APP_LOG_RETENTION_DAYS = max(1, int(_env("JOBAPP_APP_LOG_RETENTION_DAYS", "90")))
+# Deploy betiğinin yazdığı sürüm bilgisi ve veritabanı yazılamazken logların düştüğü yedek klasör.
+VERSION_PATH = _env("JOBAPP_VERSION_PATH", os.path.join(os.path.dirname(DB_PATH), "version.json"))
+SPOOL_DIR = _env("JOBAPP_SPOOL_DIR", os.path.join(os.path.dirname(DB_PATH), "spool"))
+_version_cache = {}
+
+
+def version_info():
+    """Canlıda `/var/lib/linko/version.json` (deploy yazar); yoksa sha "bilinmiyor". Dosya değişince yeniden okunur."""
+    import json
+    try:
+        stamp = (VERSION_PATH, os.stat(VERSION_PATH).st_mtime_ns)
+    except OSError:
+        return {"sha": "bilinmiyor"}
+    if _version_cache.get("stamp") != stamp:
+        try:
+            with open(VERSION_PATH, encoding="utf-8") as file:
+                info = json.load(file)
+            _version_cache.update(stamp=stamp, info=info if isinstance(info, dict) and info.get("sha") else {"sha": "bilinmiyor"})
+        except (OSError, ValueError):
+            return {"sha": "bilinmiyor"}
+    return _version_cache["info"]
 # linko-backup betiğinin yazdığı sunucu dışı yedek durumu.
 BACKUP_STATUS_PATH = _env("JOBAPP_BACKUP_STATUS_PATH", os.path.join(os.path.dirname(DB_PATH), "backup_status.json"))
 API_KEY = os.environ.get("JOBAPP_API_KEY", "")

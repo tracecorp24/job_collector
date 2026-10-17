@@ -91,7 +91,7 @@ def filtered(args):
 def row(source, item):
     if source == "app":
         return dict(id=item.id, ts=stamp(item.created_at), level=item.level, logger=item.logger, message=item.message,
-                    traceback=item.traceback or None, incident_id=item.incident_id)
+                    traceback=item.traceback or None, incident_id=item.incident_id, version=item.version or "")
     return dict(id=item.id, ts=stamp(item.created_at), level=item.level, kind=item.kind, run_id=item.run_id,
                 task_id=item.task_id, data=json.loads(item.data or "{}"))
 

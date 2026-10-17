@@ -14,10 +14,27 @@ sqlite3 "$DATA/jobs.db" ".backup '$BACKUPS/jobs-$(date +%Y%m%d-%H%M%S).db'"
 ls -1t "$BACKUPS"/jobs-*.db | tail -n +11 | xargs -r rm -f
 chown -R linko:linko "$BACKUPS"
 
+# Hangi sürümün canlıda olduğu uygulamaya ve hata kayıtlarına bu dosyadan yansır (linko kullanıcısı git'i okuyamaz).
+write_version() {
+    python3 - "$DATA" "$(git rev-parse HEAD)" "$(git log -1 --format=%s)" <<'PY'
+import json, os, sys, time
+data, sha, subject = sys.argv[1:4]
+info = {"sha": sha[:7], "full_sha": sha, "subject": subject, "deployed_at": time.time()}
+tmp = os.path.join(data, "version.json.tmp")
+with open(tmp, "w", encoding="utf-8") as file:
+    json.dump(info, file, ensure_ascii=False)
+os.replace(tmp, os.path.join(data, "version.json"))
+with open(os.path.join(data, "deploy_history.jsonl"), "a", encoding="utf-8") as file:
+    file.write(json.dumps(info, ensure_ascii=False) + chr(10))
+PY
+    chown linko:linko "$DATA/version.json" "$DATA/deploy_history.jsonl"
+}
+
 cd "$APP"
 PREV=$(git rev-parse HEAD)
 git fetch -q origin main
 git reset -q --hard origin/main
+write_version
 .venv/bin/pip install -q -r requirements.txt
 systemctl restart linko
 
@@ -32,6 +49,7 @@ done
 echo "Sağlık kontrolü başarısız, $PREV sürümüne geri dönülüyor." >&2
 journalctl -u linko -n 30 --no-pager >&2 || true
 git reset -q --hard "$PREV"
+write_version
 .venv/bin/pip install -q -r requirements.txt
 systemctl restart linko
 exit 1

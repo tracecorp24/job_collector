@@ -1,6 +1,7 @@
 """Hata kayıtlarını GitHub issue'larıyla eşler (yalnızca standart kütüphane; Actions'ta çalışır).
 
-1. Issue'su olmayan açık hata kaydı → `hata-kaydı` etiketli yeni issue.
+1. Issue'su olmayan açık hata kaydı → `hata-kaydı` etiketli yeni issue (tur başına en fazla 5; fazlası
+   tek "taşkın" issue'sunda listelenir, sonraki turlarda normal issue olur).
 2. Çözüldükten sonra tekrar görülen kayıt → kapalı issue yeniden açılır, yorum eklenir.
 3. Issue kapatıldıysa ve hata kapanıştan sonra görülmediyse → kayıt "çözüldü" olur, issue'ya yorum düşülür.
    Kapanıştan sonra tekrar görüldüyse issue yeniden açılır.
@@ -10,13 +11,28 @@ Ortam: LINKO_URL, LINKO_ADMIN_KEY, GITHUB_TOKEN, GITHUB_REPOSITORY (owner/repo).
 """
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
 
 LABEL = "hata-kaydı"
 MARKER = "<!-- linko-incident:{} -->"
+FLOOD = "<!-- linko-flood -->"
+MAX_NEW_ISSUES = 5
+SECRETS = (
+    (re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{8,}"), "Bearer [gizlendi]"),
+    (re.compile(r"\bgsk_[A-Za-z0-9]{8,}"), "[gizlendi]"),
+    (re.compile(r"\bsk-[A-Za-z0-9_-]{16,}"), "[gizlendi]"),
+    (re.compile(r"(?i)\b(api[_-]?key|token|password|passwd|secret|authorization)\b(\s*[=:]\s*)[^\s,;&\"']+"), r"\1\2[gizlendi]"),
+)
+
+
+def redact(text):
+    """Sunucu zaten maskeler; issue herkese açık olabilir diye burada ikinci kez uygulanır."""
+    for pattern, replacement in SECRETS:
+        text = pattern.sub(replacement, text or "")
+    return text
 
 
 def request(method, url, token, body=None):
@@ -33,6 +49,7 @@ def request(method, url, token, body=None):
 
 
 def when(value):
+    from datetime import datetime
     return datetime.fromisoformat(value.replace("Z", "+00:00")) if value else None
 
 
@@ -48,13 +65,13 @@ class Sync:
         return self.http(method, self.api + path, self.token, body)
 
     def body(self, incident):
-        sample = incident["sample"][:3000]
+        sample = redact(incident["sample"])[:3000]
         return "\n".join([
             MARKER.format(incident["id"]),
             f"Canlı sitede otomatik yakalanan hata. **Hata kaydı #{incident['id']}** (`{incident['logger']}`)",
             "",
-            f"- İlk görülme: {incident['first_seen']}",
-            f"- Son görülme: {incident['last_seen']}",
+            f"- İlk görülme: {incident['first_seen']} (sürüm {incident.get('first_version') or 'bilinmiyor'})",
+            f"- Son görülme: {incident['last_seen']} (sürüm {incident.get('last_version') or 'bilinmiyor'})",
             f"- Tekrar sayısı: {incident['count']}",
             "",
             "```", sample, "```",
@@ -62,7 +79,7 @@ class Sync:
             "Ayrıntı ve iz kaydı:",
             "```",
             f"python scripts/linko_logs.py incident {incident['id']}",
-            f"python scripts/linko_logs.py logs --since 7d --q \"{incident['title'][:40]}\"",
+            f"python scripts/linko_logs.py logs --since 7d --q \"{redact(incident['title'])[:40]}\"",
             "```",
             "Düzelten commit'e `Fixes #<bu issue>` yazın; issue kapanınca kayıt **çözüldü** olarak işaretlenir. "
             "Hata kaydı silinmez; tekrar görülürse bu issue yeniden açılır.",
@@ -75,18 +92,38 @@ class Sync:
             if "HTTP 422" not in str(error):
                 raise
 
+    def flood_issue(self, deferred):
+        """Tur sınırını aşan kayıtlar tek "taşkın" issue'sunda listelenir; sonraki turlarda normal issue olurlar."""
+        text = "\n".join(f"- Hata kaydı #{i['id']} (x{i['count']}): {redact(i['title'])[:150]}" for i in deferred)
+        found = [i for i in (self.github("GET", f"/issues?labels={LABEL}&state=open&per_page=100") or [])
+                 if isinstance(i, dict) and FLOOD in (i.get("body") or "")]
+        if found:
+            self.github("POST", f"/issues/{found[0]['number']}/comments", {"body": "Sırada bekleyenler:\n" + text})
+        else:
+            self.github("POST", "/issues", {"title": "Hata taşkını: çok sayıda yeni hata kaydı", "labels": [LABEL],
+                "body": FLOOD + f"\nBir turda {MAX_NEW_ISSUES}'den fazla yeni hata kaydı geldi; her biri için ayrı issue "
+                "sonraki turlarda açılır. Sırada bekleyenler:\n" + text})
+        print(f"{len(deferred)} kayıt taşkın issue'suna eklendi")
+
     def open_issues(self):
+        created, deferred = 0, []
         for incident in self.linko("GET", "/api/v1/incidents?status=open&needs_issue=1")["items"]:
+            if not incident["issue_number"] and created >= MAX_NEW_ISSUES:
+                deferred.append(incident)
+                continue
             if incident["issue_number"]:
                 number = incident["issue_number"]
                 self.github("PATCH", f"/issues/{number}", {"state": "open"})
                 self.github("POST", f"/issues/{number}/comments", {"body":
                     f"🔁 Hata tekrar görüldü (toplam {incident['count']}, son {incident['last_seen']}). Issue yeniden açıldı."})
             else:
-                number = self.github("POST", "/issues", {"title": incident["title"][:200], "body": self.body(incident),
+                created += 1
+                number = self.github("POST", "/issues", {"title": redact(incident["title"])[:200], "body": self.body(incident),
                                                           "labels": [LABEL]})["number"]
             self.linko("POST", f"/api/v1/incidents/{incident['id']}", {"action": "link", "issue_number": number})
             print(f"Hata kaydı #{incident['id']} -> issue #{number}")
+        if deferred:
+            self.flood_issue(deferred)
 
     def resolve_closed(self):
         for incident in self.linko("GET", "/api/v1/incidents?status=open")["items"]:

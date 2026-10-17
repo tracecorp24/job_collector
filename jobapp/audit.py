@@ -34,8 +34,11 @@ def record(session, run_id, task_id, kind, data=None, level="info"):
     session.add(event)
     if level in ("warning", "error") or kind in LOGGED:
         summary = " ".join(f"{k}={str(data[k])[:120]}" for k in SUMMARY if data.get(k) not in (None, ""))
+        # Parmak izi olay türü + sebepten üretilir; unvan/konum/kimlik aynı hatayı bölmesin.
+        key = f"{kind}|{data.get('error_type') or data.get('reason') or data.get('msg') or ''}"[:160]
         log.log(logging.ERROR if level == "error" else logging.WARNING if level == "warning" else logging.INFO,
-                "%s run=%s task=%s %s", kind, (run_id or "-")[:8], (task_id or "-")[:8], summary)
+                "%s run=%s task=%s %s", kind, (run_id or "-")[:8], (task_id or "-")[:8], summary,
+                extra={"fingerprint_key": key})
     return event
 
 
