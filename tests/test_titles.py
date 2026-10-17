@@ -1,12 +1,12 @@
-"""Groq entegrasyonu: unvan önerisi, kota yönetimi, ilan analizi ve profil uygunluk puanı."""
+"""Groq entegrasyonu: unvan önerisi, kota yönetimi ve ilan sınıflandırması."""
 import json
 import unittest
 from unittest.mock import patch
 import requests
 import test_light
-from jobapp import config, fit, groq_client, titles, watches
+from jobapp import config, groq_client, titles, watches
 from jobapp.classify import classify_job
-from jobapp.models import Job, Setting, Watch
+from jobapp.models import Watch
 
 
 class FakeResponse:
@@ -136,55 +136,6 @@ class ClassifyTests(GroqBase):
             session.commit()
             from jobapp.models import SearchRun
             self.assertEqual(json.loads(session.get(SearchRun, run_id).options)["classify_backend"], "groq")
-
-
-class FitTests(GroqBase):
-    def seed(self):
-        with self.factory() as session:
-            for i in range(1, 4):
-                session.add(Job(id=i, external_id=str(i), title=f"Job {i}", company="X", description="Python",
-                                quality_ok=True, tags='["python"]'))
-            session.add(Setting(key="profile_text", value="Python geliştiricisi, 3 yıl"))
-            session.commit()
-
-    def test_backfill_scores_batches_and_sort_uses_scores(self):
-        self.seed()
-        fake = self.groq({"results": [{"id": 1, "score": 40, "reason": "orta"}, {"id": 2, "score": 95, "reason": "çok iyi"},
-                                      {"id": 3, "score": "130", "reason": "x"}, {"id": 99, "score": 50}]})
-        with patch.object(fit, "SessionLocal", self.factory):
-            stats = fit.run_fit_backfill()
-        self.assertEqual((stats["scored"], stats["termination_reason"]), (3, "completed"))
-        self.assertEqual(len(fake.calls), 1)  # Altı ilana kadar tek istek.
-        jobs = self.client.get("/api/jobs?sort=fit").json
-        self.assertEqual([j["id"] for j in jobs["jobs"]], [3, 2, 1])
-        self.assertEqual((jobs["jobs"][0]["fit_score"], jobs["mode"]), (100, "fit"))
-        facets = self.client.get("/api/facets").json
-        self.assertEqual((facets["unscored_fit"], facets["profile_hash"]), (0, fit.profile_hash("Python geliştiricisi, 3 yıl")))
-        with patch.object(fit, "SessionLocal", self.factory):
-            self.assertEqual(fit.run_fit_backfill()["total"], 0)  # Güncel puanlar tekrar istenmez.
-
-    def test_profile_change_marks_scores_stale_and_quota_stops(self):
-        self.seed()
-        self.groq(FakeResponse(status=429, headers={"retry-after": "600"}))
-        with patch.object(fit, "SessionLocal", self.factory):
-            stats = fit.run_fit_backfill()
-        self.assertEqual((stats["scored"], stats["termination_reason"]), (0, "model_unavailable"))
-        with self.factory() as session:
-            session.get(Setting, "profile_text").value = ""
-            session.commit()
-        with patch.object(fit, "SessionLocal", self.factory):
-            self.assertEqual(fit.run_fit_backfill()["termination_reason"], "model_unavailable")
-
-    def test_fit_endpoint_starts_maintenance_run(self):
-        self.seed()
-        self.groq({"results": [{"id": 1, "score": 70, "reason": "iyi"}]})
-        with patch.object(fit, "SessionLocal", self.factory):
-            result = self.client.post("/api/fit", json={})
-            self.assertEqual(result.status_code, 200, result.json)
-            from jobapp import server
-            server.state.thread.join(10)
-        with self.factory() as session:
-            self.assertEqual(session.get(Job, 1).fit_score, 70)
 
 
 if __name__ == "__main__":

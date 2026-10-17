@@ -5,13 +5,11 @@ Endpoints:
   GET  /api/jobs        -> filtered, paginated jobs
   GET  /api/jobs/<id>   -> one job (with description)
   GET  /api/facets      -> distinct categories/seniorities/etc. for filters
-  GET  /api/profile     -> the saved resume/profile text (for "Best fit" sort)
-  POST /api/profile     -> save resume/profile text and (re)compute its embedding
   POST /api/scrape      -> start a background scrape
   POST /api/embed       -> backfill embeddings for existing jobs (no re-scrape)
   POST /api/classify    -> re-classify existing jobs with local/Claude LLM (no re-scrape)
   GET  /api/ollama/models -> models pulled in the local Ollama server
-  POST /api/scrape/stop -> request the running scrape/backfill to stop
+  POST /api/scrape/stop -> request the running scrape or maintenance task to stop
   GET  /api/scrape/status
   GET  /events          -> SSE progress stream
 
@@ -156,15 +154,6 @@ def api_jobs():
         rank_mode = None
         if semantic_target is not None:
             rank_mode = "semantic"
-        elif sort == "fit":
-            from . import profile as profile_mod
-            saved = profile_mod.get_profile(session)
-            if saved["embedding"]:
-                semantic_target = saved["embedding"]
-                rank_mode = "fit"
-            # No saved profile embedding: silently fall through to recency
-            # sort below rather than erroring on an unsatisfiable request.
-
         if rank_mode is not None:
             ranked_ids, scores = _rank_by_embedding(q, semantic_target)
             total = len(ranked_ids)
@@ -314,40 +303,9 @@ def api_facets():
             "companies": companies,
             "missing_embeddings": base.filter(Job.embedding.is_(None)).count(),
             "not_locally_classified": base.filter(Job.classified_by != "local").count(),
-            "has_profile": bool(_load_profile(session)["embedding"]),
         })
     finally:
         session.close()
-
-
-@app.route("/api/profile")
-def api_profile():
-    session = SessionLocal()
-    try:
-        saved = _load_profile(session)
-        return jsonify({"text": saved["text"], "has_embedding": bool(saved["embedding"])})
-    finally:
-        session.close()
-
-
-@app.route("/api/profile", methods=["POST"])
-def api_profile_save():
-    from . import profile as profile_mod
-
-    body = request.get_json(force=True, silent=True) or {}
-    text = str(body.get("text") or "")
-
-    session = SessionLocal()
-    try:
-        embedded = profile_mod.set_profile(session, text)
-        return jsonify({"ok": True, "embedded": embedded})
-    finally:
-        session.close()
-
-
-def _load_profile(session):
-    from . import profile as profile_mod
-    return profile_mod.get_profile(session)
 
 
 # --- Scrape control --------------------------------------------------------

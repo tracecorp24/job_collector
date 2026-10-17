@@ -151,6 +151,7 @@ def report(session, run_id, task_id=None):
         finding("already_known", "Bu süreçte bulunan ilanlar sistemde zaten vardı.", f"{metrics['found_jobs']} ilişkili ilan var; ilk kez eklenen ilan yok.",
                 ["İlanları gör düğmesiyle tüm ilişkili ilanları açın.", "İlk kez eklenenler filtresini kaldırın."])
     task_reports = []
+    search_analyses = []
     for task in tasks:
         checkpoint, stats = json.loads(task.checkpoint), json.loads(task.stats)
         reason = reasons.get(task.id) or stats.get("termination_reason")
@@ -161,7 +162,12 @@ def report(session, run_id, task_id=None):
         elif reason in ("exhausted_results", "repeated_page"):
             finding(reason, f"{task.keyword}: kaynak boş veya tekrarlanan sonuç döndürdü.", {"search_id": task.id, "reason": reason, "collected": count},
                     ["Hedef ilan sayısı, kaynağın o sorgu için erişilebilir ilan sayısını garanti etmez.", "Unvanı veya konumu genişletin; önerilen değişiklikle yeni bir süreç oluşturun."])
+        analysis = stats.get("search_efficiency")
+        if analysis:
+            search_analyses.append(analysis)
         task_reports.append({"search_id": task.id, "keyword": task.keyword, "location": task.location, "target": task.limit,
+                             "keyword_language": task.keyword_language, "profession_group": task.profession_group,
+                             "profession_code": task.profession_code, "search_efficiency": analysis,
                              "collected": count, "status": task.status, "termination_reason": reason, "error": task.error})
     if run.status in ("paused", "pausing", "cancelled", "cancelling", "stopped", "stopping"):
         finding("interrupted", "Süreç tamamlanmadan duraklatıldı veya iptal edildi.", run.status,
@@ -172,6 +178,7 @@ def report(session, run_id, task_id=None):
     return {"run_id": run_id, "search_id": task_id, "audit_version": VERSION, "generated_at": datetime.utcnow().isoformat()+"Z",
             "status": run.status, "kind": kind, "options": clean(json.loads(run.options)),
             "coverage": "detailed" if has_pages else "legacy_or_non_scrape", "metrics": metrics, "http_statuses": dict(statuses),
-            "failed_job_ids": sorted(failed_ids), "tasks": task_reports, "findings": findings, "timeline": timeline,
+            "failed_job_ids": sorted(failed_ids), "tasks": task_reports, "search_analyses": search_analyses,
+            "findings": findings, "timeline": timeline,
             "last_error": last_error, "notes": ["Kart toplamları tekrar isteklerini içerir; LinkedIn genel toplamı değildir.",
                                                   "İlan ile süreç ilişkileri çöp kutusu ve kalite durumundan bağımsız saklanır."]}

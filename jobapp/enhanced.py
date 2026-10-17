@@ -5,10 +5,10 @@ import re
 from pathlib import Path
 from datetime import datetime
 from flask import jsonify, request, Response
-from sqlalchemy import case, func, String
+from sqlalchemy import func, String
 from werkzeug.datastructures import MultiDict
 
-from . import config, runs, filters, audit, fit
+from . import config, runs, filters, audit, professions
 from .models import Job, SearchRun, SearchTask, TaskJob, SearchEvent
 from .search_export import _write_json
 from .transport import Coordinator, SourcePaused
@@ -107,7 +107,7 @@ def install(server):
         return jsonify(ok=False, error=str(exc)), 400
 
     def selection(session):
-        """Semantic/profile ranking shares the same filters as navigation."""
+        """Semantic ranking shares the same filters as navigation."""
         args = request.args
         q = filters.filtered(session, args)
         target, mode, fallback = None, "", False
@@ -121,18 +121,6 @@ def install(server):
                 fallback = True
             else:
                 mode = "semantic"
-        elif args.get("sort") == "fit":
-            saved = server._load_profile(session)
-            current = fit.profile_hash(saved["text"])
-            if current and q.filter(Job.fit_profile == current).first():
-                # Groq puanları: güncel profil için puanlananlar puana göre önde, kalanlar en yeni önce.
-                scored = Job.fit_profile == current
-                ordered = q.order_by(case((scored, 0), else_=1), case((scored, Job.fit_score), else_=None).desc(),
-                                     Job.scraped_at.desc(), Job.id.desc())
-                return [row[0] for row in ordered.with_entities(Job.id).all()], {}, "fit", False
-            target = saved["embedding"]
-            mode = "fit" if target else ""
-            fallback = not bool(target)
         if target is not None:
             ids, scores = server._rank_by_embedding(q, target)
             return ids, scores, mode, fallback
@@ -165,6 +153,8 @@ def install(server):
         with server.SessionLocal() as session:
             result = {}
             for key, column in filters.FIELDS.items():
+                if key in ("profession_group", "profession_subgroup"):
+                    continue
                 q = filters.filtered(session, request.args, omit=key)
                 if key in ("search_term", "search_location"):
                     column = SearchTask.keyword if key == "search_term" else SearchTask.location
@@ -173,19 +163,39 @@ def install(server):
                 result[key] = [{"value": value or "__missing__", "count": n}
                                for value, n in q.with_entities(func.coalesce(column, ""), count).group_by(func.coalesce(column, "")).order_by(count.desc()).all()]
             counts = {}
-            for row in filters.filtered(session, request.args, omit="skills").with_entities(Job.tags):
-                for tag in set(json.loads(row[0] or "[]")):
+            for row in filters.filtered(session, request.args, omit=("skills", "profession_group", "profession_subgroup")).with_entities(Job.tags):
+                try:
+                    values = set(json.loads(row[0] or "[]"))
+                except (ValueError, TypeError):
+                    values = set()
+                for tag in values:
                     counts[tag] = counts.get(tag, 0) + 1
             result["skills"] = [{"value": k, "count": v} for k, v in sorted(counts.items(), key=lambda i: (-i[1], i[0]))]
+            tree_counts = {}
+            tree_jobs = filters.filtered(session, request.args, omit=("profession_group", "profession_subgroup"))
+            for column_name, column in (("profession_groups", Job.profession_groups),
+                                        ("profession_subgroups", Job.profession_subgroups)):
+                for row in tree_jobs.with_entities(Job.id, column):
+                    try:
+                        labels = set(json.loads(row[1] or "[]"))
+                    except (ValueError, TypeError):
+                        labels = set()
+                    for label in labels:
+                        tree_counts[label] = tree_counts.get(label, 0) + 1
+            result["profession_tree"] = {
+                group: [{"value": subgroup, "count": tree_counts.get(subgroup, 0)}
+                        for subgroup in subgroups]
+                for group, subgroups in professions.tree().items()
+            }
+            result["profession_group"] = [{"value": group, "count": tree_counts.get(group, 0)}
+                                           for group in professions.MAIN_GROUPS]
+            result["profession_subgroup"] = [{"value": subgroup, "count": tree_counts.get(subgroup, 0)}
+                                               for subgroup in professions.SUBGROUPS]
             base = filters.filtered(session, request.args)
-            saved = server._load_profile(session)
-            current = fit.profile_hash(saved["text"])
             result.update(total=base.count(), active_total=session.query(Job).filter(Job.deleted_at.is_(None), Job.quality_ok.is_(True)).count(),
                           missing_embeddings=base.filter(Job.embedding.is_(None)).count(),
                           not_locally_classified=base.filter(Job.classified_by != "local").count(),
                           not_groq_classified=base.filter(Job.classified_by != "groq").count(),
-                          has_profile=bool(saved["embedding"]) or bool(current), profile_hash=current,
-                          unscored_fit=base.filter((Job.fit_profile != current) | Job.fit_profile.is_(None) | Job.fit_score.is_(None)).count() if current else 0,
                           groq_available=bool(config.GROQ_API_KEY))
             return jsonify(result)
     app.view_functions["api_facets"] = facets
@@ -324,6 +334,18 @@ def install(server):
             return Response(json.dumps(data, ensure_ascii=False, indent=2), mimetype="application/json",
                             headers={"Content-Disposition":'attachment; filename="surec-raporu.json"'})
         return jsonify(data)
+
+    @app.get("/api/daily-summary")
+    def daily_summary_report():
+        from .models import Setting
+        with server.SessionLocal() as session:
+            saved = session.get(Setting, "daily_search_summary_latest")
+            if not saved or not saved.value:
+                return jsonify(available=False, message="Günlük özet, ilk tamamlanan aramadan sonra hazırlanır.")
+            try:
+                return jsonify(json.loads(saved.value))
+            except (ValueError, TypeError):
+                return jsonify(available=False, message="Yeni günlük özet henüz hazır değil.")
 
     @app.get("/api/runs/<run_id>/logs")
     def run_logs(run_id):
@@ -643,7 +665,7 @@ def install(server):
                 raise ValueError("Başka işlem sürüyor. Önce bitmesini bekleyin veya duraklatın.")
             run_id, task_id = runs.identifier(), runs.identifier()
             session.add(SearchRun(id=run_id, options=json.dumps(options)))
-            session.add(SearchTask(id=task_id, run_id=run_id, limit=options["limit"], keyword={"embed": "Eşleştirme verilerini hazırla", "fit": "Profil uygunluğunu puanla"}.get(kind, "Kayıtlı ilanları analiz et")))
+            session.add(SearchTask(id=task_id, run_id=run_id, limit=options["limit"], keyword={"embed": "Eşleştirme verilerini hazırla"}.get(kind, "Kayıtlı ilanları analiz et")))
             audit.record(session, run_id, None, "run_created", {"actor":"web", "options":options})
             audit.record(session, run_id, task_id, "task_queued", {"kind":kind})
             session.commit()
@@ -651,4 +673,3 @@ def install(server):
             return jsonify(ok=True, run_id=run_id, task_id=task_id)
     app.view_functions["api_embed"] = lambda: start_maintenance("embed")
     app.view_functions["api_classify"] = lambda: start_maintenance("classify")
-    app.add_url_rule("/api/fit", "api_fit", lambda: start_maintenance("fit"), methods=["POST"])

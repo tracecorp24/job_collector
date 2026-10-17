@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from sqlalchemy import or_, and_, func
-from . import config, runs, audit, watches, maintenance
+from . import config, runs, audit, watches, maintenance, daily_summary
 from .models import SearchRun, SearchTask
 from .transport import Coordinator
 
@@ -19,6 +19,7 @@ def tick(server, now=None):
     now = time.time() if now is None else now
     with runs.lock:
         heartbeat = time.time()
+        daily_summary.dispatch(server, now)
         if server.state.running:
             return
         source = Coordinator().state()

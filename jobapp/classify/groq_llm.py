@@ -6,7 +6,7 @@ used instead) and truncates long postings. On quota exhaustion, missing key or a
 it returns the rule-based result unchanged so the pipeline never breaks.
 """
 
-from .. import config, groq_client
+from .. import config, groq_client, professions
 from ._shared import VALID_CATEGORIES, VALID_SENIORITY, apply_fields
 
 INSTRUCTIONS = (
@@ -15,6 +15,11 @@ INSTRUCTIONS = (
     '{"category": one of ' + str(VALID_CATEGORIES) + ', "seniority": one of ' + str(VALID_SENIORITY) + ', '
     '"workplace_type": one of ["Remote","Hybrid","Onsite",""], '
     '"tags": up to 8 lowercase skill/tool keywords, '
+    '"profession_groups": broad occupation categories from the title and description, chosen from '
+    + str(professions.MAIN_GROUPS)
+    + ', "profession_subgroups": specific profession families chosen from '
+    + str(professions.SUBGROUPS)
+    + ', '
     '"summary": one neutral sentence (max 25 words) describing the role, in the posting\'s language, '
     '"about_company": one short sentence about the company from the posting, or "", '
     '"offerings": up to 6 short benefit phrases, or [], '

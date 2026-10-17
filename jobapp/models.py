@@ -38,12 +38,15 @@ class Job(Base):
 
     # Parsed fields
     title = Column(String(512), default="", index=True)
+    normalized_title = Column(String(256), default="", index=True)
     company = Column(String(256), default="", index=True)
     location = Column(String(256), default="")
     workplace_type = Column(String(32), default="", index=True)  # Remote/Hybrid/Onsite
 
     # Classified fields
     category = Column(String(48), default="Other", index=True)
+    profession_groups = Column(Text, default='["Genel Meslekler"]')  # broad occupation roots, JSON array
+    profession_subgroups = Column(Text, default='["Diğer / Belirtilmemiş"]')  # filterable occupation specialisms
     seniority = Column(String(32), default="Unknown", index=True)
     tags = Column(Text, default="[]")  # JSON array of strings
     summary = Column(Text, default="")  # optional one-liner (LLM)
@@ -59,9 +62,6 @@ class Job(Base):
     flag_reason = Column(Text, default="")  # short phrase explaining the flag
     classified_by = Column(String(16), default="rules")  # rules | llm | local
     embedding = Column(Text, nullable=True)  # optional JSON float array (local embeddings)
-    fit_score = Column(Integer, nullable=True)  # 0-100 profile fit (Groq), for profile fit_profile
-    fit_reason = Column(Text, default="")  # short explanation of fit_score
-    fit_profile = Column(String(16), default="")  # hash of the profile text the score was made for
 
     # Content
     description = Column(Text, default="")
@@ -103,10 +103,13 @@ class Job(Base):
             "external_id": self.external_id,
             "url": self.url,
             "title": self.title,
+            "normalized_title": self.normalized_title or self.title,
             "company": self.company,
             "location": self.location,
             "workplace_type": self.workplace_type,
             "category": self.category,
+            "profession_groups": json.loads(self.profession_groups or '["Genel Meslekler"]'),
+            "profession_subgroups": json.loads(self.profession_subgroups or '["Diğer / Belirtilmemiş"]'),
             "seniority": self.seniority,
             "tags": tags,
             "summary": self.summary,
@@ -120,9 +123,6 @@ class Job(Base):
             "flag": self.flag,
             "flag_reason": self.flag_reason,
             "classified_by": self.classified_by,
-            "fit_score": self.fit_score,
-            "fit_reason": self.fit_reason or "",
-            "fit_profile": self.fit_profile or "",
             "search_term": self.search_term,
             "search_location": self.search_location,
             "quality_ok": self.quality_ok,
@@ -146,8 +146,7 @@ class Job(Base):
 
 
 class Setting(Base):
-    """Small key/value store for app-level settings (e.g. the saved resume/
-    profile text and its embedding) that don't belong on the ``jobs`` table."""
+    """Small key/value store for application settings and generated reports."""
 
     __tablename__ = "settings"
 
@@ -190,6 +189,10 @@ class SearchTask(Base):
     active_seconds = Column(Float, default=0)
     status_reason = Column(Text, default="")
     package = Column(String(160), default="")  # Aynı paketle eklenen görevlerin ortak adı
+    keyword_language = Column(String(12), default="other", index=True)
+    profession_group = Column(String(80), default="Genel Meslekler", index=True)
+    profession_code = Column(String(80), default="other", index=True)
+    location_key = Column(String(256), default="", index=True)
 
 
 class TaskJob(Base):

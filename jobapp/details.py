@@ -12,13 +12,12 @@ import time
 from sqlalchemy import text
 from . import config
 from .models import Job, SearchRun
-from .transport import Coordinator, SourcePaused
+from .transport import Coordinator, SourcePaused, fingerprint
 
 log = logging.getLogger(__name__)
 MAX_ATTEMPTS = 3
 DESCRIPTION_SELECTOR = ".show-more-less-html__markup, .description__text"
-PENDING = ("deleted_at IS NULL AND (description IS NULL OR description = '') "
-           "AND json_extract(raw, '$.detail_pending') = 1")
+PENDING = "deleted_at IS NULL AND json_extract(raw, '$.detail_pending') = 1"
 worker = None
 
 
@@ -48,34 +47,40 @@ def fill_one(server, scraper):
         if not ids:
             return False
         job_id = ids[0]
-        url = json.loads(session.get(Job, job_id).raw or "{}").get("url")
+        requested_raw = json.loads(session.get(Job, job_id).raw or "{}")
+        url = requested_raw.get("url")
     scraper.last_status = None
+    cached = scraper.details.get(requested_raw)
     try:
-        detail = scraper._get(url) if url else None
+        detail = scraper._get(url) if url and cached is None else None
     except SourcePaused:
         return False
     except Exception as exc:  # ağ/kaynak hatası: deneme sayılır, sonsuz döngüye girmez
         log.warning("İlan %s detayı alınamadı: %s", job_id, exc)
         detail = None
-    if detail is None and server.state.running:
+    if detail is None and cached is None and server.state.running:
         return False  # tarama başladığı için istek bırakıldı; deneme sayılmaz
     box = detail.select_one(DESCRIPTION_SELECTOR) if detail is not None else None
-    description = box.get_text("\n", strip=True) if box is not None else ""
+    description = cached["description"] if cached and cached["status"] == 200 else (
+        box.get_text("\n", strip=True) if box is not None else "")
     with server.SessionLocal() as session:
         job = session.get(Job, job_id)
         if job is None:
             return True
         raw = json.loads(job.raw or "{}")
+        if job.deleted_at or not raw.get("detail_pending") or fingerprint(raw) != fingerprint(requested_raw):
+            return True  # a newer scan/delete owns the row; don't overwrite it
         if description:
-            cached = scraper.details.put(raw, description)
+            cached = cached or scraper.details.put(requested_raw, description)
             raw.update(description=cached["description"], detail_fetched_at=cached["fetched_at"])
             raw.pop("detail_pending", None)
             raw.pop("detail_attempts", None)
             from .pipeline import process_raw
             process_raw(session, raw, classify_backend=_backend(session, raw))
             log.info("Detay tamamlandı: #%s %s (%s)", job_id, job.title, job.company)
-        elif scraper.last_status in (404, 410):
-            scraper.details.put(raw, "", scraper.last_status)
+        elif (cached and cached["status"] in (404, 410)) or scraper.last_status in (404, 410):
+            if cached is None:
+                scraper.details.put(requested_raw, "", scraper.last_status)
             raw.pop("detail_pending", None)
             raw["detail_missing"] = True
             job.raw = json.dumps(raw, ensure_ascii=False)

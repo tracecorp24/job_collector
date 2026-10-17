@@ -4,6 +4,8 @@ Kept in one place so the two backends can't drift out of sync on valid
 category/seniority/workplace values or the instructions given to the model.
 """
 
+from .. import professions
+
 VALID_CATEGORIES = [
     "Engineering", "Data", "Design", "Product", "Finance",
     "Sales", "Marketing", "HR", "Operations", "Other",
@@ -21,6 +23,11 @@ INSTRUCTIONS = (
     + str(VALID_SENIORITY)
     + ', "workplace_type": one of ["Remote","Hybrid","Onsite",""], '
     '"tags": array of up to 8 lowercase skill/tool keywords, '
+    '"profession_groups": array of the broadest occupation groups that apply, chosen from '
+    + str(professions.MAIN_GROUPS)
+    + ', "profession_subgroups": array of specific occupation families chosen from '
+    + str(professions.SUBGROUPS)
+    + ', '
     '"summary": a single neutral sentence (max 25 words) describing the role, '
     '"about_company": 1-2 neutral sentences describing the company itself '
     '(industry, size, product) based only on what the posting says — empty '
@@ -84,7 +91,14 @@ def apply_fields(base: dict, data: dict, classified_by: str, original_descriptio
         result["workplace_type"] = workplace
     tags = data.get("tags")
     if isinstance(tags, list):
-        result["tags"] = [str(t).lower() for t in tags][:8]
+        from .. import professions
+        result["tags"] = professions.normalize_skill_tags([str(t).lower() for t in tags])[:8]
+    profession_groups, profession_subgroups = data.get("profession_groups"), data.get("profession_subgroups")
+    if isinstance(profession_groups, list) or isinstance(profession_subgroups, list):
+        from .. import professions
+        groups, subgroups = professions.clean_suggestions(profession_groups or [], profession_subgroups or [])
+        result["profession_groups"] = list(dict.fromkeys(result.get("profession_groups", []) + groups))
+        result["profession_subgroups"] = list(dict.fromkeys(result.get("profession_subgroups", []) + subgroups))[:8]
     summary = data.get("summary")
     if isinstance(summary, str):
         result["summary"] = summary.strip()

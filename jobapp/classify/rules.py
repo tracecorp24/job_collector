@@ -9,6 +9,7 @@ that folded (ASCII, lowercase) form.**
 """
 
 import re
+from .. import professions
 
 # Fold Turkish letters (both cases) to plain ASCII so matching is
 # locale-independent: ı/İ/I/i -> i, ş/Ş -> s, ğ/Ğ -> g, ü/Ü -> u, ö/Ö -> o, ç/Ç -> c.
@@ -197,10 +198,12 @@ def extract_tags(title: str, description: str) -> list:
 
 def classify(title: str, description: str, workplace_type: str = "") -> dict:
     flag, flag_reason = classify_flag(description)
+    role = professions.classify(title, description)
     return {
         "category": classify_category(title, description),
         "seniority": classify_seniority(title),
-        "tags": extract_tags(title, description),
+        "tags": professions.normalize_skill_tags(extract_tags(title, description)),
+        **role,
         "summary": "",
         "about_company": "",
         "offerings": [],

@@ -73,7 +73,7 @@ class FullLightTests(unittest.TestCase):
         self.assertNotIn('id="require-login"', html)
         self.assertNotIn("_kill_stray_chrome", vars(server))
         routes = {rule.rule for rule in server.app.url_map.iter_rules()}
-        for route in ("/api/jobs", "/api/facets", "/api/profile", "/api/embed",
+        for route in ("/api/jobs", "/api/facets", "/api/embed",
                       "/api/classify", "/api/ollama/models", "/api/jobs/<int:job_id>/similar", "/events"):
             self.assertIn(route, routes)
 
@@ -96,12 +96,6 @@ class FullLightTests(unittest.TestCase):
             self.assertEqual(session.query(Job).count(), 10)
         self.assertEqual(self.client.get("/api/jobs").status_code, 200)
         self.assertEqual(self.client.get("/api/facets").status_code, 200)
-
-    def test_profile_and_embedding_features(self):
-        with patch.object(embed, "embed_text", return_value=[1.0, 0.0]):
-            result = self.client.post("/api/profile", json={"text": "Python AI engineer"})
-        self.assertEqual(result.status_code, 200)
-        self.assertEqual(self.client.get("/api/profile").json["text"], "Python AI engineer")
 
     def test_authenticated_api_and_pipeline_rejected(self):
         self.assertEqual(self.client.post("/api/scrape", json={

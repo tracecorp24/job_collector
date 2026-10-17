@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .models import SearchRun, SearchTask, TaskJob, SearchEvent
 from sqlalchemy import func
-from . import audit, config
+from . import audit, config, professions, query_insights
 from .transport import Coordinator
 
 lock = threading.RLock()
@@ -87,6 +87,8 @@ def snapshot(session, run):
             **timing(run), "has_started":has_started(run) or any(has_started(t) for t in tasks),
             "created_at": run.created_at.isoformat(), "deleted_at": run.deleted_at.isoformat() if run.deleted_at else None,
             "tasks": [{"id": t.id, "keyword": t.keyword, "location": t.location, "limit": t.limit, "package": t.package or "",
+                       "keyword_language": t.keyword_language, "profession_group": t.profession_group,
+                       "profession_code": t.profession_code,
                        "status": t.status, "folder": t.folder, "error": t.error,
                        "count": json.loads(t.checkpoint).get("collected", 0),
                        "stats":dict(json.loads(t.stats), **task_counts[t.id]), **timing(t), "has_started":has_started(t)} for t in tasks]}
@@ -153,6 +155,11 @@ def worker(server, run_id):
                     continue
                 transition(task, "running")
                 task.error = ""
+                query = professions.query_metadata(task.keyword, task.location)
+                task.keyword_language = query["keyword_language"]
+                task.profession_group = query["profession_group"]
+                task.profession_code = query["profession_code"]
+                task.location_key = query["location_key"]
                 args = {"keyword": task.keyword, "location": task.location, "limit": task.limit}
                 checkpoint, folder = json.loads(task.checkpoint), task.folder
                 session.commit()
@@ -196,6 +203,9 @@ def worker(server, run_id):
                             transition(task, "error", "Arama sayfası alınamadı; tekrar devam edebilirsiniz.")
                             task.error = "Arama sayfası alınamadı. Sonuçlar korundu; tekrar devam edebilirsiniz."
                             failed.append(task.error)
+                        session.flush()
+                        if task.status in ("finished", "stopped", "error"):
+                            query_insights.persist(session, task)
                     elif kind == "source_paused":
                         options = json.loads(run.options or "{}")
                         options["auto_resume_at"] = data.get("blocked_until", 0)
@@ -206,6 +216,8 @@ def worker(server, run_id):
                     elif kind == "error":
                         task.error = data.get("msg", "Tarama tamamlanamadı.")
                         transition(task, "error", task.error)
+                        session.flush()
+                        query_insights.persist(session, task)
                         failed.append(task.error)
                     run.updated_at = datetime.utcnow()
                     session.commit()
@@ -325,7 +337,7 @@ def maintenance_worker(server, run_id):
                     stats = json.loads(run.stats)
                     if data.get("status") == "saved":
                         completed.add(data["job_id"])
-                        key = {"embed": "embedded", "fit": "scored"}.get(options["kind"], "classified")
+                        key = {"embed": "embedded"}.get(options["kind"], "classified")
                         stats[key] = len(completed)
                     else:
                         stats["skipped"] = stats.get("skipped", 0) + 1
@@ -345,9 +357,6 @@ def maintenance_worker(server, run_id):
             result = {"total":0, "termination_reason":"completed"}
         elif options["kind"] == "embed":
             result = run_embed_backfill(**common)
-        elif options["kind"] == "fit":
-            from .fit import run_fit_backfill
-            result = run_fit_backfill(**common)
         else:
             result = run_classify_backfill(backend=options.get("backend", "local"), model=options.get("model"), **common)
         with server.SessionLocal() as session:

@@ -256,13 +256,13 @@ flowchart LR
         Fork --> PipelineDB["Pipeline & DB Modülü<br/>(jobapp/db.py & models.py)"]
         PipelineDB --> JobsDB[("SQLite: jobs.db")]
         JobsDB --> JobsTable["jobs Tablosu<br/>- Benzersiz Anahtar: (source, external_id)<br/>- Filtre Sütunları: category, seniority, workplace_type<br/>- Sayısal Maaş: salary_min, salary_max, salary_currency<br/>- Güvenlik: flag (scam/ghost), flag_reason<br/>- Vektör: embedding (JSON float dizisi)"]
-        JobsDB --> SettingsTable["settings Tablosu<br/>- profile_text (Özgeçmiş)<br/>- profile_embedding (CV Vektörü)"]
+        JobsDB --> SettingsTable["settings Tablosu<br/>- uygulama ayarları<br/>- günlük arama raporu"]
     end
 ```
 
 ---
 
-## 5. Web Arayüzü, Arama, Filtreleme ve Vektörel Uyum Sıralaması
+## 5. Web Arayüzü, Meslek Filtreleri ve Arama Verimliliği
 
 Kullanıcı web arayüzü (`http://127.0.0.1:8016`) üzerinden ilanları incelerken, arama ve sıralama motoru şu adımları izler:
 
@@ -284,10 +284,7 @@ flowchart TD
 
     subgraph VECTOR["Vektörel & Semantik Sıralama"]
         CheckSort -- "Semantik Arama (semantic=true)" --> SearchVec["Arama İfadesini Vektörleştir<br/>embed.embed_text(search)"]
-        CheckSort -- "Profil / CV Uyumu (sort=fit)" --> ProfileVec["settings Tablosundan<br/>profile_embedding Yükle"]
-
         SearchVec --> CosineCalc["Kosinüs Benzerliği Hesapla<br/>embed.top_similar(target, candidates)"]
-        ProfileVec --> CosineCalc
         CosineCalc --> ReRank["İlanları Benzerlik Puanına (score) Göre Sırala"]
     end
 
@@ -320,7 +317,9 @@ flowchart TD
 | `jobapp/salary.py` | Serbest metin maaş ifadelerini sayısal `salary_min`, `salary_max`, para birimi ve periyoda dönüştürür. |
 | `jobapp/skills.py` | Kural tabanlı yetenek, deneyim yılı ve çalışma tipi çıkarımı (regex ve sözlük eşleme). |
 | `jobapp/embed.py` | Yerel Ollama (`qwen3-embedding:8b`) üzerinden metin vektörleştirme ve kosinüs benzerliği. |
-| `jobapp/profile.py` | Kullanıcı özgeçmiş/profil metnini ve bunun vektörünü `settings` tablosunda saklar. |
+| `jobapp/professions.py` | İlanları ana meslek grupları ve uzmanlık alt gruplarıyla etiketler; arama dillerini karşılaştırmak için unvanları eşler. |
+| `jobapp/query_insights.py` | Her aramanın yeni ilan verimini, tekrarlarını ve sonuç kayıplarını kaydeder. |
+| `jobapp/daily_summary.py` | Tamamlanan aramaların günlük özetini üretir; API anahtarı varsa bulguları Groq ile Türkçe özetler. |
 | `jobapp/models.py` | SQLAlchemy veri modelleri (`Job` ve `Setting`). |
 | `jobapp/db.py` | SQLite bağlantı havuzu, tablo oluşturma, hafif göçler ve `upsert_job` tekilleştirmesi. |
 | `jobapp/config.py` | Taşınabilir ortam değişkenleri ve varsayılan ayarlar (`JOBAPP_*`). |
@@ -374,8 +373,7 @@ Web paneline girmeden birden fazla unvanı sıraya koyarak çalıştırmak için
 | `DELETE` | `/api/jobs` | Tüm ilanları veritabanından temizler. |
 | `GET` | `/api/jobs/<id>/similar` | Belirtilen ilana embedding bazında en yakın benzer ilanları döner. |
 | `GET` | `/api/facets` | Filtreleme paneli için kategori, kıdem, çalışma şekli ve şirket sayaçları. |
-| `GET` | `/api/profile` | Kayıtlı kullanıcı özgeçmiş metnini ve embedding durumunu döner. |
-| `POST` | `/api/profile` | Özgeçmiş metnini kaydeder ve vektörünü hesaplar. |
+| `GET` | `/api/daily-summary` | Son günlük arama özetini ve arama bazlı verim ölçümlerini döner. |
 | `POST` | `/api/scrape` | Arka planda yeni bir tarama görevi başlatır (`keywords`, `locations`, `limit`). |
 | `POST` | `/api/scrape/stop` | Devam eden tarama veya backfill görevini durdurur. |
 | `GET` | `/api/scrape/status` | Çalışan görevin güncel durumu ve özet istatistikleri. |

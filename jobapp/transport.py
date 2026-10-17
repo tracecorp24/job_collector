@@ -181,32 +181,67 @@ class Details:
             return {r[0] for r in rows}
 
     def get(self, raw, force=False, allow_stale=False):
+        return self.get_many([raw], force=force,
+                             allow_stale_ids={raw["external_id"]} if allow_stale else set()).get(raw["external_id"])
+
+    def get_many(self, raws, force=False, allow_stale_ids=()):
+        """Read a page's detail cache together; cache survives result deletion."""
         if force:
-            return None
+            return {}
+        by_id = {raw["external_id"]: raw for raw in raws}
+        if not by_id:
+            return {}
+        allow_stale_ids = set(allow_stale_ids)
         with self.factory() as session:
-            key = (config.SOURCE_LINKEDIN, raw["external_id"])
-            cached = session.get(DetailCache,key)
-            if cached is None:
-                job = session.query(Job).filter_by(source=key[0],external_id=key[1]).first()
-                if job and job.description:
+            rows = session.query(DetailCache).filter(DetailCache.source == config.SOURCE_LINKEDIN,
+                                                     DetailCache.external_id.in_(list(by_id))).all()
+            cached_by_id = {row.external_id: row for row in rows}
+            missing = set(by_id) - set(cached_by_id)
+            if missing:
+                jobs = session.query(Job).filter(Job.source == config.SOURCE_LINKEDIN,
+                                                Job.external_id.in_(list(missing)), Job.description != "").all()
+                for job in jobs:
                     try:
                         previous = json.loads(job.raw or "{}")
+                        # A pending refresh may retain an older description next to
+                        # a changed card. Never label it as fresh content.
+                        if previous.get("detail_pending"):
+                            continue
                         stamp = previous.get("detail_fetched_at")
                         if stamp is None and job.scraped_at:
                             stamp = job.scraped_at.replace(tzinfo=timezone.utc).timestamp()
                         if stamp is not None:
-                            cached = DetailCache(source=key[0],external_id=key[1],fingerprint=fingerprint(previous),
+                            cached = DetailCache(source=config.SOURCE_LINKEDIN, external_id=job.external_id, fingerprint=fingerprint(previous),
                                                  description=job.description,status=200,fetched_at=stamp,expires_at=stamp+config.DETAIL_CACHE_TTL_SECONDS)
                             session.execute(insert(DetailCache).values(source=cached.source, external_id=cached.external_id,
                                 fingerprint=cached.fingerprint, description=cached.description, status=cached.status,
                                 fetched_at=cached.fetched_at, expires_at=cached.expires_at).on_conflict_do_nothing())
-                            session.commit()
-                            cached = session.get(DetailCache, key)
+                            cached_by_id[job.external_id] = session.get(DetailCache, (cached.source, cached.external_id))
                     except (ValueError,TypeError):
-                        cached = None
-            if cached is None or (cached.expires_at <= self.clock() and not allow_stale) or cached.fingerprint != fingerprint(raw):
-                return None
-            return {"description":cached.description,"status":cached.status,"fetched_at":cached.fetched_at,"expires_at":cached.expires_at}
+                        continue
+            now = self.clock()
+            result = {}
+            for external_id, raw in by_id.items():
+                cached = cached_by_id.get(external_id)
+                stale_allowed = external_id in allow_stale_ids and cached is not None and cached.status == 200
+                if cached is None or (cached.expires_at <= now and not stale_allowed) or cached.fingerprint != fingerprint(raw):
+                    continue
+                result[external_id] = {"description":cached.description,"status":cached.status,
+                                       "fetched_at":cached.fetched_at,"expires_at":cached.expires_at}
+            session.commit()
+            return result
+
+    def previous(self, raw):
+        """Keep an existing description visible while its refresh is queued."""
+        with self.factory() as session:
+            job = session.query(Job).filter_by(source=config.SOURCE_LINKEDIN, external_id=raw["external_id"]).first()
+            if job and job.description:
+                try:
+                    stamp = json.loads(job.raw or "{}").get("detail_fetched_at")
+                except (ValueError, TypeError):
+                    stamp = None
+                return {"description": job.description, "status": 200, "fetched_at": stamp}
+        return None
 
     def put(self, raw, description, status=200):
         now = self.clock()

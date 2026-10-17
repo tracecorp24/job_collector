@@ -49,7 +49,9 @@ def init_db() -> None:
             conn.execute(text(f"UPDATE {table} SET ended_at=(SELECT MAX(created_at) FROM search_events WHERE {key}={table}.id AND kind=:kind) WHERE ended_at IS NULL AND status IN ('finished','stopped')"), {"kind":end_kind})
         existing = {row[1] for row in conn.execute(text("PRAGMA table_info(jobs)"))}
         for name, kind in (("posted_at", "DATETIME"), ("experience_years", "INTEGER"), ("deleted_at", "DATETIME"),
-                           ("fit_score", "INTEGER"), ("fit_reason", "TEXT DEFAULT ''"), ("fit_profile", "VARCHAR(16) DEFAULT ''")):
+                           ("normalized_title", "VARCHAR(256) DEFAULT ''"),
+                           ("profession_groups", "TEXT DEFAULT '[\"Genel Meslekler\"]'"),
+                           ("profession_subgroups", "TEXT DEFAULT '[\"Diğer / Belirtilmemiş\"]'")):
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {name} {kind}"))
         if "package" not in {row[1] for row in conn.execute(text("PRAGMA table_info(search_tasks)"))}:
@@ -86,12 +88,22 @@ def init_db() -> None:
             for name, kind in additions:
                 if name not in present:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {kind}"))
+        task_columns = {row[1] for row in conn.execute(text("PRAGMA table_info(search_tasks)"))}
+        for name, kind in (("keyword_language", "VARCHAR(12) DEFAULT 'other'"),
+                           ("profession_group", "VARCHAR(80) DEFAULT 'Genel Meslekler'"),
+                           ("profession_code", "VARCHAR(80) DEFAULT 'other'"),
+                           ("location_key", "VARCHAR(256) DEFAULT ''")):
+            if name not in task_columns:
+                conn.execute(text(f"ALTER TABLE search_tasks ADD COLUMN {name} {kind}"))
+        # Profil özelliği kaldırıldı; eski profil metni ve uygunluk puanları canlı veride
+        # silinmeden kalır (veri silen göç yazılmaz), uygulama bunları artık okumaz.
 
     _backfill_salary_numbers()
     _upgrade_history()
     from .service_api import init_journal
     init_journal()
     _repair_guest_card_fields()
+    _backfill_profession_taxonomy()
 
 
 def _repair_guest_card_fields():
@@ -118,6 +130,35 @@ def _repair_guest_card_fields():
                 job.location = parsed["location"]
             if parsed["company"] and job.company != parsed["company"]:
                 job.company = parsed["company"]
+        session.add(Setting(key=marker, value=datetime.utcnow().isoformat()))
+        session.commit()
+
+
+def _backfill_profession_taxonomy():
+    """Tag existing listings and searches once, without using an API or rewriting source text."""
+    from . import professions
+    from .models import SearchTask, Setting
+
+    marker = "profession_taxonomy_v1"
+    with sessionmaker(bind=engine)() as session:
+        if session.get(Setting, marker):
+            return
+        for job in session.query(Job).yield_per(300):
+            role = professions.classify(job.title, job.description)
+            job.normalized_title = role["normalized_title"]
+            job.profession_groups = json.dumps(role["profession_groups"], ensure_ascii=False)
+            job.profession_subgroups = json.dumps(role["profession_subgroups"], ensure_ascii=False)
+            try:
+                existing_tags = json.loads(job.tags or "[]")
+            except (ValueError, TypeError):
+                existing_tags = []
+            job.tags = json.dumps(professions.normalize_skill_tags(existing_tags), ensure_ascii=False)
+        for task in session.query(SearchTask).yield_per(300):
+            metadata = professions.query_metadata(task.keyword, task.location)
+            task.keyword_language = metadata["keyword_language"]
+            task.profession_group = metadata["profession_group"]
+            task.profession_code = metadata["profession_code"]
+            task.location_key = metadata["location_key"]
         session.add(Setting(key=marker, value=datetime.utcnow().isoformat()))
         session.commit()
 
@@ -231,6 +272,9 @@ def _backfill_salary_numbers() -> None:
 _UPDATABLE = (
     "url",
     "title",
+    "normalized_title",
+    "profession_groups",
+    "profession_subgroups",
     "company",
     "location",
     "workplace_type",
@@ -274,6 +318,9 @@ def upsert_job(session, record: dict) -> tuple[Job, bool]:
         record["tags"] = json.dumps(list(record["tags"]), ensure_ascii=False)
     if isinstance(record.get("offerings"), (list, tuple)):
         record["offerings"] = json.dumps(list(record["offerings"]), ensure_ascii=False)
+    for field in ("profession_groups", "profession_subgroups"):
+        if isinstance(record.get(field), (list, tuple)):
+            record[field] = json.dumps(list(record[field]), ensure_ascii=False)
     if isinstance(record.get("raw"), (dict, list)):
         record["raw"] = json.dumps(record["raw"], ensure_ascii=False)
     if isinstance(record.get("embedding"), (list, tuple)):

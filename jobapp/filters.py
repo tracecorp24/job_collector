@@ -7,6 +7,7 @@ from .db import parse_date
 
 FIELDS = {name: getattr(Job, column) for name, column in {
     "category": "category", "seniority": "seniority", "workplace": "workplace_type",
+    "profession_group": "profession_groups", "profession_subgroup": "profession_subgroups",
     "company": "company", "location": "location", "source": "source", "backend": "classified_by",
     "search_term": "search_term", "search_location": "search_location", "flag": "flag",
 }.items()}
@@ -56,8 +57,9 @@ def filtered(session, args, omit=None):
     quality = args.get("quality", "valid")
     if quality != "all":
         q = q.filter(Job.quality_ok.is_(quality != "invalid"))
+    omitted = set(omit) if isinstance(omit, (list, tuple, set, frozenset)) else {omit}
     for key, col in FIELDS.items():
-        if key == omit:
+        if key in omitted:
             continue
         selected = values(args, key)
         if not selected:
@@ -70,6 +72,9 @@ def filtered(session, args, omit=None):
                 task_col = SearchTask.keyword if key == "search_term" else SearchTask.location
                 conditions.append(exists(select(TaskJob.job_id).join(SearchTask, SearchTask.id == TaskJob.task_id)
                                          .where(TaskJob.job_id == Job.id, task_col == v)))
+            elif key in ("profession_group", "profession_subgroup"):
+                array = func.json_each(col).table_valued("value").alias("facet_" + key)
+                conditions.append(exists(select(1).select_from(array).where(folded(array.c.value) == fold(v))))
             else:
                 conditions.append(col == v)
         q = q.filter(or_(*conditions))
