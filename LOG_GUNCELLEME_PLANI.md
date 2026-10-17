@@ -139,3 +139,20 @@ reopen; elle kapanış; elle yeniden açma; otomatik çözülen problemin issue'
 Her fazda: `python -m unittest discover -s tests` yeşil, yalnızca kendi değişiklikler commit'lenir (eşzamanlı oturum
 varsa ayrı worktree), deploy sonrası `/healthz` ve `incidents.yml` tetiklenip sonucu kontrol edilir.
 Belgeler: her faz sonunda `CALISMA_YONTEMI.md` (durumlar, komutlar, kurallar) güncellenir.
+
+---
+
+## Uygulama notları (plandan sapmalar)
+
+Dört faz da uygulandı (commit'ler: `db8a012`, `c1aa2c8`, `12f9e9f` ve yaşam döngüsü commit'i). Plandan farklar:
+
+- **`OnFailure=linko-alert.service` yerine `ExecStopPost`:** varsayılan başlatma sınırı (10 sn'de 5) `RestartSec=10`
+  ile hiç aşılmaz, `OnFailure` çökme döngüsünde tetiklenmezdi; sınır koymak ise geçici bir sorunda servisi kalıcı
+  kapatırdı. `linko.service` içindeki `ExecStopPost=+/usr/local/bin/linko-spool-stop` her beklenmedik duruşu kaydeder.
+- **Elle yeniden açma:** olaya `ISSUE_NUMBER` geçirmek yerine her senkron turu (30 dk, issue kapanış/yeniden açılış
+  olayı ve deploy sonu tetikler) çözüldü kayıtların issue durumunu tarar (son 30 gün, en fazla 50 issue).
+- **Yeni sütunlar** (hepsi `ALTER ADD COLUMN`, veri silen göç yok): `app_logs.version`, `incidents.first_version`,
+  `last_version`, `kind`, `fix_commit`, `fix_deployed_at`.
+- **Kurulum:** sunucudaki kopya betikler için tek komut: `deploy/install-ops.sh` (bkz. `CALISMA_YONTEMI.md`).
+- **Test altyapısı:** issue senkronu, gerçek sunucu API'si ile bellek içi sahte GitHub arasında uçtan uca test edilir
+  (`tests/test_incident_lifecycle.py`).

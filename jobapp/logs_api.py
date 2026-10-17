@@ -2,10 +2,11 @@
 
 - GET  /api/v1/logs               sayfalı sorgu (source=app|events)
 - GET  /api/v1/logs/export        aralığı NDJSON olarak indir
-- GET  /api/v1/incidents          hata kayıtları (status=open|resolved|all, needs_issue=1)
+- GET  /api/v1/incidents          hata kayıtları (status=open|fix_deployed|resolved|all, issue_state=open|closed, needs_issue=1)
 - GET  /api/v1/incidents/<id>     ayrıntı + geçmiş + son loglar
+- GET  /api/v1/incidents/<id>/context   hata anının ± penceresindeki loglar ve arama olayları
 - POST /api/v1/incidents/report   süreç dışı olay bildir (uptime kontrolü)
-- POST /api/v1/incidents/<id>     GitHub senkronu: {"action":"link","issue_number":N} | {"action":"resolve",...}
+- POST /api/v1/incidents/<id>     GitHub senkronu: action = link | resolve | fix_deployed | issue_closed | reopen
 """
 import hmac
 import json
@@ -149,17 +150,23 @@ def install(server):
         if denied:
             return denied
         status = request.args.get("status", "open")
-        if status not in ("open", "resolved", "all"):
-            raise ValueError("status open, resolved veya all olmalı.")
+        if status not in ("open", "fix_deployed", "resolved", "all"):
+            raise ValueError("status open, fix_deployed, resolved veya all olmalı.")
+        issue_state = request.args.get("issue_state")
+        if issue_state not in (None, "", "open", "closed"):
+            raise ValueError("issue_state open veya closed olmalı.")
         with server.SessionLocal() as session:
             query = session.query(Incident)
             if status != "all":
                 query = query.filter(Incident.status == status)
+            if issue_state:
+                query = query.filter(Incident.issue_number.isnot(None), Incident.issue_state == issue_state)
             if request.args.get("needs_issue") == "1":
                 # Issue'su olmayan ya da GitHub'da kapalıyken tekrar açılmış kayıtlar.
                 query = query.filter(Incident.status == "open", or_(Incident.issue_number.is_(None), Incident.issue_state != "open"))
             rows = query.order_by(Incident.last_seen.desc()).all()
-            return jsonify(items=[logstore.serialize(i) for i in rows])
+            # Canlı sürüm: senkron, kapatan commit'in yayında olup olmadığını buradan anlar.
+            return jsonify(items=[logstore.serialize(i) for i in rows], version=config.version_info())
 
     @app.get("/api/v1/incidents/<int:incident_id>")
     def get_incident(incident_id):
@@ -172,6 +179,31 @@ def install(server):
                 return jsonify(error="Hata kaydı bulunamadı."), 404
             recent = session.query(AppLog).filter_by(incident_id=incident_id).order_by(AppLog.id.desc()).limit(20).all()
             return jsonify(dict(logstore.serialize(incident, full=True), recent_logs=[row("app", r) for r in recent]))
+
+    @app.get("/api/v1/incidents/<int:incident_id>/context")
+    def incident_context(incident_id):
+        """Hata anının ± penceresindeki sunucu logları ve arama olayları (zaman sıralı)."""
+        denied = require_admin()
+        if denied:
+            return denied
+        window = request.args.get("window", "10m")
+        match = RELATIVE.match(window)
+        if not match:
+            raise ValueError("window 10m, 2h gibi olmalı.")
+        span = timedelta(**{dict(m="minutes", h="hours", d="days")[match.group(2)]: int(match.group(1))})
+        if span > timedelta(hours=6) or span <= timedelta(0):
+            raise ValueError("window en fazla 6h olabilir.")
+        with server.SessionLocal() as session:
+            incident = session.get(Incident, incident_id)
+            if not incident:
+                return jsonify(error="Hata kaydı bulunamadı."), 404
+            anchor = parse_time(request.args.get("at"), "at") if request.args.get("at") else incident.last_seen
+            start, end = anchor - span, anchor + span
+            logs = session.query(AppLog).filter(AppLog.created_at >= start, AppLog.created_at <= end).order_by(AppLog.id).limit(300).all()
+            events = session.query(SearchEvent).filter(SearchEvent.created_at >= start, SearchEvent.created_at <= end).order_by(SearchEvent.id).limit(300).all()
+            items = sorted([dict(row("app", r), source="app") for r in logs] + [dict(row("events", r), source="events") for r in events],
+                           key=lambda item: item["ts"])
+            return jsonify(incident_id=incident_id, anchor=stamp(anchor), window=window, items=items[:500])
 
     @app.post("/api/v1/incidents/report")
     def report_incident():
@@ -215,7 +247,16 @@ def install(server):
                 logstore.link_issue(incident, number)
             elif action == "resolve":
                 logstore.resolve(incident, str(body.get("resolution") or "")[:2000], body.get("issue_number"))
+            elif action == "fix_deployed":
+                deployed_at = body.get("deployed_at")
+                if deployed_at is not None and (isinstance(deployed_at, bool) or not isinstance(deployed_at, (int, float))):
+                    raise ValueError("deployed_at epoch saniyesi olmalı.")
+                logstore.mark_fix_deployed(incident, str(body.get("fix_commit") or ""), deployed_at, body.get("issue_number"))
+            elif action == "issue_closed":
+                incident.issue_state = "closed"
+            elif action == "reopen":
+                logstore.reopen_by_issue(incident)
             else:
-                raise ValueError("action link veya resolve olmalı.")
+                raise ValueError("action link, resolve, fix_deployed, issue_closed veya reopen olmalı.")
             session.commit()
             return jsonify(logstore.serialize(incident, full=True))

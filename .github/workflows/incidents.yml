@@ -1,12 +1,17 @@
 name: Hata kayıtları
 
 # Canlı sitedeki hata kayıtlarını GitHub issue'larıyla eşler (scripts/incident_sync.py):
-# yeni hata → issue, issue kapandı → kayıt "çözüldü", hata tekrar görüldü → issue yeniden açılır.
+# yeni hata → issue; issue kapandı + düzeltme canlıda → "düzeltme yayında"; 24 saat temiz → "çözüldü";
+# hata tekrar görüldü → issue yeniden açılır.
 on:
   schedule:
     - cron: "7,37 * * * *"
   issues:
     types: [closed, reopened]
+  workflow_run:
+    # Deploy bitince: kapanan issue'ların düzeltmesi canlıya çıktı mı diye hemen bak.
+    workflows: [Deploy]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -19,7 +24,7 @@ concurrency:
 
 jobs:
   sync:
-    if: github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'hata-kaydı')
+    if: (github.event_name != 'issues' || contains(github.event.issue.labels.*.name, 'hata-kaydı')) && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

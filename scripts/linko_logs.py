@@ -110,12 +110,20 @@ def cmd_incidents(args):
     items = call("/api/v1/incidents", dict(status=args.status)).json()["items"]
     for i in items:
         issue = f"#{i['issue_number']}" if i["issue_number"] else "issue yok"
-        print(f"[{i['id']}] {i['status']:8} x{i['count']:<5} son: {i['last_seen']}  {issue}  {i['title']}")
+        print(f"[{i['id']}] {i['status']:12} {i['kind']:8} x{i['count']:<5} son: {i['last_seen']}  {issue}  {i['title']}")
     if not items:
         print("Hata kaydı yok.")
 
 
 def cmd_incident(args):
+    if args.context:
+        data = call(f"/api/v1/incidents/{args.id}/context", dict(window=args.context)).json()
+        print(f"Hata kaydı #{args.id} anı: {data['anchor']} (±{data['window']})")
+        for item in data["items"]:
+            print(f"[{item['source']:6}] {line(item)}")
+        if not data["items"]:
+            print("Bu aralıkta kayıt yok.")
+        return
     data = call(f"/api/v1/incidents/{args.id}").json()
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
@@ -150,10 +158,11 @@ def main(argv=None):
     p.add_argument("-o", "--output", help="hedef dosya (varsayılan .local/logs/)")
     p.set_defaults(func=cmd_download)
     p = sub.add_parser("incidents", help="hata kayıtları")
-    p.add_argument("--status", choices=("open", "resolved", "all"), default="open")
+    p.add_argument("--status", choices=("open", "fix_deployed", "resolved", "all"), default="open")
     p.set_defaults(func=cmd_incidents)
     p = sub.add_parser("incident", help="tek hata kaydının ayrıntısı")
     p.add_argument("id", type=int)
+    p.add_argument("--context", metavar="PENCERE", help="hata anının ± penceresindeki loglar ve arama olayları (ör. 10m, 1h; en fazla 6h)")
     p.set_defaults(func=cmd_incident)
     args = parser.parse_args(argv)
     if args.command == "download" and not args.since:

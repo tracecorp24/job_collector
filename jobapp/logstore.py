@@ -105,11 +105,14 @@ def store_batch(entries, session=None):
                                         title=f"[{entry['logger']}] {first_line}")
                     _history(incident, "opened", version=entry["version"])
                     session.add(incident)
-                elif incident.status == "resolved":
+                elif incident.status in ("resolved", "fix_deployed"):
+                    reason = ("Düzeltme yayınlandıktan sonra tekrar görüldü (düzeltme yetmedi)." if incident.status == "fix_deployed"
+                              else "Çözüldü olarak işaretlendikten sonra tekrar görüldü.")
                     incident.status = "open"
                     incident.reopen_count = (incident.reopen_count or 0) + 1
                     incident.resolved_at = None
-                    _history(incident, "reopened", reason="Çözüldü olarak işaretlendikten sonra tekrar görüldü.", version=entry["version"])
+                    incident.fix_deployed_at = None
+                    _history(incident, "reopened", reason=reason, version=entry["version"])
                 incident.count = (incident.count or 0) + 1
                 incident.last_seen = entry["created_at"]
                 incident.last_version = entry["version"]
@@ -341,7 +344,7 @@ def problem_fingerprint(key):
 def raise_problem(session, key, title, message):
     """Sorun kuralı tetiklendi: kayıt yoksa açar, çözülmüşse yeniden açar, açıksa yalnızca son görülmeyi günceller."""
     incident = session.query(Incident).filter_by(fingerprint=problem_fingerprint(key)).first()
-    if incident is not None and incident.status != "resolved":
+    if incident is not None and incident.status == "open":
         incident.last_seen = datetime.utcnow()
         incident.last_version = config.version_info().get("sha", "")
         incident.sample = redact(title + chr(10) + message)[:4000]
@@ -359,6 +362,25 @@ def clear_problem(session, key, resolution):
         session.commit()
         return True
     return False
+
+
+def mark_fix_deployed(incident, commit, deployed_at=None, number=None):
+    """Issue kapandı ve kapatan commit canlıda: 24 saat tekrar görülmezse çözüldü olacak."""
+    incident.status = "fix_deployed"
+    incident.issue_state = "closed"
+    incident.fix_commit = (commit or "")[:40]
+    incident.fix_deployed_at = datetime.utcfromtimestamp(deployed_at) if deployed_at else datetime.utcnow()
+    _history(incident, "fix_deployed", issue=number or incident.issue_number, commit=incident.fix_commit)
+
+
+def reopen_by_issue(incident):
+    """Issue GitHub'da elle yeniden açıldı: kayıt açık duruma döner, geçmişe işlenir."""
+    incident.status = "open"
+    incident.issue_state = "open"
+    incident.resolved_at = None
+    incident.fix_deployed_at = None
+    incident.reopen_count = (incident.reopen_count or 0) + 1
+    _history(incident, "issue_reopened", issue=incident.issue_number, reason="Issue elle yeniden açıldı.")
 
 
 def link_issue(incident, number):
@@ -385,6 +407,8 @@ def serialize(incident, full=False):
                 first_seen=incident.first_seen.isoformat() + "Z" if incident.first_seen else None,
                 last_seen=incident.last_seen.isoformat() + "Z" if incident.last_seen else None,
                 first_version=incident.first_version or "", last_version=incident.last_version or "",
+                fix_commit=incident.fix_commit or "",
+                fix_deployed_at=incident.fix_deployed_at.isoformat() + "Z" if incident.fix_deployed_at else None,
                 resolved_at=incident.resolved_at.isoformat() + "Z" if incident.resolved_at else None,
                 resolution=incident.resolution or "", sample=incident.sample or "")
     if full:

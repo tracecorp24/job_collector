@@ -296,3 +296,5 @@ class Incident(Base):
     first_version = Column(String(16), default="")
     last_version = Column(String(16), default="")
     kind = Column(String(16), default="error")  # error | problem (eşik kuralı) | external (spool/uptime)
+    fix_commit = Column(String(40), default="")
+    fix_deployed_at = Column(DateTime, nullable=True)

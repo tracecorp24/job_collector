@@ -1,17 +1,13 @@
 """Sunucu log deposu, log/hata kaydı API'si ve GitHub issue senkronu."""
 import json
 import logging
-import sys
 import unittest
 from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import patch
 import test_light
 from jobapp import config, logstore, maintenance
 from jobapp.models import AppLog, Incident
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-import incident_sync  # noqa: E402
 
 ADMIN = {"Authorization": "Bearer admin"}
 
@@ -118,84 +114,6 @@ class LogTests(unittest.TestCase):
         detail = self.client.get(f"/api/v1/incidents/{ident}", headers=ADMIN).json
         self.assertEqual(detail["status"], "resolved")
         self.assertEqual(len(detail["recent_logs"]), 1)
-
-
-class SyncTests(unittest.TestCase):
-    def fake(self, incidents, issues):
-        calls = []
-        def http(method, url, token, body=None):
-            calls.append((method, url.split(".com")[-1] if "github" in url else url.split("site")[-1], body))
-            if "/api/v1/incidents?" in url:
-                wanted = [i for i in incidents if i["status"] == "open"]
-                if "needs_issue=1" in url:
-                    wanted = [i for i in wanted if not i["issue_number"] or i["issue_state"] != "open"]
-                return {"items": wanted}
-            if "/api/v1/incidents/" in url:
-                incident = next(i for i in incidents if url.endswith("/" + str(i["id"])))
-                if body["action"] == "link":
-                    incident.update(issue_number=body["issue_number"], issue_state="open")
-                else:
-                    incident.update(status="resolved", issue_state="closed")
-                return incident
-            if method == "POST" and url.endswith("/issues"):
-                return {"number": 77}
-            if method == "GET" and "/issues/" in url:
-                return issues[int(url.rsplit("/", 1)[1])]
-            return {}
-        return http, calls
-
-    def incident(self, **extra):
-        return dict(dict(id=1, status="open", issue_number=None, issue_state="", count=3, logger="linko", title="[linko] Patladı",
-                         sample="Patladı", first_seen="2026-10-17T00:00:00Z", last_seen="2026-10-17T01:00:00Z"), **extra)
-
-    def test_new_incident_opens_issue_with_marker(self):
-        incidents = [self.incident()]
-        http, calls = self.fake(incidents, {})
-        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
-        created = next(c for c in calls if c[0] == "POST" and c[1].endswith("/issues"))
-        self.assertIn("<!-- linko-incident:1 -->", created[2]["body"])
-        self.assertEqual(created[2]["labels"], ["hata-kaydı"])
-        self.assertEqual(incidents[0]["issue_number"], 77)
-
-    def test_closed_issue_resolves_unless_seen_again(self):
-        incidents = [self.incident(issue_number=5, issue_state="open")]
-        http, calls = self.fake(incidents, {5: {"number": 5, "state": "closed", "closed_at": "2026-10-17T02:00:00Z"}})
-        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
-        self.assertEqual(incidents[0]["status"], "resolved")
-        self.assertTrue(any("Çözüldü" in (c[2] or {}).get("body", "") for c in calls))
-
-        incidents = [self.incident(issue_number=5, issue_state="open", last_seen="2026-10-17T03:00:00Z")]
-        http, calls = self.fake(incidents, {5: {"number": 5, "state": "closed", "closed_at": "2026-10-17T02:00:00Z"}})
-        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
-        self.assertEqual(incidents[0]["status"], "open")
-        self.assertIn(("PATCH", "/repos/o/r/issues/5", {"state": "open"}), calls)
-
-    def test_flood_is_capped_per_run_and_listed_in_one_issue(self):
-        incidents = [self.incident(id=n, title=f"[linko] Hata {n}") for n in range(1, 8)]
-        http, calls = self.fake(incidents, {})
-        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
-        created = [c for c in calls if c[0] == "POST" and c[1].endswith("/issues")]
-        self.assertEqual(len(created), incident_sync.MAX_NEW_ISSUES + 1)
-        self.assertIn(incident_sync.FLOOD, created[-1][2]["body"])
-        self.assertIn("#6", created[-1][2]["body"])
-        self.assertIn("#7", created[-1][2]["body"])
-        self.assertEqual([i["issue_number"] for i in incidents[5:]], [None, None])
-
-    def test_issue_body_masks_secrets(self):
-        incidents = [self.incident(sample="istek Bearer abcdefghijkl1234 api_key=hunter22hunter22 gsk_abcdefgh12345678")]
-        http, calls = self.fake(incidents, {})
-        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
-        body = next(c for c in calls if c[0] == "POST" and c[1].endswith("/issues"))[2]["body"]
-        for secret in ("abcdefghijkl1234", "hunter22hunter22", "gsk_abcdefgh12345678"):
-            self.assertNotIn(secret, body)
-
-    def test_reopened_incident_reopens_existing_issue(self):
-        incidents = [self.incident(issue_number=5, issue_state="closed")]
-        http, calls = self.fake(incidents, {})
-        incident_sync.Sync("https://site", "k", "o/r", "t", http).run()
-        self.assertIn(("PATCH", "/repos/o/r/issues/5", {"state": "open"}), calls)
-        self.assertEqual(incidents[0]["issue_state"], "open")
-        self.assertFalse(any(c[0] == "POST" and c[1].endswith("/issues") for c in calls))
 
 
 if __name__ == "__main__":
