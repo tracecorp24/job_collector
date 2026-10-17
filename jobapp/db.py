@@ -123,6 +123,7 @@ def init_db() -> None:
     from .service_api import init_journal
     init_journal()
     _repair_guest_card_fields()
+    _repair_guest_noise_titles()
     _backfill_profession_taxonomy()
 
 
@@ -150,6 +151,38 @@ def _repair_guest_card_fields():
                 job.location = parsed["location"]
             if parsed["company"] and job.company != parsed["company"]:
                 job.company = parsed["company"]
+        session.add(Setting(key=marker, value=datetime.utcnow().isoformat()))
+        session.commit()
+
+
+def _repair_guest_noise_titles():
+    """Hesapsız kart unvanı eskiden alt dizgi gürültü filtresinden geçiyordu; "Applied
+    Scientist", "Incident Response Analyst" gibi gerçek ilanlar ``quality_ok=False`` kaldı.
+    Ham kart satırlarından bir kez yeniden değerlendirilir; ağ isteği yok, veri silinmez."""
+    from .models import Setting
+    from . import parse
+    marker = "repair_guest_noise_titles_v1"
+    with sessionmaker(bind=engine)() as session:
+        if session.get(Setting, marker):
+            return
+        for job in session.query(Job).filter(Job.source == config.SOURCE_LINKEDIN, Job.quality_ok.is_(False)):
+            try:
+                raw = json.loads(job.raw or "{}")
+            except ValueError:
+                continue
+            if not isinstance(raw, dict) or not parse.is_guest_card(raw):
+                continue
+            parsed = parse.parse_guest_card(raw.get("card_lines"), "")
+            if not parsed["quality_ok"]:
+                continue
+            job.quality_ok = True
+            job.title = parsed["title"]
+            if parsed["company"]:
+                job.company = parsed["company"]
+            if parsed["location"]:
+                job.location = parsed["location"]
+            if parsed["workplace_type"] and not job.workplace_type:
+                job.workplace_type = parsed["workplace_type"]
         session.add(Setting(key=marker, value=datetime.utcnow().isoformat()))
         session.commit()
 

@@ -38,6 +38,12 @@ _NOISE_SUBSTRINGS = (
     "okuldan",
 )
 
+# Hesapsız kartta unvan satırı yalnızca birebir bu rozetlerden biriyse gürültüdür.
+_GUEST_NOISE_TITLES = frozenset((
+    "promoted", "tanıtıldı", "viewed", "görüntülendi", "applied", "başvuruldu",
+    "easy apply", "kolay başvuru", "actively reviewing applicants",
+))
+
 # Workplace markers -> canonical label.
 _WORKPLACE_MAP = (
     ("iş yerinde", "Onsite"),
@@ -175,7 +181,10 @@ def parse_guest_card(card_lines, description: str = "") -> dict:
     """
     lines = [_norm(l) for l in (card_lines or [])] + ["", "", ""]
     title, company, location = lines[:3]
-    if not title or is_noise(title):
+    # Unvan satırı seçiciden gelir; alt dizgi gürültü filtresi "Applied Scientist",
+    # "Incident Response Analyst" gibi gerçek unvanları gizliyordu. Yalnızca boş satır ve
+    # satırın tamamı bilinen bir rozet olduğunda reddedilir.
+    if not title or title.lower() in _GUEST_NOISE_TITLES:
         return {"title": title, "company": "", "location": "", "workplace_type": "", "quality_ok": False}
     workplace = detect_workplace(location) or (detect_workplace(description) if description else "")
     return {"title": title, "company": company, "location": _strip_workplace(location),
