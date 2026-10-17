@@ -455,6 +455,19 @@ def install(server):
             if action != "purge":
                 audit.record(session, run_id, None, "user_action", {"action":action, "previous_status":run.status})
             if action == "resume":
+                options = json.loads(run.options or "{}")
+                source_paused = options.get("kind", "scrape") == "scrape" and Coordinator().state()["paused"]
+                if (server.state.running or source_paused) and not active and run.status in ("queued", "paused", "error"):
+                    # Sistem meşgulken başlatma sıraya alınır; servis, kaynak ve sıra uygun olunca kendisi başlatır.
+                    options.pop("user_paused", None)
+                    if run.status == "queued":
+                        options["service_managed"] = True
+                    else:
+                        options.setdefault("auto_resume_at", 0)
+                    run.options = json.dumps(options)
+                    audit.record(session, run_id, None, "queue_scheduled", {"reason":"source_paused" if source_paused else "busy"})
+                    session.commit()
+                    return jsonify(ok=True, scheduled=True)
                 if server.state.running:
                     raise ValueError("Önce devam eden işlemi duraklatın.")
                 session.commit()
@@ -584,7 +597,27 @@ def install(server):
                     "auto_resume_at" in json.loads(r.options or "{}") or any(json.loads(t.stats or "{}").get("termination_reason") == "source_paused" for t in session.query(SearchTask).filter_by(run_id=r.id, status="paused")))), None)
                 if run:
                     data["run"] = runs.snapshot(session, run)
+        data["waiting"] = waiting_runs(data.get("run", {}).get("id"))
         return jsonify(data)
+
+    def waiting_runs(exclude):
+        """Kendiliğinden başlamayı bekleyen kuyrukların kısa özeti (eski sıradan yeniye)."""
+        result = []
+        with server.SessionLocal() as session:
+            rows = session.query(SearchRun).filter(SearchRun.deleted_at.is_(None), SearchRun.status.in_(("queued", "paused", "error"))).order_by(SearchRun.created_at).all()
+            for run in rows:
+                options = json.loads(run.options or "{}")
+                if run.id == exclude or options.get("user_paused") or options.get("kind", "scrape") != "scrape":
+                    continue
+                if not (run.status == "queued" and options.get("service_managed")) and "auto_resume_at" not in options:
+                    continue
+                tasks = session.query(SearchTask).filter(SearchTask.run_id == run.id, ~SearchTask.status.in_(runs.TERMINAL)).order_by(SearchTask.position).all()
+                if not tasks:
+                    continue
+                result.append({"id":run.id, "status":run.status, "created_at":run.created_at.isoformat(),
+                               "watch":bool(options.get("watch_id")),
+                               "tasks":[{"id":t.id, "keyword":t.keyword, "location":t.location, "limit":t.limit, "package":t.package or ""} for t in tasks]})
+        return result
     app.view_functions["api_scrape_status"] = status
 
     def search_delete(folder_name):

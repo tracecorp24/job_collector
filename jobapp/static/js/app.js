@@ -192,7 +192,9 @@ async function startScrape(){
   if(!$('suggest-box').hidden){if(!addSuggested())return;}else if($('kw-input').value.trim()&&!addTasks())return;if(!draft.length){$('task-error').textContent='Önce kuyruğa en az bir görev ekleyin.';return;}
   for(const t of draft)if(!t.keyword.trim()||!t.location.trim()||t.limit!=null&&(!Number.isInteger(t.limit)||t.limit<1)){$('task-error').textContent='Görevlerdeki unvan, konum ve hedefleri kontrol edin.';return;}
   clearTimeout(draftSaveTimer);queueStarting=true;$('start-scrape').disabled=true;$('task-error').textContent='';
-  try{const runId=await saveDraft();await api(`/api/runs/${runId}/resume`,{method:'POST'});activeLogRun=runId;currentRun=await api('/api/runs/'+runId);draft=[];draftRunId=null;persist();renderDraft();closeDialog('drawer');showTab('queue');renderRun();await pollStatus();toast('Tarama kuyruğu başlatıldı. Süreç: '+runId);}
+  try{const runId=await saveDraft();const started=await api(`/api/runs/${runId}/resume`,{method:'POST'});draft=[];draftRunId=null;persist();renderDraft();closeDialog('drawer');showTab('queue');
+    if(started.scheduled){await pollStatus();toast('Kuyruğa eklendi. Sistem uygun olunca sırayla kendiliğinden başlayacak.');}
+    else{activeLogRun=runId;currentRun=await api('/api/runs/'+runId);renderRun();await pollStatus();toast('Tarama kuyruğu başlatıldı.');}}
   catch(e){$('task-error').textContent=e.message;}finally{queueStarting=false;renderSource();}
 }
 function setOllama(available){
@@ -207,9 +209,9 @@ function renderSource(){
   const blocked=!!sourceState?.paused;
   $('source-status').hidden=!blocked;$('source-status').textContent=sourceState?.message||'';
   $('acknowledge-source').hidden=!sourceState?.manual_pause;$('acknowledge-source').disabled=!sourceState?.acknowledge_allowed;
-  $('start-scrape').disabled=queueStarting||blocked;
+  // Sistem meşgulken veya kaynak beklerken kuyruk sıraya alınır; servis uygun olunca başlatır.
+  $('start-scrape').disabled=queueStarting;$('start-scrape').textContent=blocked||busy?'Kuyruğa ekle — uygun olunca başlar':'Kuyruğu başlat';
   document.querySelectorAll('[data-action="control-resume"]').forEach(el=>el.disabled=blocked);
-  $('resume-run').disabled=blocked&&(!currentRun?.kind||currentRun.kind==='scrape');
   // Kaynak beklemesi üstteki bekleme şeridinde gösterilir; durum çubuğunda tekrarlanmaz.
   renderWait();
 }
@@ -249,14 +251,16 @@ function renderRun(){
   $('cancel-run').hidden=run.has_started||run.status!=='queued';
   $('run-summary').hidden=false;
   $('run-summary').className='queue-overview state-'+run.status;
-  $('run-summary').innerHTML=`<div class="queue-task-heading"><strong>Tarama özeti</strong>${statusBadge(run.status)}</div>${metricHtml(run.stats,collected)}<div class="queue-timing"><span>İlk başlangıç <strong>${run.started_at?esc(date(run.started_at)):'Henüz başlamadı / bilinmiyor'}</strong></span><span>Başlangıçtan geçen <strong>${clockHtml(run)}</strong></span><span>Kuyruğa eklenme <strong>${esc(date(run.created_at))}</strong></span></div><p class="help">${done}/${run.tasks.length} sorgunun işlemi sona erdi. Geçen süre duraklamaları da içerir.</p>${reasonHtml(run)}<div class="actions">${button('run-results','Toplanan ilanları gör',`data-run="${run.id}"`)}${button('run-report','Süreç raporu',`data-run="${run.id}"`)}</div><details class="queue-identity"><summary>Süreç kimliği</summary><p class="id-text">${run.id}</p></details>`;
+  const now=run.tasks.find(t=>t.status==='running');
+  $('run-summary').innerHTML=`<div class="queue-task-heading"><strong>${active?'Çalışan kuyruk':terminalStatus(run.status)?'Son tarama':'Bekleyen kuyruk'}</strong>${statusBadge(run.status)}</div><p class="queue-line"><span><strong>${done}/${run.tasks.length}</strong> sorgu bitti</span><span><strong>${collected}</strong> çekilen</span><span class="metric-new"><strong>${run.stats.new||0}</strong> yeni</span><span class="metric-updated"><strong>${run.stats.updated||0}</strong> güncellenen</span><span>Süre <strong>${clockHtml(run)}</strong></span></p><progress class="task-progress" max="${Math.max(1,run.tasks.length)}" value="${done}" aria-label="Tamamlanan sorgular"></progress>${now?`<p class="queue-now">Şimdi: <strong>${esc(now.keyword)}</strong> · ${esc(now.location)} · ${now.limit==null?now.count+' ilan (limitsiz)':now.count+'/'+now.limit+' ilan'}</p>`:reasonHtml(run)}`;
+  $('live-details-summary').textContent=`Ayrıntılar ve sorgular (${run.tasks.length})`;
+  $('run-details').innerHTML=`${metricHtml(run.stats,collected)}<div class="queue-timing"><span>İlk başlangıç <strong>${run.started_at?esc(date(run.started_at)):'Henüz başlamadı / bilinmiyor'}</strong></span><span>Başlangıçtan geçen <strong>${clockHtml(run)}</strong></span><span>Kuyruğa eklenme <strong>${esc(date(run.created_at))}</strong></span></div><p class="help">Geçen süre duraklamaları da içerir.</p><div class="actions">${button('run-results','Toplanan ilanları gör',`data-run="${run.id}"`)}${button('run-report','Süreç raporu',`data-run="${run.id}"`)}</div><details class="queue-identity"><summary>Süreç kimliği</summary><p class="id-text">${run.id}</p></details>`;
   $('status-bar').hidden=!!sourceState?.paused&&!activeStatus(run.status);$('status-bar').className='status-bar state-'+run.status;$('status-text').textContent=`${tr(run.status)} · ${collected} çekilen · ${run.stats.new||0} yeni · ${run.stats.updated||0} güncellenen · ${run.stats.unchanged||0} değişmeyen`;
   const task=run.tasks.find(t=>t.status==='running');$('status-progress').max=Math.max(1,run.tasks.length);$('status-progress').value=done;
   const activePackage=(task||run.tasks.find(t=>!terminalStatus(t.status)))?.package||'';const remaining=Math.ceil((waitingUntil-Date.now())/1000);const pkgLabel=activePackage?`Paket: ${activePackage} · `:'';$('status-detail').textContent=remaining>0&&active?`${waitReason} · ${remaining} saniye`:task?`${pkgLabel}${task.keyword} · ${task.location} · ${task.limit==null?'Limitsiz tarama':task.count+'/'+task.limit+' ilan'}`:run.status_reason||'Sonuçlar korundu. Ayrıntılar tarama panelinde.';
   renderSource();
-  if(run.status==='paused'&&run.automatic_resume&&sourceState?.paused)$('run-summary').insertAdjacentHTML('afterbegin','<div class="queue-wait"><strong>Otomatik devam için kalan</strong><span data-source-countdown></span></div>');
   renderWait();
-  if(run.kind&&run.kind!=='scrape'){$('run-summary').innerHTML=`<strong>${esc(tr(run.status))}</strong><p>${run.stats.embedded??run.stats.classified??0} ilan işlendi · ${run.stats.skipped||0} başarısız deneme</p>${reasonHtml(run)}${button('run-report','Süreç raporunu aç',`data-run="${run.id}"`)}`;}
+  if(run.kind&&run.kind!=='scrape'){$('run-details').innerHTML='';$('run-summary').innerHTML=`<strong>${esc(tr(run.status))}</strong><p>${run.stats.embedded??run.stats.classified??0} ilan işlendi · ${run.stats.skipped||0} başarısız deneme</p>${reasonHtml(run)}${button('run-report','Süreç raporunu aç',`data-run="${run.id}"`)}`;}
 }
 async function controlTask(runId,taskId,action){
   if(action==='stop'&&!await confirmAction('Bu sorgu sonuçları korunarak durdurulacak. Aynı sorguya devam edilemez; gerekiyorsa yeni tarama başlatabilirsiniz. Kuyruk çalışıyorsa sonraki sorguya geçer.'))return;
@@ -274,9 +278,10 @@ async function runAction(id,action){
   if(action==='purge'&&!await confirmAction('Arama geçmişi, havuzu ve logları kalıcı olarak silinecek. Ortak ilanlar sistemde kalacak. Devam edilsin mi?'))return;
   if(action==='stop'&&!await confirmAction('Kuyruk sonuçları korunarak durdurulacak. Devam etmek için yeni tarama oluşturmanız gerekir. Durdurulsun mu?'))return;
   if(action==='cancel'&&!await confirmAction('Henüz başlamamış kuyruk iptal edilsin mi?'))return;
-  await api(`/api/runs/${id}/${action}`,{method:'POST'});
+  const result=await api(`/api/runs/${id}/${action}`,{method:'POST'});
   if(action==='resume'&&draftRunId===id){draft=[];draftRunId=null;clearTimeout(draftSaveTimer);persist();renderDraft();}
   if(['delete','restore','purge'].includes(action)){await loadHistory();await loadRunOptions();toast(action==='delete'?'Arama geçmişi çöp kutusuna taşındı. İlanlar korundu.':action==='restore'?'Arama geçmişi geri yüklendi.':'Arama geçmişi kalıcı silindi.',action==='delete'?async()=>{await api(`/api/runs/${id}/restore`,{method:'POST'});await loadHistory();loadRunOptions();}:null);}
+  else if(result.scheduled){closeDialog('history-dialog');showTab('queue');await pollStatus();toast('Sıraya alındı. Sistem uygun olunca kendiliğinden devam edecek.');}
   else{currentRun=await api('/api/runs/'+id);renderRun();if(action==='resume'){closeDialog('history-dialog');showTab('queue');}await pollStatus();}
 }
 async function editLive(taskId,action){
@@ -296,9 +301,28 @@ async function saveTask(){
   if(!task.keyword||!task.location||task.limit!==null&&(!Number.isInteger(task.limit)||task.limit<1)){$('edit-task-error').textContent='Unvan, konum ve hedef sayısını kontrol edin.';return;}
   try{await api('/api/runs/'+currentRun.id,{method:'PATCH',body:{tasks:pending}});currentRun=await api('/api/runs/'+currentRun.id);renderRun();closeDialog('task-dialog');toast('Görev güncellendi.');}catch(e){$('edit-task-error').textContent=e.message;}
 }
+let waitingRuns=[],waitingKey='';const openWaiting=new Set();
+function renderWaiting(){
+  const key=JSON.stringify([waitingRuns,!!sourceState?.paused,busy]);if(key===waitingKey)return;waitingKey=key;
+  $('waiting-runs').hidden=!waitingRuns.length;renderQueueView();if(!waitingRuns.length){$('waiting-list').innerHTML='';return;}
+  $('waiting-title').textContent=`Sırada bekleyenler (${waitingRuns.length})`;
+  $('waiting-help').textContent=`${sourceState?.paused?'Kaynak beklemesi bitince':busy?'Çalışan tarama bitince':'Birazdan'} sırayla kendiliğinden başlar. Bekleme süreleri kısaltılmaz.`;
+  $('waiting-list').innerHTML=waitingRuns.map((r,i)=>{
+    const names=r.tasks.map(t=>t.keyword),packs=[...new Set(r.tasks.map(t=>t.package).filter(Boolean))],places=[...new Set(r.tasks.map(t=>t.location))].join(', ');
+    const title=packs.length?'Paket: '+packs.join(', '):names.slice(0,2).join(', ')+(names.length>2?` +${names.length-2}`:'');
+    return `<details class="waiting-run state-${esc(r.status)}" data-waiting="${esc(r.id)}" ${openWaiting.has(r.id)?'open':''}><summary><span class="waiting-order">${i+1}</span><span class="waiting-main"><strong>${esc(title)}</strong><small>${r.tasks.length} sorgu · ${esc(places)}${r.watch?' · Düzenli tarama':''}${r.status!=='queued'?' · kaldığı yerden devam edecek':''}</small></span></summary>
+      <ul class="waiting-tasks">${r.tasks.map(t=>`<li>${esc(t.keyword)} <span class="muted">· ${esc(t.location)} · ${t.limit==null?'Limitsiz':t.limit+' ilan'}</span></li>`).join('')}</ul>
+      <div class="actions">${r.status==='queued'?button('waiting-cancel','Başlamadan iptal et',`data-run="${esc(r.id)}"`,'danger'):button('waiting-pause','Otomatik devamı durdur',`data-run="${esc(r.id)}"`)}</div></details>`;}).join('');
+}
+async function waitingAction(id,action){
+  if(action==='cancel'&&!await confirmAction('Sıradaki bu kuyruk başlamadan iptal edilsin mi? Daha önce toplanan ilanlar korunur.'))return;
+  try{await api(`/api/runs/${id}/${action==='cancel'?'cancel':'pause'}`,{method:'POST'});toast(action==='cancel'?'Sıradaki kuyruk iptal edildi.':'Otomatik devam durduruldu. Geçmiş aramalardan devam ettirebilirsin.');}
+  catch(e){toast(e.message,null,'',true);}
+  await pollStatus();
+}
 async function acknowledgeSource(){try{await api('/api/source/acknowledge',{method:'POST'});await pollStatus();toast('Kaynak duraklatması kaldırıldı. Kuyruğu devam ettirebilirsiniz.');}catch(e){toast(e.message,null,'',true);}}
 async function pollStatus(){
-  try{const status=await api('/api/scrape/status');busy=status.running;sourceState=status.source_state;renderSource();lastPoll=Date.now();
+  try{const status=await api('/api/scrape/status');busy=status.running;sourceState=status.source_state;waitingRuns=status.waiting||[];renderSource();renderWaiting();lastPoll=Date.now();
     if(status.run){currentRun=status.run;activeLogRun=currentRun.id;renderRun();}
     else if(busy){$('status-bar').hidden=false;$('status-text').textContent=status.kind==='embed'?'İlan eşleştirmeleri hazırlanıyor…':'İlanlar analiz ediliyor…';$('status-detail').textContent='Bu işlem kayıtlı ilanlar üzerinde çalışır.';$('status-progress').removeAttribute('value');}
     else if(currentRun&&activeStatus(currentRun.status)){currentRun=await api('/api/runs/'+currentRun.id);renderRun();loadAll();}
@@ -485,7 +509,7 @@ function initBottomNav(){
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeBottomSheet();});
   syncBottomNav();
 }
-function renderQueueView(){const has=!!currentRun;$('queue-empty').hidden=has;$('live-run').hidden=!has;syncBottomNav();}
+function renderQueueView(){const has=!!currentRun;$('queue-empty').hidden=has||waitingRuns.length>0;$('live-run').hidden=!has;syncBottomNav();}
 
 let watchEditing=null, watchData=[];
 const intervalNames={3600:'Saatte bir',10800:'3 saatte bir',21600:'6 saatte bir',43200:'12 saatte bir',86400:'Günde bir',259200:'3 günde bir',604800:'Haftada bir'};
@@ -538,6 +562,7 @@ async function dispatch(action,el){
   if(['delete-job','restore-job','purge-job'].includes(action))return jobAction(id,action.split('-')[0]);
   if(action.startsWith('draft-')){if(action==='draft-package-remove')draft.splice(index,Number(el.dataset.count));else if(action==='draft-remove')draft.splice(index,1);else{const other=index+(action==='draft-up'?-1:1);if(other>=0&&other<draft.length)[draft[index],draft[other]]=[draft[other],draft[index]];}renderDraft();persist();scheduleDraftSave();return;}
   if(action.startsWith('control-'))return controlTask(run,task,action.slice(8));
+  if(action.startsWith('waiting-'))return waitingAction(run,action.slice(8));
   if(action.startsWith('live-'))return editLive(task,action.slice(5));
   if(action==='edit-task')return openTaskEditor(task);
   if(['task-results','task-all-results','task-new-results'].includes(action))return showResults('task_id',task,action==='task-new-results');
@@ -604,6 +629,7 @@ function initialize(){
   document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
   window.addEventListener('popstate',()=>{readLocation();syncControls();renderChips();loadAll();});
   $('queue-host').append($('live-run'));
+  $('waiting-list').addEventListener('toggle',e=>{const id=e.target.dataset?.waiting;if(id){if(e.target.open)openWaiting.add(id);else openWaiting.delete(id);}},true);
   wire('watch-form','submit',saveWatch);wire('watch-cancel','click',resetWatchForm);['watch-keywords','watch-locations'].forEach(id=>wire(id,'input',watchCombos));watchCombos();
   setInterval(()=>{if(document.visibilityState==='visible'&&!$('view-watches').hidden)loadWatches();},20000);
   applyDev();let tab='jobs';try{tab=localStorage.getItem('linko.tab')||'jobs';}catch{}showTab(tab);

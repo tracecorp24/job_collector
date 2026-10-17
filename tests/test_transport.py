@@ -142,8 +142,10 @@ class TransportTests(unittest.TestCase):
         task=run['tasks'][0]
         self.assertEqual(task['count'],1)
         with patch('requests.Session.get') as get:
+            # Kaynak beklerken başlatma isteği sıraya alınır; hiçbir istek gönderilmez.
             blocked=self.client.post('/api/runs/'+run['id']+'/resume')
-            self.assertEqual(blocked.status_code,409)
+            self.assertEqual(blocked.status_code,200)
+            self.assertTrue(blocked.json['scheduled'])
             self.assertEqual(self.client.post('/api/source/acknowledge').status_code,409)
             get.assert_not_called()
         # Advance persisted test-only deadline; production never bypasses it.

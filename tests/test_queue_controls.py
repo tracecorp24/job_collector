@@ -156,3 +156,39 @@ class QueueControlTests(unittest.TestCase):
             self.assertIsNotNone(run.ended_at)
             self.assertIsNotNone(task.started_at)
             self.assertIsNotNone(task.ended_at)
+
+    def test_start_while_busy_or_source_paused_schedules_instead_of_running(self):
+        from jobapp import service
+        from jobapp.transport import Coordinator
+        self.seed_queue()
+        with patch.object(server.state,'running',True), patch.object(runs,'start') as start:
+            result=self.client.post('/api/runs/controls/resume')
+            self.assertEqual(result.status_code,200)
+            self.assertTrue(result.json['scheduled'])
+            start.assert_not_called()
+            waiting=self.client.get('/api/scrape/status').json['waiting']
+        self.assertEqual([w['id'] for w in waiting],['controls'])
+        self.assertEqual([t['keyword'] for t in waiting[0]['tasks']],['AI','Backend'])
+        self.assertEqual(self.client.get('/api/runs/controls').json['status'],'queued')
+        # Kaynak beklemesi sürerken servis sıradaki kuyruğu başlatmaz; sonra başlatır.
+        Coordinator().pause('Kaynak erişimi sınırlandırdı (HTTP 429).',429,'600')
+        with patch.object(runs,'start') as start:
+            self.assertTrue(self.client.post('/api/runs/controls/resume').json['scheduled'])
+            service.tick(server)
+            start.assert_not_called()
+        with patch.object(Coordinator,'state',return_value={'paused':False}), patch.object(runs,'start') as start:
+            service.tick(server)
+            start.assert_called_once_with(server,'controls')
+
+    def test_start_scheduled_paused_run_resumes_automatically(self):
+        self.seed_queue(started=True)
+        with self.factory() as session:
+            run=session.get(SearchRun,'controls')
+            run.options=json.dumps({'user_paused':True})
+            session.commit()
+        with patch.object(server.state,'running',True):
+            self.assertTrue(self.client.post('/api/runs/controls/resume').json['scheduled'])
+        with self.factory() as session:
+            options=json.loads(session.get(SearchRun,'controls').options)
+        self.assertNotIn('user_paused',options)
+        self.assertEqual(options['auto_resume_at'],0)
