@@ -720,7 +720,28 @@ function openJobsFromDashboard(el){
 }
 function setNavMore(open){$('nav-more-menu').hidden=!open;$('nav-more-toggle').setAttribute('aria-expanded',String(open));}
 function wire(id,event,fn){$(id).addEventListener(event,async e=>{try{await fn(e);}catch(error){toast(error.message,null,'',true);}});}
+function initTheme(){
+  let theme='light';try{theme=localStorage.getItem('linko.theme.v1')==='dark'?'dark':'light';}catch{}
+  const button=document.createElement('button');button.id='theme-toggle';button.className='theme-toggle';button.type='button';button.setAttribute('aria-pressed','false');
+  document.querySelector('.header').append(button);
+  const render=()=>{
+    const dark=document.body.dataset.theme==='dark';
+    button.setAttribute('aria-pressed',String(dark));
+    button.setAttribute('aria-label',dark?'Açık temaya geç':'Koyu temaya geç');
+    button.title=dark?'Açık temaya geç':'Koyu temaya geç';
+    button.innerHTML=dark
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg><span>Açık tema</span>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 13A8.5 8.5 0 0 1 11 3.2 8.5 8.5 0 1 0 20.8 13Z"/></svg><span>Koyu tema</span>';
+  };
+  document.body.dataset.theme=theme;render();
+  button.addEventListener('click',()=>{
+    document.body.dataset.theme=document.body.dataset.theme==='dark'?'light':'dark';
+    try{localStorage.setItem('linko.theme.v1',document.body.dataset.theme);}catch{}
+    render();
+  });
+}
 function initialize(){
+  initTheme();
   // Üst menüde az kullanılan seçenekler ⋯ altında; seçim yapınca, dışarı tıklayınca veya Esc ile kapanır.
   wire('nav-more-toggle','click',()=>setNavMore($('nav-more-menu').hidden));
   document.addEventListener('click',e=>{if(!$('nav-more-menu').hidden&&(!e.target.closest('.nav-more')||e.target.closest('#nav-more-menu [data-action]')))setNavMore(false);});
