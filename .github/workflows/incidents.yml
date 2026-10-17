@@ -27,7 +27,7 @@ jobs:
       - name: Senkronize et
         env:
           LINKO_URL: https://ai-org.online
-          LINKO_ADMIN_KEY: ${{ secrets.LINKO_ADMIN_KEY }}
+          LINKO_LOG_KEY: ${{ secrets.LINKO_LOG_KEY || secrets.LINKO_ADMIN_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python3 scripts/incident_sync.py

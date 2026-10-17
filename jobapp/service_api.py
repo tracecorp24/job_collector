@@ -102,6 +102,9 @@ def install(server):
             return None
         supplied = request.headers.get('Authorization', '').removeprefix('Bearer ')
         allowed = [config.ADMIN_KEY] if request.method != 'GET' or not versioned else [config.API_KEY, config.ADMIN_KEY]
+        if request.path.startswith(('/api/v1/logs', '/api/v1/incidents')):
+            # Log anahtarı yalnızca bu uçlarda geçer; başka hiçbir yönetim ucunda kabul edilmez.
+            allowed = allowed + [config.LOG_KEY]
         if not any(key and hmac.compare_digest(supplied, key) for key in allowed):
             return jsonify(error='Geçerli Bearer anahtarı gerekli.', code='unauthorized'), 401
 

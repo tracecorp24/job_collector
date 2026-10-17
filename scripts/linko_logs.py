@@ -2,7 +2,7 @@
 
 Ayar: ortam değişkenleri ya da gitignore'daki `.local/linko_cli.env` (KEY=VALUE satırları)
   LINKO_URL        varsayılan https://ai-org.online
-  LINKO_ADMIN_KEY  sunucudaki JOBAPP_ADMIN_KEY
+  LINKO_LOG_KEY    sunucudaki JOBAPP_LOG_KEY (geçişte LINKO_ADMIN_KEY de kabul edilir)
 
 Örnekler:
   python scripts/linko_logs.py logs --since 2h --level warning
@@ -33,9 +33,10 @@ def settings():
                 key, value = line.split("=", 1)
                 values[key.strip()] = value.strip()
     url = os.environ.get("LINKO_URL") or values.get("LINKO_URL") or "https://ai-org.online"
-    key = os.environ.get("LINKO_ADMIN_KEY") or values.get("LINKO_ADMIN_KEY")
+    key = next((v for v in (os.environ.get("LINKO_LOG_KEY"), values.get("LINKO_LOG_KEY"),
+                            os.environ.get("LINKO_ADMIN_KEY"), values.get("LINKO_ADMIN_KEY")) if v), None)
     if not key:
-        sys.exit(f"LINKO_ADMIN_KEY bulunamadı. Ortam değişkeni verin veya {SETTINGS} dosyasına yazın.")
+        sys.exit(f"LINKO_LOG_KEY bulunamadı. Ortam değişkeni verin veya {SETTINGS} dosyasına yazın.")
     return url.rstrip("/"), key
 
 

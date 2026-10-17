@@ -71,6 +71,8 @@ def version_info():
 BACKUP_STATUS_PATH = _env("JOBAPP_BACKUP_STATUS_PATH", os.path.join(os.path.dirname(DB_PATH), "backup_status.json"))
 API_KEY = os.environ.get("JOBAPP_API_KEY", "")
 ADMIN_KEY = os.environ.get("JOBAPP_ADMIN_KEY", "")
+# Yalnızca /api/v1/logs* ve /api/v1/incidents* uçlarını açar; yönetim işlemlerine yetkisi yoktur.
+LOG_KEY = os.environ.get("JOBAPP_LOG_KEY", "")
 
 
 def ensure_local_keys():

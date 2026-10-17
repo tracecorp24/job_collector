@@ -46,8 +46,8 @@ def stamp(moment):
 
 def require_admin():
     supplied = request.headers.get("Authorization", "").removeprefix("Bearer ")
-    if not (config.ADMIN_KEY and hmac.compare_digest(supplied, config.ADMIN_KEY)):
-        return jsonify(error="Loglar için yönetici anahtarı gerekli.", code="forbidden"), 403
+    if not any(key and hmac.compare_digest(supplied, key) for key in (config.LOG_KEY, config.ADMIN_KEY)):
+        return jsonify(error="Loglar için log veya yönetici anahtarı gerekli.", code="forbidden"), 403
     return None
 
 

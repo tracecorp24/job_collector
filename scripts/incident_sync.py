@@ -7,7 +7,7 @@
    Kapanıştan sonra tekrar görüldüyse issue yeniden açılır.
 Hata kayıtları sunucuda silinmez; issue'lar da yalnızca kapatılır.
 
-Ortam: LINKO_URL, LINKO_ADMIN_KEY, GITHUB_TOKEN, GITHUB_REPOSITORY (owner/repo).
+Ortam: LINKO_URL, LINKO_LOG_KEY (geçişte LINKO_ADMIN_KEY), GITHUB_TOKEN, GITHUB_REPOSITORY (owner/repo).
 """
 import json
 import os
@@ -152,10 +152,11 @@ class Sync:
 
 
 def main():
-    missing = [k for k in ("LINKO_URL", "LINKO_ADMIN_KEY", "GITHUB_TOKEN", "GITHUB_REPOSITORY") if not os.environ.get(k)]
+    key = os.environ.get("LINKO_LOG_KEY") or os.environ.get("LINKO_ADMIN_KEY")
+    missing = [k for k in ("LINKO_URL", "GITHUB_TOKEN", "GITHUB_REPOSITORY") if not os.environ.get(k)] + ([] if key else ["LINKO_LOG_KEY"])
     if missing:
         sys.exit("Eksik ortam değişkeni: " + ", ".join(missing))
-    Sync(os.environ["LINKO_URL"], os.environ["LINKO_ADMIN_KEY"], os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_TOKEN"]).run()
+    Sync(os.environ["LINKO_URL"], key, os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_TOKEN"]).run()
 
 
 if __name__ == "__main__":

@@ -89,6 +89,24 @@ class LogTests(unittest.TestCase):
             self.assertEqual(result["app_logs_deleted"], 1)
             self.assertEqual(session.query(Incident).count(), 1)
 
+    def test_log_key_opens_only_log_and_incident_endpoints(self):
+        logstore.store("error", "linko", "Patladı")
+        log = {"Authorization": "Bearer log-anahtari-1234"}
+        with patch.object(config, "LOG_KEY", "log-anahtari-1234"):
+            self.assertEqual(self.client.get("/api/v1/logs", headers=log).status_code, 200)
+            self.assertEqual(self.client.get("/api/v1/logs/export?since=1h", headers=log).status_code, 200)
+            ident = self.client.get("/api/v1/incidents", headers=log).json["items"][0]["id"]
+            self.assertEqual(self.client.post(f"/api/v1/incidents/{ident}", headers=log,
+                                              json={"action": "link", "issue_number": 3}).status_code, 200)
+            # Yönetim ve veri uçlarında log anahtarı geçmez.
+            self.assertEqual(self.client.post("/api/v1/collections", headers=log, json={"tasks": [{"keyword": "AI"}]}).status_code, 401)
+            self.assertEqual(self.client.get("/api/v1/jobs", headers=log).status_code, 401)
+            self.assertEqual(self.client.get("/api/v1/status", headers=log).status_code, 401)
+            # Okuma anahtarı hâlâ log okuyamaz; yönetici anahtarı geçişte çalışmaya devam eder.
+            self.assertEqual(self.client.get("/api/v1/logs", headers={"Authorization": "Bearer reader"}).status_code, 403)
+            self.assertEqual(self.client.get("/api/v1/logs", headers=ADMIN).status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/logs", headers=log).status_code, 401)  # anahtar tanımlı değilken
+
     def test_incident_api_link_and_resolve(self):
         logstore.store("error", "linko", "Patladı")
         ident = self.client.get("/api/v1/incidents?needs_issue=1", headers=ADMIN).json["items"][0]["id"]
