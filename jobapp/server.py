@@ -75,7 +75,8 @@ state = ScrapeState()
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # Sayfa her açılışta yeniden doğrulanır; deploy sonrası tarayıcı eski arayüzde kalmaz.
+    return Response(render_template("index.html"), headers={"Cache-Control": "no-cache"})
 
 
 # --- Jobs API --------------------------------------------------------------

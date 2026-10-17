@@ -64,6 +64,11 @@ class FullLightTests(unittest.TestCase):
                                         emit=lambda t, d: events.append((t, d)))
         return result, events, get
 
+    def test_index_page_is_revalidated_after_deploy(self):
+        response = self.client.get("/")
+        self.assertEqual(response.headers.get("Cache-Control"), "no-cache")
+        self.assertIn('class="quick-filters"', response.get_data(as_text=True))
+
     def test_full_ui_retained_without_login_option(self):
         html = self.client.get("/").get_data(as_text=True)
         self.assertIn("Linko Scrapper Light", html)
