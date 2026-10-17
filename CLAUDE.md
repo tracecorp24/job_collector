@@ -9,7 +9,7 @@ sunucusu ve otonom toplayıcı (`serve_service.py`). Arayüz `jobapp/templates/i
 - Her değişiklikten sonra testleri çalıştır: `python -m unittest discover -s tests`. Yeni davranış için test ekle.
 - `main`'e merge edilen her şey otomatik olarak canlı sunucuya kurulur (`.github/workflows/deploy.yml`). Testleri kırık PR açma.
 - Canlı veritabanı var: şema değişiklikleri mevcut verilerle geriye uyumlu olmalı, veri silen göç yazma.
-- Kaynak bekleme/hız sınırı politikasını (`SERVICE_PLAN.md`) gevşetme; bekleme süreleri kısaltılmaz, güvenlik doğrulaması aşılmaz.
+- Kaynak bekleme ve hız politikasını (`SERVICE_PLAN.md`) koru: güvenlik doğrulaması ve Retry-After beklemesi aşılmaz, tek collector süreci korunur. Varsayılan 10 saniyelik istek aralığı bir deneme ayarıdır; 429'u sıfırladığı veya verimi artırdığı varsayılmaz. Etkiyi benzer koşullardaki gerçek koşuların `rate_429` ve `frozen_ratio` değerleriyle doğrula.
 - Tek collector süreci varsayımını bozma (çok worker'lı sunucu ekleme).
 - Anahtar, şifre veya `.env` içeriğini koda/commit'e koyma.
 - Geliştirme canlı loglara dayanır (`CALISMA_YONTEMI.md`): işe başlarken

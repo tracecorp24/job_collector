@@ -104,14 +104,15 @@ dokunulmaz, tek collector korunur.
 - `tests/`: oran hesapları ve sıfıra bölme durumları için birim testi; mevcut `python -m unittest discover -s tests` geçmeli.
 - Kabul: aynı tarama için iki ölçüm tekrarlanabilir; 429 oranı arayüzde/raporda görünür.
 
-### Değerlendirmeden sonra
-Faz 1 ve 2 canlıya girdikten sonra 1 hafta veri toplanır. Aralığı değiştirmek için yeni karar,
-**yeni kanıt ve açık kullanıcı onayı** gerekir; bu belge o kararı vermez.
+### Faz 3 — İstek Aralığı Denemesi (10.0 sn; canlı doğrulama bekliyor)
+- 14:22–15:38 arasındaki koşu kayıtlarında sürenin yaklaşık %65'inin kaynak beklemesinde geçtiği raporlandı. Bu, pacing değişikliğini denemek için gerekçe oluşturur.
+- `scripts/test_endpoint_isolation.py` canlı hız sınırını ölçmez; varsayılan eşik ve bekleme kabulleriyle iki senaryoyu simüle eder. Modeldeki 182 ve 334 istek/saat değerleri, 36 ve 0 adet 429 sonucu ile %65 ve %0 bekleme oranları **simülasyon çıktısıdır**, canlı sistem sonucu değildir. Özellikle 10 saniyelik senaryoda 429 eşiği model tarafından devre dışı bırakılmıştır.
+- Karar: `JOBAPP_REQUEST_INTERVAL=10.0`, `JOBAPP_MIN_REQUEST_INTERVAL=10.0`, `JOBAPP_REQUEST_JITTER=0.15` yerel varsayılan olarak seçildi. 429 oranı veya verim kazanımı hakkında sonuç çıkarmadan önce benzer koşullardaki sonraki gerçek koşuların `rate_429` ve `frozen_ratio` değerleri karşılaştırılmalıdır.
 
 ## 6. Özet
 
 | Durum | Başlıklar |
 | --- | --- |
-| Onaylandı (küçük, riski düşük) | Detay önbelleği 72 sa (ayar), ölçüm oranları + uyarı logu |
+| Uygulandı; etkisi ölçülecek | Detay önbelleği 72 sa (ayar), 10.0s istek aralığı denemesi, ölçüm oranları (`rate_429`, `frozen_ratio`) + uyarı logu |
 | Zaten var | AIMD ve `Retry-After`/authwall beklemesi, kart→detay geçiş aralığı, sabit oturum, başlık/keep-alive/çerez, önce kart, `sort_recent`/`stop_when_known`, detay önbelleği |
-| Reddedildi | `curl_cffi`, ayrı kovalar, taban aralığı kısaltma ve gece profili, IPv6/WARP, honeypot'ta kova/IP değiştirme, JSON-LD, Google X-Ray, çoklu detay işçisi, katmanlı önbellek, `Referer`, 4 haftalık plan |
+| Reddedildi | `curl_cffi`, ayrı kovalar, taban aralığı 3 sn'ye indirmek, IPv6/WARP, honeypot'ta kova/IP değiştirme, JSON-LD, Google X-Ray, çoklu detay işçisi, katmanlı önbellek, `Referer`, 4 haftalık plan |

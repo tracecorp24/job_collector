@@ -81,6 +81,16 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(result['http_statuses']['429'],1)
         self.assertEqual(result['metrics']['source_pauses'],1)
         self.assertIn('source_paused',[f['code'] for f in result['findings']])
+        self.assertIn('rate_429', result['metrics'])
+        self.assertIn('cache_hit_rate', result['metrics'])
+        self.assertIn('useful_jobs_per_request', result['metrics'])
+        self.assertIn('pause_seconds', result['metrics'])
+        self.assertIn('frozen_ratio', result['metrics'])
+        self.assertIn('total_run_seconds', result['metrics'])
+        self.assertGreater(result['metrics']['rate_429'], 0.0)
+        self.assertGreaterEqual(result['metrics']['pause_seconds'], 60)
+        self.assertGreater(result['metrics']['avg_cards_per_page'], 0.0)
+        self.assertGreater(result['metrics']['frozen_ratio'], 0.0)
 
     def test_secret_redaction_in_nested_event_data(self):
         with patch.object(config,'ANTHROPIC_API_KEY','test-sensitive-key'),self.factory() as session:

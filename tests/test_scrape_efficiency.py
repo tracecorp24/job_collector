@@ -120,6 +120,51 @@ class ScrapeEfficiencyTests(unittest.TestCase):
                                     search_options={"defer_details": True})
                 self.assertEqual(get.call_args.kwargs["params"]["start"], expected)
 
+    def test_abnormal_card_drop_logs_warning_without_interrupting(self):
+        logs = []
+        scraper = AccountlessScraper(emit=lambda kind, data: logs.append((kind, data)) if kind == "log" else None,
+                                     max_retries=0, search_options={"defer_details": True})
+        page1 = "".join(card(i) for i in range(10))
+        page2 = card(10) + card(11)  # only 2 cards (less than 50% of 10)
+        try:
+            with patch("requests.Session.get", side_effect=[response(page1), response(page2), response("")]):
+                scraper.scrape([{"keyword": "Python", "limit": 100}], ["Istanbul"], lambda job: "new")
+            warnings = [d["msg"] for k, d in logs if d.get("level") == "warning"]
+            self.assertTrue(any("Kart sayısında beklenmeyen düşüş" in w for w in warnings))
+        finally:
+            scraper.session.close()
+
+    def test_low_yield_threshold_stops_pagination_early_and_records_reason(self):
+        # Seed 9 known jobs in DB (ids 0 to 8)
+        with self.factory() as session:
+            for i in range(9):
+                session.add(Job(source=config.SOURCE_LINKEDIN, external_id=str(i),
+                                url=f"https://www.linkedin.com/jobs/view/{i}",
+                                title="AI Engineer", company="Test Corp", location="Istanbul",
+                                description="Existing job description"))
+            session.commit()
+
+        events = []
+        page1 = "".join(card(i) for i in range(10))  # 9 known, 1 new (id 9) -> 10% new (< 20%)
+        page2 = "".join(card(i) for i in range(10, 20))
+        scraper = AccountlessScraper(emit=lambda kind, data: events.append((kind, data)),
+                                     max_retries=0,
+                                     search_options={"defer_details": True, "stop_when_known": True, "low_yield_threshold": 0.20})
+        try:
+            with patch("requests.Session.get", side_effect=[response(page1), response(page2)]) as get:
+                collected, reason, stats = scraper._search("Python", "Istanbul", 50, lambda job: "new")
+            # Should stop after page 1; page 2 is never requested
+            self.assertEqual(get.call_count, 1)
+            self.assertEqual(reason, "low_yield_threshold")
+            self.assertEqual(stats["termination_reason"], "low_yield_threshold")
+            self.assertTrue(stats["low_yield_stopped"])
+            self.assertEqual(collected, 10)
+            # Verify event or log mentions threshold stopping
+            log_messages = [d.get("msg", "") for k, d in events if k == "log"]
+            self.assertTrue(any("Yeni ilan verimi eşik altına düştü" in m for m in log_messages))
+        finally:
+            scraper.session.close()
+
 
 if __name__ == "__main__":
     unittest.main()

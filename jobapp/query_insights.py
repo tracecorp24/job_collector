@@ -34,9 +34,11 @@ def efficiency(metrics):
         reasons.append("Kaynak koruması taramayı duraklattı")
     elif metrics.get("retry_waits"):
         reasons.append("Geçici hata veya hız sınırı nedeniyle bekleme oluştu")
-    if (metrics.get("termination_reason") in ("exhausted_results", "repeated_page", "no_new_jobs")
+    if (metrics.get("termination_reason") in ("exhausted_results", "repeated_page", "no_new_jobs", "low_yield_threshold")
             and new_count == 0 and cards):
         reasons.append("Arama sayfaları yeni ilan getirmeden tükendi")
+    if metrics.get("termination_reason") == "low_yield_threshold":
+        reasons.append("Yeni ilan verimi eşik altına düştü (%20 altı erken durdurma)")
     return {"cards": cards, "unique_cards": returned, "new_jobs": new_count,
             "existing_jobs": max(0, int(metrics.get("found_jobs", 0) or 0) - new_count),
             "duplicates": duplicates, "detail_failures": failures,

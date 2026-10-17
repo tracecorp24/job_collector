@@ -6,14 +6,19 @@ import re
 from flask import jsonify, request
 from . import config, groq_client
 
-MAX_FIELD, MAX_COUNT, MAX_TITLE = 120, 10, 80
+MAX_FIELD, MAX_COUNT, MAX_TITLE = 120, 5, 80
 PROMPT = (
-    "Sen bir işe alım uzmanısın. Kullanıcı bir iş unvanı veya meslek alanı verecek. Aynı işi farklı "
-    "şekilde adlandıran, LinkedIn iş ilanı aramasında en çok sonuç getirecek, birbirinden farklı {count} adet "
-    "unvan üret; unvan verildiyse yakın eş anlamlılarına odaklan. Yaklaşık yarısı LinkedIn'de "
-    "en çok kullanılan İngilizce ilan başlıkları, diğer yarısı Türkiye'deki ilanlarda geçen Türkçe "
-    "karşılıkları olsun (örn. \"Electrical Engineer\" ve \"Elektrik Mühendisi\"). En yaygın olanları başa koy. "
-    "Kıdem, şirket adı, konum veya açıklama ekleme. Yalnızca şu JSON'u döndür: "
+    "Sen deneyimli bir teknik işe alım ve yetenek uzmanısın. Kullanıcı bir meslek alanı, teknoloji "
+    "veya iş unvanı verecek. Bu alanla doğrudan ilgili, ancak birbiriyle çakışmayan (ortogonal), "
+    "farklı uzmanlık ve rol ailelerini temsil eden tam {count} adet özgün LinkedIn arama unvanı üret.\n"
+    "KRİTİK KURALLAR:\n"
+    "1. Birbirinin kopyası, eş anlamlısı veya İngilizce-Türkçe çevirisi olan unvanları KESİNLİKLE birlikte üretme "
+    "(Örn: 'Python Developer' ile 'Python Geliştirici' veya 'Data Analyst' ile 'Veri Analisti' gibi aynı unvanı "
+    "farklı dilde veya sinonim kelimelerle tekrarlama).\n"
+    "2. Her bir unvan o alanın farklı bir dalını, uzmanlığını veya rolünü hedeflemelidir (Örn: Veri için -> "
+    "'Data Engineer', 'Machine Learning Engineer', 'BI Specialist', 'Data Analyst', 'Analytics Engineer' gibi).\n"
+    "3. Kıdem (Junior/Senior/Lead vb.), şirket adı, konum veya açıklama ekleme; doğrudan saf unvan adı yaz.\n"
+    "4. Yalnızca şu JSON formatında yanıt ver:\n"
     '{{"titles": ["...", "..."]}}'
 )
 
@@ -34,7 +39,7 @@ def _clean(titles, count):
     return result[:count]
 
 
-def suggest(field, count=10, post=None):
+def suggest(field, count=5, post=None):
     field = re.sub(r"\s+", " ", str(field or "")).strip()
     if not field:
         raise TitleError("Önce bir alan yazın (örn. veri bilimi, elektrik mühendisliği).", 400)
@@ -60,7 +65,7 @@ def install(server):
     def title_suggestions():
         data = request.get_json(silent=True) or {}
         try:
-            count = max(1, min(MAX_COUNT, int(data.get("count") or 10)))
+            count = max(1, min(MAX_COUNT, int(data.get("count") or 5)))
             return jsonify(ok=True, titles=suggest(data.get("field"), count))
         except (TypeError, ValueError):
             return jsonify(ok=False, error="Unvan sayısı geçersiz."), 400

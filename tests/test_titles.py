@@ -56,7 +56,7 @@ class TitleSuggestionTests(GroqBase):
         self.assertEqual(result.json["titles"], ["Data Scientist", "Veri Bilimci", "Data Analyst", "Veri Analisti", "Data Engineer"])
         self.assertEqual(fake.calls[0]["headers"]["Authorization"], "Bearer test-key")
         self.assertEqual(fake.calls[0]["json"]["messages"][1]["content"], "veri bilimi")
-        self.assertIn("10 adet", fake.calls[0]["json"]["messages"][0]["content"])
+        self.assertIn("5 adet", fake.calls[0]["json"]["messages"][0]["content"])
 
     def test_empty_field_and_missing_key(self):
         self.assertEqual(self.client.post("/api/title-suggestions", json={"field": " "}).status_code, 400)

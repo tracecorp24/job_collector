@@ -362,6 +362,7 @@ class AccountlessScraper:
             if self.emit:
                 self.emit("checkpoint", {"page": page, "offset": start_offset, "seen": list(seen), "collected": collected})
         pages_scanned = 0
+        prev_card_count = 0
         total_cards_seen = 0
         duplicates_skipped = 0
         desc_failures = 0
@@ -416,6 +417,12 @@ class AccountlessScraper:
             self.page_report["returned_ids"] = [raw["external_id"] for raw in parsed_cards if raw]
             total_cards_seen += card_count
             self._log(f"📄 [Sayfa {page + 1}] {card_count} adet ilan kartı bulundu.", "info")
+            if pages_scanned > 1 and prev_card_count > 0 and 0 < card_count < prev_card_count * 0.5:
+                self._log(
+                    f"⚠️ [Sayfa {page + 1}] Kart sayısında beklenmeyen düşüş: {card_count} kart döndü (önceki: {prev_card_count}).",
+                    "warning"
+                )
+            prev_card_count = card_count
 
             if not cards:
                 self._report_page()
@@ -430,9 +437,13 @@ class AccountlessScraper:
             new_on_page = 0
             stopped_early = False
             stop_when_known = self.search_options.get("stop_when_known")
+            low_yield_threshold = self.search_options.get("low_yield_threshold")
+            if low_yield_threshold is None and stop_when_known:
+                low_yield_threshold = getattr(config, "LOW_YIELD_THRESHOLD", 0.20)
+            check_yield = bool(low_yield_threshold and low_yield_threshold > 0)
             # Önce kart: yeni ilanın detayı burada istenmez, arka planda tamamlanır (jobapp/details.py).
             defer_details = self.search_options.get("defer_details") and not self.refresh_details
-            known = self.details.known(self.page_report["returned_ids"]) if stop_when_known or defer_details else set()
+            known = self.details.known(self.page_report["returned_ids"]) if stop_when_known or defer_details or check_yield else set()
             cached_details = self.details.get_many([raw for raw in parsed_cards if raw],
                 force=self.refresh_details, allow_stale_ids=known)
             unknown_on_page = 0
@@ -547,6 +558,19 @@ class AccountlessScraper:
                 )
                 break
 
+            if check_yield and card_count > 0:
+                yield_ratio = unknown_on_page / card_count
+                if yield_ratio < low_yield_threshold:
+                    termination_reason = "low_yield_threshold"
+                    pct = round(yield_ratio * 100, 1)
+                    thresh_pct = round(low_yield_threshold * 100, 1)
+                    self._log(
+                        f"🛑 [Sayfa {page + 1}] Yeni ilan verimi eşik altına düştü: %{pct:.0f} < %{thresh_pct:.0f} "
+                        f"({unknown_on_page}/{card_count} yeni ilan). Kota koruması için bu arama erken tamamlandı.",
+                        "info"
+                    )
+                    break
+
             if not new_on_page and page != resume_page:
                 termination_reason = "repeated_page"
                 self._log(
@@ -568,6 +592,8 @@ class AccountlessScraper:
             "duplicatesSkipped": duplicates_skipped,
             "descFailures": desc_failures,
             "durationSeconds": duration,
+            "termination_reason": termination_reason,
+            "low_yield_stopped": termination_reason == "low_yield_threshold",
         }
 
         self._log(

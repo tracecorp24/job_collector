@@ -60,7 +60,7 @@ def report(session, run_id, task_id=None):
     metrics = dict(requests=0, search_requests=0, detail_requests=0, returned_cards=0, collected=0,
                    duplicates=0, detail_failures=0, invalid_cards=0, not_processed=0,
                    processing_failures=0, quality_rejections=0, model_fallbacks=0, retry_waits=0, wait_seconds=0,
-                   cache_hits=0, cache_misses=0, source_pauses=0)
+                   cache_hits=0, cache_misses=0, source_pauses=0, pause_seconds=0)
     statuses = Counter()
     returned_ids, collected_ids, failed_ids = set(), set(), set()
     reasons, timeline, last_error = {}, [], None
@@ -71,6 +71,7 @@ def report(session, run_id, task_id=None):
             metrics["cache_hits" if event.kind == "cache_hit" else "cache_misses"] += 1
         elif event.kind == "source_paused":
             metrics["source_pauses"] += 1
+            metrics["pause_seconds"] += data.get("remaining_seconds") or data.get("seconds") or 0
         elif event.kind == "request_finished":
             metrics["requests"] += 1
             metrics["search_requests" if data.get("params") else "detail_requests"] += 1
@@ -109,6 +110,19 @@ def report(session, run_id, task_id=None):
                    invalid_jobs=linked.filter(Job.quality_ok.is_(False), Job.deleted_at.is_(None)).count(),
                    unique_returned_ids=len(returned_ids) if returned_ids else None,
                    unique_collected_ids=len(collected_ids) if collected_ids else None)
+    total_req = metrics["requests"]
+    cache_total = metrics["cache_hits"] + metrics["cache_misses"]
+    search_req = metrics["search_requests"]
+    if run.started_at and run.ended_at:
+        elapsed = max(1.0, (run.ended_at - run.started_at).total_seconds())
+    else:
+        elapsed = max(1.0, (run.active_seconds or 0.0) + metrics["pause_seconds"])
+    metrics.update(rate_429=round(statuses.get("429", 0) / total_req, 4) if total_req > 0 else 0.0,
+                   cache_hit_rate=round(metrics["cache_hits"] / cache_total, 4) if cache_total > 0 else 0.0,
+                   useful_jobs_per_request=round(metrics["new_jobs"] / total_req, 4) if total_req > 0 else 0.0,
+                   avg_cards_per_page=round(metrics["returned_cards"] / search_req, 2) if search_req > 0 else 0.0,
+                   total_run_seconds=round(elapsed, 1),
+                   frozen_ratio=round(metrics["pause_seconds"] / elapsed, 4) if elapsed > 0 else 0.0)
     findings = []
     def finding(code, title, evidence, steps, severity="info"):
         findings.append(dict(code=code, title=title, evidence=evidence, next_steps=steps, severity=severity))
@@ -118,7 +132,7 @@ def report(session, run_id, task_id=None):
                 ["Kaynak durumundaki bekleme süresinin dolmasını bekleyin.", "Güvenlik kontrolünde erişimi kontrol edip duraklatmayı kaldırın; ardından aynı süreçten devam edin."], "warning")
     if metrics["cache_hits"]:
         finding("cache", "Geçerli önbellekteki detaylar yeniden indirilmedi.", metrics["cache_hits"],
-                ["Önbellek 24 saat geçerlidir; süresi dolan veya kart bilgisi değişen ilanlar yeniden alınır."])
+                ["Önbellek 72 saat geçerlidir; süresi dolan veya kart bilgisi değişen ilanlar yeniden alınır."])
     if not has_pages and kind == "scrape":
         finding("limited_history", "Bu süreç için ayrıntılı sayfa geçmişi bulunmuyor.",
                 "Eski süreçlerin bilinmeyen istek sayıları ve yanıtları sonradan tahmin edilmez.",

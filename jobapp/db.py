@@ -7,7 +7,7 @@ from contextlib import closing
 from pathlib import Path
 from datetime import datetime
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker
 
 from . import config
@@ -22,6 +22,20 @@ engine = create_engine(
     connect_args={"check_same_thread": False, "timeout":30},
 )
 
+
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode = WAL")
+            cursor.execute("PRAGMA synchronous = NORMAL")
+            cursor.execute("PRAGMA busy_timeout = 5000")
+            cursor.execute("PRAGMA cache_size = -64000")
+        finally:
+            cursor.close()
+
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, future=True)
 
 
@@ -35,6 +49,10 @@ def init_db() -> None:
     _backup_before_upgrade()
     Base.metadata.create_all(engine)
     with engine.begin() as conn:
+        conn.execute(text("PRAGMA journal_mode = WAL"))
+        conn.execute(text("PRAGMA synchronous = NORMAL"))
+        conn.execute(text("PRAGMA busy_timeout = 5000"))
+        conn.execute(text("PRAGMA cache_size = -64000"))
         for table in ("search_runs", "search_tasks"):
             columns = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}
             for name, kind in (("started_at", "DATETIME"), ("resumed_at", "DATETIME"), ("ended_at", "DATETIME"),

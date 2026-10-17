@@ -10,6 +10,13 @@
 8. Servis sağlık bilgisi, kullanım belgeleri ve dağıtım örneği hazırla.
 9. İzole regresyon testleri; canlı DB yedeği; kontrollü yerel güncelleme.
 
-Kaynak beklemesi hiçbir zaman kısaltılmayacak. Kullanıcının duraklattığı veya
-durdurduğu iş otomatik açılmayacak. Güvenlik doğrulaması aşılmayacak; uzun
-aralıklı normal erişim denemeleri yapılacak. Tek collector süreci kullanılacak.
+Kaynak beklemesi ve güvenlik kontrolleri (Retry-After, HTTP 429/999/403 duraklatmaları)
+hiçbir zaman hileyle aşılmayacak veya kısaltılmayacak. Kullanıcının duraklattığı veya
+durdurduğu iş otomatik açılmayacak.
+
+Bununla birlikte, 76 dakikalık bir koşuda görülen yüksek duraklama oranını azaltmayı denemek
+için varsayılan istek aralığı 10 saniye olarak ayarlanmıştır (`JOBAPP_REQUEST_INTERVAL=10.0`,
+`JOBAPP_MIN_REQUEST_INTERVAL=10.0`, `%0–15` jitter). Bu ayar yaklaşık 10,75 saniyelik ortalama
+aralığa karşılık gelir; 429 hatalarını sıfırladığı veya toplam verimi artırdığı henüz kanıtlanmış
+değildir. Etkisi, benzer arama koşullarındaki sonraki koşuların `rate_429` ve `frozen_ratio`
+ölçümleriyle doğrulanmalıdır. Tek collector süreci kullanılacak.

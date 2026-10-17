@@ -24,16 +24,18 @@ OLLAMA_TIMEOUT_SECONDS = int(_env("JOBAPP_OLLAMA_TIMEOUT_SECONDS", "180"))
 SOURCE_LINKEDIN = "linkedin"
 ACCOUNTLESS_OUTPUT_DIR = _env("JOBAPP_ACCOUNTLESS_OUTPUT_DIR", os.path.join(ROOT_DIR, "accountless_searches"))
 LEGACY_JOB_LIST_DIR = _env("JOBAPP_LEGACY_JOB_LIST_DIR", os.path.join(ROOT_DIR, "imports"))
-REQUEST_INTERVAL = float(_env("JOBAPP_REQUEST_INTERVAL", "6.0"))
+REQUEST_INTERVAL = float(_env("JOBAPP_REQUEST_INTERVAL", "10.0"))
 MAX_RETRIES = int(_env("JOBAPP_MAX_RETRIES", "10"))
 RETRY_BASE_COOLDOWN = float(_env("JOBAPP_RETRY_BASE_COOLDOWN", "60.0"))
 DEFAULT_LOCATION = _env("JOBAPP_DEFAULT_LOCATION", "Istanbul, Turkey")
-MIN_REQUEST_INTERVAL = max(1.0, float(_env("JOBAPP_MIN_REQUEST_INTERVAL", "6.0")))
+MIN_REQUEST_INTERVAL = max(1.0, float(_env("JOBAPP_MIN_REQUEST_INTERVAL", "10.0")))
 # Önce kart: taramada yeni ilanın detayı istenmez, arka planda tamamlanır (jobapp/details.py).
 DEFER_DETAILS = _env("JOBAPP_DEFER_DETAILS", "1") not in ("0", "false", "False")
-# İstek aralığına eklenen rastgele pay (0.3 = %0–30); düzenli ritim bot gibi görünür.
-REQUEST_JITTER = max(0.0, float(_env("JOBAPP_REQUEST_JITTER", "0.3")))
-DETAIL_CACHE_TTL_SECONDS = max(0.0, float(_env("JOBAPP_DETAIL_CACHE_TTL_SECONDS", "86400")))
+# İstek aralığına eklenen rastgele pay (0.15 = %0–15); düzenli ritim bot gibi görünür.
+REQUEST_JITTER = max(0.0, float(_env("JOBAPP_REQUEST_JITTER", "0.15")))
+# Eşik tabanlı erken durma: sayfadaki yeni ilan oranı bu oranın altına inerse arama tamamlanır.
+LOW_YIELD_THRESHOLD = max(0.0, min(1.0, float(_env("JOBAPP_LOW_YIELD_THRESHOLD", "0.20"))))
+DETAIL_CACHE_TTL_SECONDS = max(0.0, float(_env("JOBAPP_DETAIL_CACHE_TTL_SECONDS", "259200")))
 DETAIL_MISSING_TTL_SECONDS = max(0.0, float(_env("JOBAPP_DETAIL_MISSING_TTL_SECONDS", "300")))
 ACCESS_PAUSE_SECONDS = max(1.0, float(_env("JOBAPP_ACCESS_PAUSE_SECONDS", "900")))
 ACCESS_FAILURE_THRESHOLD = max(1, int(_env("JOBAPP_ACCESS_FAILURE_THRESHOLD", "3")))

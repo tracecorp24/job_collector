@@ -195,10 +195,16 @@ def worker(server, run_id):
                         stats["collected"] = stats.get("collected", 0) + 1
                         run.stats = json.dumps(stats)
                     elif kind == "task_done":
-                        task.stats = json.dumps(dict(json.loads(task.stats), **data.get("stats", {}), termination_reason=data.get("reason")))
+                        task.stats = json.dumps({**json.loads(task.stats), **data.get("stats", {}), "termination_reason": data.get("reason")})
                         stopping = task.status == "stopping" or run.status == "stopping"
-                        transition(task, "stopped" if stopping else "paused" if server.state.stop_flag else "finished",
-                                   "Kullanıcı sorguyu durdurdu. Toplanan ilanlar korundu." if stopping else "Kullanıcı taramayı duraklattı." if server.state.stop_flag else "Hedefe ulaşıldı." if data.get("reason") == "reached_limit" else "Kaynağın döndürdüğü sonuçlar tamamlandı.")
+                        reason = (
+                            "Kullanıcı sorguyu durdurdu. Toplanan ilanlar korundu." if stopping else
+                            "Kullanıcı taramayı duraklattı." if server.state.stop_flag else
+                            "Hedefe ulaşıldı." if data.get("reason") == "reached_limit" else
+                            "Yeni ilan verimi eşik altına (%20) düştü; kota koruması için tamamlandı." if data.get("reason") == "low_yield_threshold" else
+                            "Kaynağın döndürdüğü sonuçlar tamamlandı."
+                        )
+                        transition(task, "stopped" if stopping else "paused" if server.state.stop_flag else "finished", reason)
                         if data.get("reason") == "page_fetch_failed" and not server.state.stop_flag:
                             transition(task, "error", "Arama sayfası alınamadı; tekrar devam edebilirsiniz.")
                             task.error = "Arama sayfası alınamadı. Sonuçlar korundu; tekrar devam edebilirsiniz."
@@ -212,7 +218,7 @@ def worker(server, run_id):
                         run.options = json.dumps(options)
                         task.status, task.error = "paused", data.get("message", "Kaynak beklemede.")
                         transition(task, "paused", task.error)
-                        task.stats = json.dumps(dict(json.loads(task.stats), source_state=data, termination_reason="source_paused"))
+                        task.stats = json.dumps({**json.loads(task.stats), "source_state": data, "termination_reason": "source_paused"})
                     elif kind == "error":
                         task.error = data.get("msg", "Tarama tamamlanamadı.")
                         transition(task, "error", task.error)
@@ -232,7 +238,7 @@ def worker(server, run_id):
                                 should_stop=lambda: server.state.stop_flag or getattr(server.state, "task_stop_id", None) == task_id,
                                 checkpoint=checkpoint, resume_folder=folder or None, search_id=task_id, run_id=run_id, attempt_id=attempt_id,
                                 mode=options.get("mode", "incremental"), refresh_details=options.get("refresh_details", False),
-                                search_options=dict({k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known") if options.get(k)},
+                                search_options=dict({k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known", "low_yield_threshold") if options.get(k) is not None},
                                     defer_details=options.get("defer_details", config.DEFER_DETAILS)))
             with server.SessionLocal() as session:
                 run = session.get(SearchRun, run_id)
