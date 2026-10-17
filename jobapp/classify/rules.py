@@ -60,7 +60,8 @@ _CATEGORY_KEYWORDS = [
     ]),
     ("Finance", [
         "finance", "finans", "muhasebe", "accounting", "accountant", "mali ",
-        "denetim", "audit", "auditor", "kontrol", "controller", "kontrolor",
+        "denetim", "audit", "auditor", "ic kontrol", "internal control", "finansal kontrol",
+        "controller", "kontrolor",
         "butce", "budget", "treasury", "hazine", "yatirim", "investment",
         " risk ", "vergi", " tax ", "raporlama",
     ]),
@@ -81,35 +82,30 @@ _CATEGORY_KEYWORDS = [
         "operasyon", "operations", "lojistik", "logistics", "tedarik",
         "supply chain", "uretim", "production", "planlama", "planning",
         "depo", "warehouse", "envanter", "inventory", "satin alma", "procurement",
-        "kalite", "quality",
+        "kalite", "quality", "kalite kontrol", "quality control",
     ]),
 ]
 
 # --- Seniority -------------------------------------------------------------
-# First match wins (so "Senior Manager" -> Manager). Folded ASCII keywords.
-# Note: Turkish "uzman" = specialist (Mid, the default) and "uzman yardimcisi"
-# = assistant specialist (Junior, via "yardimcisi").
-_SENIORITY_KEYWORDS = [
-    ("Intern", ["intern", "stajyer", "staj ", "trainee", "bursiyer"]),
-    ("Manager", [
-        "manager", "mudur", "yonetici", " sef ", "head of", "director",
-        "direktor", "chief", "genel mudur",
-    ]),
-    ("Lead", ["lead", "principal", "staff engineer", "takim lideri", "team lead"]),
-    ("Senior", ["senior", "kidemli", " sr ", "sr."]),
-    ("Junior", [
-        "junior", " jr ", "jr.", "yardimcisi", "assistant", "asistan",
-        "yeni mezun", "new grad", "entry level", "entry-level", "associate",
-        "baslangic",
-    ]),
+# First match wins (so "Senior Manager" -> Manager). Folded ASCII, whole words only:
+# "International"/"Internal" stajyer, "Leading company" lider sayılmaz. "Yönetici asistanı"
+# yöneticiden önce Junior olur; "uzman yardimcisi" = assistant specialist (Junior).
+_SENIORITY_PATTERNS = [
+    ("Intern", r"\b(?:intern|interns|internship|trainee|bursiyer|staj\w*)\b"),
+    ("Junior", r"\b(?:yonetici|mudur|manager|director)\w*\s+(?:asistan\w*|sekreter\w*)\b|\bexecutive assistant\b|\bassistant to\b"),
+    ("Manager", r"\b(?:manager|mudur\w*|yonetici\w*|sefi?|sefligi|head of|director|direktor\w*|chief)\b"),
+    ("Lead", r"\b(?:lead|leader|team lead|tech lead|principal|staff engineer|takim lideri|ekip lideri|lider)\b"),
+    ("Senior", r"\b(?:senior|kidemli|sr)\b"),
+    ("Junior", r"\b(?:junior|jr|yardimcisi|assistant|asistan\w*|yeni mezun|new grad\w*|entry[ -]level|associate|baslangic)\b"),
 ]
+_SENIORITY_COMPILED = [(level, re.compile(pattern)) for level, pattern in _SENIORITY_PATTERNS]
 
 # --- Skill tags ------------------------------------------------------------
 _TAG_PATTERNS = [
     ("python", r"\bpython\b"),
     ("java", r"\bjava\b"),
     ("javascript", r"\bjavascript\b|\bjs\b"),
-    ("typescript", r"\btypescript\b|\bts\b"),
+    ("typescript", r"\btypescript\b"),  # "TS EN ISO 9001" Türk Standardıdır, TypeScript değil
     ("react", r"\breact\b"),
     ("angular", r"\bangular\b"),
     ("vue", r"\bvue\b"),
@@ -185,8 +181,8 @@ def classify_category(title: str, description: str) -> str:
 
 def classify_seniority(title: str) -> str:
     t = _pad(title)
-    for level, keywords in _SENIORITY_KEYWORDS:
-        if any(kw in t for kw in keywords):
+    for level, pattern in _SENIORITY_COMPILED:
+        if pattern.search(t):
             return level
     return "Mid"  # sensible default for a titled professional posting
 

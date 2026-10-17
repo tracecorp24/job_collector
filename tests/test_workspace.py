@@ -242,7 +242,7 @@ class WorkspaceTests(unittest.TestCase):
         started=datetime.utcnow()-timedelta(minutes=5)
         finished=datetime.utcnow()-timedelta(minutes=1)
         with self.factory() as session:
-            session.add(Job(source='linkedin',external_id='old',title='Python Engineer',company='Legacy',description='3 yıl Python',created_at=started+timedelta(seconds=20),raw=json.dumps({'posted':'2026-10-10'})))
+            session.add(Job(source='linkedin',external_id='old',title='Python Engineer',company='Legacy',description='3 yıl Python deneyimi',created_at=started+timedelta(seconds=20),raw=json.dumps({'posted':'2026-10-10'})))
             session.query(Setting).filter(Setting.key=='ux_schema_v2').delete()
             session.commit()
         pool=Path(self.tmp.name)/'searches'/'legacy-search'

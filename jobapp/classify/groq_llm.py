@@ -25,7 +25,9 @@ INSTRUCTIONS = (
     '"offerings": up to 6 short benefit phrases, or [], '
     '"salary": pay range exactly as stated, or "", '
     '"flag": "scam" (asks for fees, MLM, data harvesting), "ghost" (evergreen agency talent-pool listing) or "", '
-    '"flag_reason": max 10 words, or ""}.'
+    '"flag_reason": max 10 words, or "", '
+    '"min_experience_years": minimum years of work experience REQUIRED FROM THE CANDIDATE as an integer '
+    '(lower bound of a range; 0 for internships/new graduates), never the company\'s age or history, or null}.'
 )
 MAX_DESCRIPTION = 4000
 

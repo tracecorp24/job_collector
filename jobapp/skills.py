@@ -83,41 +83,60 @@ def extract_skills(title, desc=''):
     return found
 
 
-_EXPERIENCE_PATTERNS = [
-    re.compile(r'(\d+)\s*\+?\s*y[ıi]l', re.IGNORECASE),
-    re.compile(r'en\s*az\s*(\d+)\s*y[ıi]l', re.IGNORECASE),
-]
+# Deneyim yalnız adaydan istenen süreyi anlatan cümlelerden okunur. Şirketin yaşı ("30 yılı aşkın
+# deneyimiyle", "more than 35 years of industry experience") ve açıklamada geçen kıdem kelimeleri
+# ("we lead...", "mentor junior engineers") deneyim sayılmaz. Aralıkta alt sınır alınır ("3-5 yıl" → 3).
+_N = r'(?<![\d.,])(\d{1,2})(?![\d])'
+_RANGE = _N + r'(?:\s*(?:-|–|—|ila|to)\s*(\d{1,2}))?'
+_YEAR = r'(?:y[ıi]l\w*|years?|yrs?)'
+_EXP = r'(?:deneyim\w*|tecr[üu]be\w*|experience|exp\b)'
+_REQUIREMENT_PREFIX = re.compile(r'(?:en\s*az|minimum(?:\s+of)?|min\.|asgari|at\s+least)\s*' + _RANGE + r'\s*\+?\s*' + _YEAR, re.IGNORECASE)
+_REQUIREMENT_SUFFIX = (
+    re.compile(_RANGE + r'\s*(?:\+|plus)?\s*' + _YEAR + r"(?:'s?|’s?)?\b[^.\n;]{0,40}?" + _EXP, re.IGNORECASE),
+    re.compile(_N + r'\s*\+\s*' + _YEAR, re.IGNORECASE),
+    re.compile(_N + r'\s*(?:-|–|—|to)\s*(\d{1,2})\s*' + _YEAR, re.IGNORECASE),
+)
+_COMPANY_CONTEXT = re.compile(
+    r'y[ıi]l[ıi]\s*a[şs](?:k[ıi]n|an)|y[ıi]ld[ıi]r|tecr[üu]besi\s*(?:yle|ile)|deneyimi\s*(?:yle|ile)|birikim'
+    r'|since|founded|established|kurulu[şs]|kurulan|history|heritage|legacy|industry experience'
+    r'|in the industry|track record', re.IGNORECASE)
+_UP_TO = re.compile(r'(?:up\s+to|en\s+fazla|maksimum)\s*$', re.IGNORECASE)
+_TITLE_LEVELS = (  # yalnız unvandan, Türkçe harfler sadeleştirilmiş metinde
+    (re.compile(r'\b(?:intern|interns|internship|trainee|bursiyer|staj\w*|yeni mezun|new grad\w*)\b'), 0),
+    (re.compile(r'\b(?:junior|jr)\b'), 1),
+    (re.compile(r'\b(?:senior|sr|kidemli)\b'), 5),
+    (re.compile(r'\b(?:lead|leader|lider\w*|mudur\w*|manager|director|head of)\b'), 7),
+)
+_FOLD = str.maketrans('ıİIşŞğĞüÜöÖçÇ', 'iiissgguuoocc')
 
-_SENIORITY_YEARS = {
-    'intern': 0, 'stajyer': 0,
-    'junior': 1, 'jr': 1,
-    'mid': 3, 'orta': 3,
-    'senior': 5, 'sr': 5, 'kıdemli': 5,
-    'lead': 7, 'lider': 7, 'başkan': 7, 'yönetici': 7, 'müdür': 7,
-}
 
-
-def extract_experience_years(text):
-    """Metinde acikca gecen yil sayisini veya kidem kelimesini deneyim yiline cevirir. Bulunamazsa None.
-
-    "2016 yılından bu yana" gibi takvim yili ifadelerini deneyim suresiyle
-    karistirmamak icin makul olmayan (>50) degerler elenir.
-    """
-    if not text:
-        return None
-    for pattern in _EXPERIENCE_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            try:
-                years = int(match.group(1))
-            except ValueError:
+def requirement_years(text):
+    candidates = []
+    for pattern, limit, check_company in [(_REQUIREMENT_PREFIX, 25, False)] + [(p, 15, True) for p in _REQUIREMENT_SUFFIX]:
+        for match in pattern.finditer(text):
+            years = int(match.group(1))
+            if years > limit:
                 continue
-            if 0 <= years <= 50:
-                return years
-    lowered = text.lower()
-    for keyword, years in _SENIORITY_YEARS.items():
-        if re.search(r'(?<![\w])' + re.escape(keyword) + r'(?![\w])', lowered):
-            return years
+            if check_company and _COMPANY_CONTEXT.search(text[max(0, match.start() - 40):match.end() + 30]):
+                continue
+            if _UP_TO.search(text[max(0, match.start() - 15):match.start()]):
+                years = 0
+            candidates.append((match.start(), years))
+    return min(candidates)[1] if candidates else None  # metinde ilk geçen şart
+
+
+def extract_experience_years(description, title=''):
+    """İlanın adaydan istediği deneyim yılını döndürür; bulunamazsa None.
+
+    Önce açıklamadaki şart cümlelerine bakılır; yoksa unvandaki kıdem kelimesinden kaba bir tahmin yapılır.
+    """
+    years = requirement_years(description or '')
+    if years is not None:
+        return years
+    folded = (title or '').translate(_FOLD).lower()
+    for pattern, level in _TITLE_LEVELS:
+        if pattern.search(folded):
+            return level
     return None
 
 

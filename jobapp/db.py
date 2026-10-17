@@ -148,6 +148,7 @@ def _migrate() -> None:
     _repair_guest_card_fields()
     _repair_guest_noise_titles()
     _backfill_profession_taxonomy()
+    _reprocess_rule_fields()
 
 
 def _repair_guest_card_fields():
@@ -207,6 +208,40 @@ def _repair_guest_noise_titles():
             if parsed["workplace_type"] and not job.workplace_type:
                 job.workplace_type = parsed["workplace_type"]
         session.add(Setting(key=marker, value=datetime.utcnow().isoformat()))
+        session.commit()
+
+
+RULES_VERSION = "rules_reprocess_v2"  # kural çıkarımı değişince artırılır; kayıtlar ağ isteği olmadan yeniden hesaplanır
+
+
+def _reprocess_rule_fields():
+    """Kural tabanlı alanları kayıtlı unvan/açıklamadan bir kez yeniden hesaplar (artımlı tarama değişmeyen
+    ilanı yeniden işlemediği için kural düzeltmeleri eski kayıtlara kendiliğinden yansımaz).
+
+    Deneyim her kayıtta yenilenir. Kategori, kıdem ve etiketler yalnız kurallarla sınıflanmış kayıtlarda
+    yenilenir; yapay zekânın sonucuna dokunulmaz. Yalnız değeri değişen satırlar güncellenir (değişiklik
+    akışına gereksiz kayıt düşmez), işlem kısa partilerle yapılır."""
+    from .models import Setting
+    from . import skills, professions
+    from .classify import rules
+    with sessionmaker(bind=engine)() as session:
+        if session.get(Setting, RULES_VERSION):
+            return
+        ids = [row[0] for row in session.query(Job.id).order_by(Job.id)]
+        changed = 0
+        for start in range(0, len(ids), 200):
+            for job in session.query(Job).filter(Job.id.in_(ids[start:start + 200])):
+                values = {"experience_years": skills.extract_experience_years(job.description, job.title)}
+                if job.classified_by == "rules":
+                    values.update(category=rules.classify_category(job.title, job.description),
+                                  seniority=rules.classify_seniority(job.title),
+                                  tags=json.dumps(professions.normalize_skill_tags(rules.extract_tags(job.title, job.description)), ensure_ascii=False))
+                updates = {key: value for key, value in values.items() if getattr(job, key) != value}
+                for key, value in updates.items():
+                    setattr(job, key, value)
+                changed += bool(updates)
+            session.commit()
+        session.add(Setting(key=RULES_VERSION, value=json.dumps({"at": datetime.utcnow().isoformat(), "changed": changed})))
         session.commit()
 
 
@@ -271,7 +306,7 @@ def _upgrade_history():
                 job.posted_at = parse_date(raw.get("posted"))
             except (ValueError, TypeError):
                 pass
-            job.experience_years = skills.extract_experience_years(job.title + " " + job.description)
+            job.experience_years = skills.extract_experience_years(job.description, job.title)
         root = Path(config.ACCOUNTLESS_OUTPUT_DIR)
         for meta_path in root.glob("*/search.json"):
             try:

@@ -113,7 +113,7 @@ class SearchExport:
         if not title.strip() or not company.strip():
             return False  # frontend requires both fields
         text = f"{title}\n{location}\n{description}"
-        experience = self.skills.extract_experience_years(text) if self.skills else None
+        experience = self.skills.extract_experience_years(description, title) if self.skills else None
         job_id = f"ap-linkedin-{raw['external_id']}"
         job = {
             "id": job_id, "title": title, "company": company, "location": location,

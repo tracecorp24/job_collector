@@ -55,7 +55,10 @@ INSTRUCTIONS = (
     'generic talent-pool posting), or "" if it looks like a normal genuine '
     'posting, '
     '"flag_reason": a phrase of 10 words or fewer explaining the flag, or '
-    'empty string when "flag" is ""}.'
+    'empty string when "flag" is "", '
+    '"min_experience_years": minimum years of work experience required from the '
+    'candidate as an integer (lower bound of a range; 0 for internships/new graduates), '
+    'never the company\'s age or history, or null}.'
 )
 
 
@@ -125,5 +128,8 @@ def apply_fields(base: dict, data: dict, classified_by: str, original_descriptio
     if flag in VALID_FLAGS:
         result["flag"] = flag
         result["flag_reason"] = str(data.get("flag_reason") or "").strip() if flag else ""
+    years = data.get("min_experience_years")
+    if isinstance(years, int) and not isinstance(years, bool) and 0 <= years <= 30:
+        result["experience_years"] = years  # kural bulamazsa kullanılır (pipeline.experience_years)
     result["classified_by"] = classified_by
     return result

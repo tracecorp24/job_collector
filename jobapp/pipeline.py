@@ -19,6 +19,15 @@ from .transport import SourcePaused, fingerprint
 from .runs import transition
 
 
+def experience_years(description, title, cls=None):
+    """Adaydan istenen deneyim: önce açıklamadaki şart cümlesi (kural), yoksa modelin okuduğu değer,
+    o da yoksa unvandaki kıdemden kaba tahmin."""
+    found = skills.requirement_years(description or "")
+    if found is None and isinstance((cls or {}).get("experience_years"), int):
+        found = cls["experience_years"]
+    return found if found is not None else skills.extract_experience_years("", title)
+
+
 def llm_deferred(raw: dict) -> bool:
     """Açıklama henüz yoksa (detay bekleniyor) yapay zekâya gidilmez; kota boş istekle harcanmaz."""
     return bool(raw.get("detail_pending") or not (raw.get("description") or "").strip())
@@ -67,7 +76,7 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
     salary_parsed = salary.parse_salary(cls.get("salary", ""))
     record = {
         "posted_at": parse_date(raw.get("posted")),
-        "experience_years": skills.extract_experience_years(parsed["title"] + " " + description),
+        "experience_years": experience_years(description, parsed["title"], cls),
         "source": config.SOURCE_LINKEDIN,
         "external_id": raw["external_id"],
         "url": raw.get("url", ""),
@@ -461,6 +470,7 @@ def run_classify_backfill(backend="local", limit=None, model=None, emit=None, sh
             job.salary_period = salary_parsed["period"]
             job.flag = cls.get("flag", "")
             job.flag_reason = cls.get("flag_reason", "")
+            job.experience_years = experience_years(job.description, job.title, cls)
             job.classified_by = cls["classified_by"]
             session.commit()
             stats["classified"] += 1
