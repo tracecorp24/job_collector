@@ -71,7 +71,9 @@ def report(session, run_id, task_id=None):
             metrics["cache_hits" if event.kind == "cache_hit" else "cache_misses"] += 1
         elif event.kind == "source_paused":
             metrics["source_pauses"] += 1
-            metrics["pause_seconds"] += data.get("remaining_seconds") or data.get("seconds") or 0
+            # Detay tamamlayıcının beklemesi çoğu zaman koşu bittikten sonra olur; koşunun donma oranını şişirmesin.
+            if data.get("source") != "detail_filler":
+                metrics["pause_seconds"] += data.get("remaining_seconds") or data.get("seconds") or 0
         elif event.kind == "request_finished":
             metrics["requests"] += 1
             metrics["search_requests" if data.get("params") else "detail_requests"] += 1

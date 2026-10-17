@@ -172,6 +172,7 @@ class DeferredDetailTests(unittest.TestCase):
             metrics = audit.report(session, run_id)["metrics"]
         # 2 arama sayfası (200) + 1 detay isteği (429)
         self.assertEqual((metrics["detail_requests"], metrics["rate_429"], metrics["source_pauses"]), (1, 0.3333, 1))
+        self.assertEqual(metrics["pause_seconds"], 0)  # tamamlayıcı beklemesi koşunun donma oranına girmez
 
     def test_job_without_run_uses_system_run_id(self):
         self.deferred()
