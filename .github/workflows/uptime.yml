@@ -1,23 +1,72 @@
 name: Uptime
 
-# Siteyi 15 dakikada bir dışarıdan kontrol eder. Başarısız olursa GitHub
-# repo sahibine "workflow failed" e-postası gönderir.
+# Siteyi 15 dakikada bir dışarıdan kontrol eder. Site yanıt vermezse GitHub'da `hata-kaydı` etiketli tek bir
+# "Site erişilemiyor" issue'su açılır (sürerken yorum eklenir) ve iş başarısız olur (e-posta). Site dönünce
+# kesinti süresi yorumlanır, issue kapatılır ve olay /api/v1/incidents/report ile sitedeki hata kayıtlarına
+# çözülmüş olarak yazılır; kayıt ve issue silinmez.
 on:
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
+    env:
+      SITE: https://ai-org.online
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      LINKO_LOG_KEY: ${{ secrets.LINKO_LOG_KEY || secrets.LINKO_ADMIN_KEY }}
     steps:
       - name: Sağlık kontrolü
+        id: probe
         run: |
           # Geçici dalgalanmada alarm vermemek için 3 deneme yapılır.
           for i in 1 2 3; do
-            body=$(curl -fsS --max-time 20 https://ai-org.online/healthz) && echo "$body" | grep -q '"status":"ok"' && { echo "Site ayakta: $body"; exit 0; }
+            body=$(curl -fsS --max-time 20 "$SITE/healthz") && echo "$body" | grep -q '"status":"ok"' && { echo "Site ayakta: $body"; echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0; }
             echo "Deneme $i başarısız: ${body:-yanıt yok}"; sleep 30
           done
-          echo "::error::https://ai-org.online/healthz 3 denemede yanıt vermedi veya sağlıksız."
-          exit 1
+          echo "ok=false" >> "$GITHUB_OUTPUT"
+          echo "detail=${body:-yanıt yok}" >> "$GITHUB_OUTPUT"
+
+      - name: Kesinti kaydı
+        env:
+          OK: ${{ steps.probe.outputs.ok }}
+          DETAIL: ${{ steps.probe.outputs.detail }}
+        run: |
+          marker='<!-- linko-uptime -->'
+          gh label create "hata-kaydı" --color d73a4a --description "Canlı siteden otomatik hata kaydı" -R "$REPO" 2>/dev/null || true
+          issue=$(gh issue list -R "$REPO" --label "hata-kaydı" --state open --json number,body,createdAt \
+            -q "[.[] | select(.body | contains(\"$marker\"))] | first // empty")
+          number=$(echo "$issue" | jq -r '.number // empty' 2>/dev/null || true)
+          now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          if [ "$OK" != "true" ]; then
+            if [ -z "$number" ]; then
+              gh issue create -R "$REPO" --label "hata-kaydı" --title "Site erişilemiyor: $SITE" --body "$marker
+          $SITE/healthz 3 denemede yanıt vermedi veya sağlıksız (ilk tespit: $now).
+          Son yanıt: \`$DETAIL\`
+
+          Site dönünce bu issue otomatik kapanır ve olay sitedeki hata kayıtlarına yazılır."
+            else
+              gh issue comment "$number" -R "$REPO" --body "Hâlâ erişilemiyor ($now). Son yanıt: \`$DETAIL\`"
+            fi
+            exit 1
+          fi
+
+          [ -n "$number" ] || exit 0
+          started=$(echo "$issue" | jq -r '.createdAt')
+          minutes=$(( ( $(date -u +%s) - $(date -u -d "$started" +%s) ) / 60 ))
+          gh issue comment "$number" -R "$REPO" --body "✅ Çözüldü: site yeniden ayakta ($now). Kesinti yaklaşık $minutes dakika sürdü."
+          gh issue close "$number" -R "$REPO" --reason completed
+          if [ -n "$LINKO_LOG_KEY" ]; then
+            payload=$(jq -n --arg msg "Site $minutes dakika erişilemedi (GitHub izleme)." --arg at "$started" --argjson n "$number" \
+              '{source:"uptime", title:"Site erişilemiyor", message:$msg, level:"critical", status:"resolved", issue_number:$n, at:$at}')
+            curl -fsS --max-time 30 -X POST "$SITE/api/v1/incidents/report" -H "Authorization: Bearer $LINKO_LOG_KEY" \
+              -H "Content-Type: application/json" -d "$payload" > /dev/null || echo "::warning::Kesinti kaydı siteye yazılamadı."
+          fi

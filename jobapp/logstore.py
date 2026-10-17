@@ -74,10 +74,10 @@ def _history(incident, event, **data):
     incident.history = json.dumps(items, ensure_ascii=False)
 
 
-def make_entry(level, logger, message, traceback="", created_at=None, key=None):
+def make_entry(level, logger, message, traceback="", created_at=None, key=None, kind="error"):
     return dict(level=str(level).lower(), logger=logger or "", message=redact(message or "")[:8000],
                 traceback=redact(traceback or "")[:20000], created_at=created_at or datetime.utcnow(),
-                key=key, version=config.version_info().get("sha", ""))
+                key=key, kind=kind, version=config.version_info().get("sha", ""))
 
 
 def entry_from_record(record):
@@ -100,6 +100,7 @@ def store_batch(entries, session=None):
                 first_line = entry["message"].splitlines()[0][:150] if entry["message"] else "Hata"
                 if incident is None:
                     incident = Incident(fingerprint=fp, level=entry["level"], logger=entry["logger"], count=0,
+                                        kind=entry.get("kind", "error"),
                                         first_seen=entry["created_at"], first_version=entry["version"],
                                         title=f"[{entry['logger']}] {first_line}")
                     _history(incident, "opened", version=entry["version"])
@@ -164,12 +165,18 @@ def drain_spool():
     if not folder.is_dir():
         return 0
     total = 0
-    for path in sorted(folder.glob("applog-*.jsonl")):
+    for path in sorted(list(folder.glob("applog-*.jsonl")) + list(folder.glob("external-*.jsonl"))):
         entries = []
         for line in path.read_text(encoding="utf-8").splitlines():
             try:
                 raw = json.loads(line)
-                raw["created_at"] = datetime.fromisoformat(raw["created_at"])
+                if path.name.startswith("external-"):
+                    # Süreç dışı olay (deploy geri alma, yedek hatası, systemd): kabuk betikleri yazar.
+                    source, title = str(raw["source"])[:40], str(raw["title"])[:150]
+                    raw = make_entry(raw.get("level", "error"), f"linko.{source}", title + chr(10) + str(raw.get("message", "")),
+                                     created_at=datetime.utcfromtimestamp(float(raw["at"])), key=f"external|{source}|{title}", kind="external")
+                else:
+                    raw["created_at"] = datetime.fromisoformat(raw["created_at"])
                 entries.append(raw)
             except (ValueError, KeyError, TypeError):
                 continue
@@ -313,15 +320,58 @@ def stats():
     return dict(_writer.stats, active=True, queued=_writer.queue.qsize(), version=config.version_info().get("sha"))
 
 
+def report_external(session, source, title, message="", level="error", created_at=None, status=None, issue_number=None):
+    """Süreç dışı kaynaktan (uptime, betikler) gelen olayı hata kaydı olarak işler; isteğe bağlı çözülmüş işaretler."""
+    entry = make_entry(level, f"linko.{source}", title + chr(10) + message, created_at=created_at,
+                       key=f"external|{source}|{title}", kind="external")
+    store_batch([entry], session)
+    incident = session.query(Incident).filter_by(fingerprint=fingerprint(entry["logger"], entry["message"], entry["key"])).one()
+    if issue_number and incident.issue_number != issue_number:
+        link_issue(incident, issue_number)
+    if status == "resolved" and incident.status != "resolved":
+        resolve(incident, f"{source} olayı sona erdi.", issue_number)
+    session.commit()
+    return incident
+
+
+def problem_fingerprint(key):
+    return fingerprint("linko.problem", None, key=f"problem|{key}")
+
+
+def raise_problem(session, key, title, message):
+    """Sorun kuralı tetiklendi: kayıt yoksa açar, çözülmüşse yeniden açar, açıksa yalnızca son görülmeyi günceller."""
+    incident = session.query(Incident).filter_by(fingerprint=problem_fingerprint(key)).first()
+    if incident is not None and incident.status != "resolved":
+        incident.last_seen = datetime.utcnow()
+        incident.last_version = config.version_info().get("sha", "")
+        incident.sample = redact(title + chr(10) + message)[:4000]
+        session.commit()
+        return incident.id
+    store_batch([make_entry("error", "linko.problem", title + chr(10) + message, key=f"problem|{key}", kind="problem")], session)
+    return session.query(Incident.id).filter_by(fingerprint=problem_fingerprint(key)).scalar()
+
+
+def clear_problem(session, key, resolution):
+    """Koşul ortadan kalktı: kaydı çözüldü yapar; GitHub issue'su (varsa) senkron tarafından kapatılır."""
+    incident = session.query(Incident).filter_by(fingerprint=problem_fingerprint(key)).first()
+    if incident is not None and incident.status != "resolved":
+        resolve(incident, resolution, issue_closed=False)
+        session.commit()
+        return True
+    return False
+
+
 def link_issue(incident, number):
     incident.issue_number = number
     incident.issue_state = "open"
     _history(incident, "issue_linked", issue=number)
 
 
-def resolve(incident, resolution="", number=None):
+def resolve(incident, resolution="", number=None, issue_closed=True):
+    """`issue_closed=False`: sunucu tarafında çözüldü (koşul kalktı); issue açık kalır, senkron kapatır."""
     incident.status = "resolved"
-    incident.issue_state = "closed"
+    if issue_closed:
+        incident.issue_state = "closed"
     incident.resolved_at = datetime.utcnow()
     incident.resolution = resolution or "Çözüldü."
     _history(incident, "resolved", issue=number or incident.issue_number, resolution=incident.resolution)
@@ -329,7 +379,8 @@ def resolve(incident, resolution="", number=None):
 
 def serialize(incident, full=False):
     data = dict(id=incident.id, fingerprint=incident.fingerprint, level=incident.level, logger=incident.logger,
-                title=incident.title, count=incident.count, status=incident.status, issue_number=incident.issue_number,
+                title=incident.title, kind=incident.kind or "error", count=incident.count, status=incident.status,
+                issue_number=incident.issue_number,
                 issue_state=incident.issue_state or "", reopen_count=incident.reopen_count or 0,
                 first_seen=incident.first_seen.isoformat() + "Z" if incident.first_seen else None,
                 last_seen=incident.last_seen.isoformat() + "Z" if incident.last_seen else None,

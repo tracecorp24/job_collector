@@ -83,7 +83,8 @@ def init_db() -> None:
         if "flag_reason" not in existing:
             conn.execute(text("ALTER TABLE jobs ADD COLUMN flag_reason TEXT DEFAULT ''"))
         for table, additions in (("app_logs", (("version", "VARCHAR(16) DEFAULT ''"),)),
-                                 ("incidents", (("first_version", "VARCHAR(16) DEFAULT ''"), ("last_version", "VARCHAR(16) DEFAULT ''")))):
+                                 ("incidents", (("first_version", "VARCHAR(16) DEFAULT ''"), ("last_version", "VARCHAR(16) DEFAULT ''"),
+                                               ("kind", "VARCHAR(16) DEFAULT 'error'")))):
             present = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})"))}
             for name, kind in additions:
                 if name not in present:

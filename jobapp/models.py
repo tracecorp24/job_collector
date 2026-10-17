@@ -295,3 +295,4 @@ class Incident(Base):
     history = Column(Text, default="[]")
     first_version = Column(String(16), default="")
     last_version = Column(String(16), default="")
+    kind = Column(String(16), default="error")  # error | problem (eşik kuralı) | external (spool/uptime)

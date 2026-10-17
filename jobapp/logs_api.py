@@ -4,6 +4,7 @@
 - GET  /api/v1/logs/export        aralığı NDJSON olarak indir
 - GET  /api/v1/incidents          hata kayıtları (status=open|resolved|all, needs_issue=1)
 - GET  /api/v1/incidents/<id>     ayrıntı + geçmiş + son loglar
+- POST /api/v1/incidents/report   süreç dışı olay bildir (uptime kontrolü)
 - POST /api/v1/incidents/<id>     GitHub senkronu: {"action":"link","issue_number":N} | {"action":"resolve",...}
 """
 import hmac
@@ -171,6 +172,30 @@ def install(server):
                 return jsonify(error="Hata kaydı bulunamadı."), 404
             recent = session.query(AppLog).filter_by(incident_id=incident_id).order_by(AppLog.id.desc()).limit(20).all()
             return jsonify(dict(logstore.serialize(incident, full=True), recent_logs=[row("app", r) for r in recent]))
+
+    @app.post("/api/v1/incidents/report")
+    def report_incident():
+        """Süreç dışından (uptime kontrolü gibi) olay bildirir; `status: resolved` ile çözülmüş kaydeder."""
+        denied = require_admin()
+        if denied:
+            return denied
+        body = request.get_json(silent=True) or {}
+        source, title = str(body.get("source") or "").strip(), str(body.get("title") or "").strip()
+        if not re.fullmatch(r"[a-z0-9_-]{1,40}", source) or not title:
+            raise ValueError("source (küçük harf/rakam/-/_ en fazla 40) ve title gerekli.")
+        level = body.get("level", "error")
+        if level not in ("error", "critical"):
+            raise ValueError("level error veya critical olmalı.")
+        if body.get("status") not in (None, "open", "resolved"):
+            raise ValueError("status open veya resolved olmalı.")
+        number = body.get("issue_number")
+        if number is not None and (not isinstance(number, int) or isinstance(number, bool) or number < 1):
+            raise ValueError("issue_number pozitif tam sayı olmalı.")
+        at = parse_time(body.get("at"), "at") if body.get("at") else None
+        with server.SessionLocal() as session:
+            incident = logstore.report_external(session, source, title[:150], str(body.get("message") or "")[:4000],
+                                                level, at, body.get("status"), number)
+            return jsonify(logstore.serialize(incident))
 
     @app.post("/api/v1/incidents/<int:incident_id>")
     def update_incident(incident_id):

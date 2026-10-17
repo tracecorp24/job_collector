@@ -22,6 +22,8 @@ def main():
     service.start(server)
     from jobapp import details
     details.start(server)
+    from jobapp import problems
+    problems.start(server)
     logging.getLogger("linko").info("Servis başladı: http://%s:%s, veritabanı %s, sürüm %s", config.HOST, config.PORT, config.DB_PATH,
                                     config.version_info().get("sha"))
     http.run()

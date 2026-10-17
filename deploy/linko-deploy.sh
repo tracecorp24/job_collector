@@ -48,6 +48,9 @@ done
 
 echo "Sağlık kontrolü başarısız, $PREV sürümüne geri dönülüyor." >&2
 journalctl -u linko -n 30 --no-pager >&2 || true
+# Geri alma uygulamaya hata kaydı olarak ulaşsın (başlık sabit: tekrarlar tek kayıtta sayılır).
+/usr/local/bin/linko-spool deploy error "Deploy geri alındı"     "Başarısız sürüm: $(git rev-parse --short HEAD), geri dönülen: ${PREV:0:7}
+$(journalctl -u linko -n 30 --no-pager 2>&1)" || true
 git reset -q --hard "$PREV"
 write_version
 .venv/bin/pip install -q -r requirements.txt

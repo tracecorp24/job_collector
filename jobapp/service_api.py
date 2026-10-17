@@ -123,11 +123,11 @@ def install(server):
     @app.get('/api/v1/status')
     def status():
         from .transport import Coordinator
-        from . import logstore
+        from . import logstore, problems
         return jsonify(api_version='1', running=server.state.running, run_id=server.state.run_id,
             source=Coordinator().state(), supervisor_alive=bool(service.supervisor and service.supervisor.is_alive()),
             heartbeat_at=service.heartbeat, last_error=service.last_error,
-            version=config.version_info(), logging=logstore.stats())
+            version=config.version_info(), logging=logstore.stats(), problems=sorted(problems.active_keys))
 
     @app.get('/api/v1/jobs')
     def jobs():
