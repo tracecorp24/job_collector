@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 import test_light
 from test_light import response, card, DETAIL
-from jobapp import config, details, pipeline, server
+from jobapp import audit, config, details, groq_client, pipeline, server
 from jobapp.models import Job
 from jobapp.scraper.accountless import AccountlessScraper
 from jobapp.transport import Coordinator
@@ -104,6 +104,36 @@ class DeferredDetailTests(unittest.TestCase):
         job, raw = self.job()
         self.assertTrue(raw["detail_pending"])
         self.assertNotIn("detail_attempts", raw)
+
+    def test_pending_job_skips_llm_until_description_arrives(self):
+        events = []
+        reply = {"summary": "PyTorch ile model geliştirme.", "tags": ["pytorch"]}
+        with patch.object(config, "GROQ_API_KEY", "test"),              patch.object(groq_client, "chat_json", return_value=reply) as chat:
+            with patch("requests.Session.get", side_effect=[response(card(1)), response("")]):
+                pipeline.run_scrape(["AI"], ["Istanbul"], classify_backend="groq", search_options=DEFER,
+                                    emit=lambda kind, data: events.append((kind, data)))
+            chat.assert_not_called()  # açıklama yokken Groq kotası harcanmaz
+            job, raw = self.job()
+            self.assertEqual(job.classified_by, "rules")
+            result = next(d for k, d in events if k == "processing_result")
+            self.assertFalse(result["classification_fallback"])
+            self.assertTrue(result["deferred_llm"])
+            stage = next(d for k, d in events if k == "processing_stage" and d.get("stage") == "classify" and d["phase"] == "finished")
+            self.assertFalse(stage["classification_fallback"])
+            with self.factory() as session:
+                self.assertEqual(audit.report(session, raw["run_id"])["metrics"]["model_fallbacks"], 0)
+            self.assertEqual(self.fill(response(DETAIL)), (True, 1))
+            chat.assert_called_once()  # açıklama gelince koşunun arka ucuyla yeniden sınıflanır
+            self.assertIn("PyTorch", chat.call_args[0][0][1]["content"])
+        job, raw = self.job()
+        self.assertEqual(job.classified_by, "groq")
+        self.assertEqual(job.summary, "PyTorch ile model geliştirme.")
+
+    def test_llm_still_used_when_description_present(self):
+        with patch.object(config, "GROQ_API_KEY", "test"),              patch.object(groq_client, "chat_json", return_value={"tags": ["pytorch"]}) as chat,              patch("requests.Session.get", side_effect=[response(card(1)), response(DETAIL), response("")]):
+            pipeline.run_scrape(["AI"], ["Istanbul"], classify_backend="groq")
+        chat.assert_called_once()
+        self.assertEqual(self.job()[0].classified_by, "groq")
 
 
 if __name__ == "__main__":
