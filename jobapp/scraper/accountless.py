@@ -68,6 +68,10 @@ class AccountlessScraper:
         self.session = requests.Session()
         # Do not inherit .netrc credentials or environment proxy credentials.
         self.session.trust_env = False
+        from requests.adapters import HTTPAdapter
+        adapter = HTTPAdapter(pool_connections=5, pool_maxsize=10, max_retries=0)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
         self.session.headers.update({
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "

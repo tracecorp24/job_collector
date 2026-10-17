@@ -10,7 +10,8 @@ DATA=/var/lib/linko
 BACKUPS=$DATA/backups
 
 mkdir -p "$BACKUPS"
-sqlite3 "$DATA/jobs.db" ".backup '$BACKUPS/jobs-$(date +%Y%m%d-%H%M%S).db'"
+# Uygulama o an yazıyorsa kilit açılana kadar 30 sn bekle ("database is locked" ile deploy durmasın).
+sqlite3 -cmd ".timeout 30000" "$DATA/jobs.db" ".backup '$BACKUPS/jobs-$(date +%Y%m%d-%H%M%S).db'"
 ls -1t "$BACKUPS"/jobs-*.db | tail -n +11 | xargs -r rm -f
 chown -R linko:linko "$BACKUPS"
 

@@ -26,7 +26,7 @@ git config user.email "linko-vps@users.noreply.github.com"
 STAMP=$(date -u +%Y%m%d)
 TMP=$(mktemp /tmp/linko-backup.XXXXXX.db)
 trap 'rm -f "$TMP"' EXIT
-sqlite3 "$DB" ".backup '$TMP'"
+sqlite3 -cmd ".timeout 30000" "$DB" ".backup '$TMP'"
 sqlite3 "$TMP" "PRAGMA integrity_check;" | grep -qx ok || { echo "Bütünlük kontrolü başarısız, yedek gönderilmedi." >&2; status false "Bütünlük kontrolü başarısız, yedek gönderilmedi"; alert "Bütünlük kontrolü başarısız, yedek gönderilmedi"; exit 1; }
 gzip -9 -c "$TMP" > "jobs-$STAMP.db.gz"
 ls -1 jobs-*.db.gz | sort | head -n -"$KEEP" | xargs -r rm -f
