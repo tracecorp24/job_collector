@@ -19,6 +19,18 @@ from .transport import SourcePaused, fingerprint
 from .runs import transition
 
 
+def llm_deferred(raw: dict) -> bool:
+    """Açıklama henüz yoksa (detay bekleniyor) yapay zekâya gidilmez; kota boş istekle harcanmaz."""
+    return bool(raw.get("detail_pending") or not (raw.get("description") or "").strip())
+
+
+def classification_fallback(raw: dict, requested: str, actual: str) -> bool:
+    """Seçilen arka uç yerine başka biri kullanıldı mı? Bilinçli erteleme fallback sayılmaz."""
+    if requested != "rules" and llm_deferred(raw):
+        return False
+    return actual != ("llm" if requested == "claude" else requested)
+
+
 def process_raw(session, raw: dict, classify_backend: str = "rules",
                  use_embeddings: bool = False, emit=None) -> tuple:
     """Parse + classify one raw scraped job and upsert it. Returns (job, created)."""
@@ -32,16 +44,19 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
     stage("parse", "finished", quality_ok=parsed.get("quality_ok"), duration_ms=round((time.monotonic()-started)*1000))
     description = raw.get("description", "")
     started = time.monotonic()
-    stage("classify", "started", requested_backend=classify_backend)
+    # Açıklama gelince details.fill_one koşunun arka ucuyla yeniden çağırır.
+    deferred = classify_backend != "rules" and llm_deferred(raw)
+    backend = "rules" if deferred else classify_backend
+    stage("classify", "started", requested_backend=classify_backend, **({"deferred_llm": True} if deferred else {}))
     cls = classify_job(
         parsed["title"],
         description,
         workplace_type=parsed.get("workplace_type", ""),
-        backend=classify_backend,
+        backend=backend,
     )
-    expected = "llm" if classify_backend == "claude" else classify_backend
     stage("classify", "finished", requested_backend=classify_backend, actual_backend=cls.get("classified_by"),
-          classification_fallback=cls.get("classified_by") != expected, duration_ms=round((time.monotonic()-started)*1000))
+          classification_fallback=classification_fallback(raw, classify_backend, cls.get("classified_by")),
+          **({"deferred_llm": True} if deferred else {}), duration_ms=round((time.monotonic()-started)*1000))
     embedding = None
     if use_embeddings:
         started = time.monotonic()
@@ -245,7 +260,8 @@ def run_scrape(keywords, locations, limit=None, classify_backend="rules",
         _emit("processing_result", {"status":"saved", "outcome":outcome, "external_id":raw["external_id"], "job_id":job.id,
                                     "is_new":created, "quality_ok":job.quality_ok, "deleted":bool(job.deleted_at),
                                     "requested_backend":classify_backend, "actual_backend":job.classified_by,
-                                    "classification_fallback":job.classified_by != ("llm" if classify_backend == "claude" else classify_backend),
+                                    "classification_fallback":classification_fallback(raw, classify_backend, job.classified_by),
+                                    **({"deferred_llm":True} if classify_backend != "rules" and llm_deferred(raw) else {}),
                                     "embedding_available":bool(job.embedding)})
         _emit("job", dict(job.to_dict(), is_new=created, outcome=outcome))
         return outcome
