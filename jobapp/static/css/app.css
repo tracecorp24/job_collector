@@ -549,3 +549,96 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .bottom-nav{background:#1b1c1af5;border-top-color:#343531}
   .bottom-main-icon,.bottom-main[aria-current="page"] .bottom-main-icon{background:#b96d49;box-shadow:none}
 }
+
+/* 2026-10-18: Sakin teal iş ilanı teması. */
+:root{
+  color-scheme:light;
+  --bg:#f3f6f5;--surface:#fff;--raised:#f7f9f8;--border:#d9e2df;--border-soft:#e6ece9;
+  --text:#253431;--muted:#657571;--accent:#187c78;--brand:#187c78;--brand-2:#2a918a;
+  --brand-soft:#e5f2f0;--brand-line:#b8d9d4;--success:#247c59;--warn:#9a6a17;--danger:#b44e4e;
+  --radius:10px;
+}
+body{background:var(--bg);color:var(--text)}
+.header{background:#fff;border-bottom-color:#dfe7e4;box-shadow:0 1px 3px #1d38300a}
+.brand{color:#203b38}.brand small{color:#71817d}
+.brand-icon{background:#e4f1ee;color:#187c78}
+.brand-icon svg{width:100%;height:100%}
+.header nav button{color:#50625e}
+.header nav button[data-tab][aria-current="page"]{color:#126c68;box-shadow:inset 0 -2px #187c78}
+.header nav>button:not(.primary):hover,.header nav .nav-more-menu button:hover{background:#f0f5f3;color:#203b38}
+.header nav .nav-more-menu{background:#fff;border-color:var(--border);box-shadow:0 12px 30px #1d38301c}
+.primary,.header nav .primary{background:#187c78;border-color:#187c78;color:#fff}
+.primary:hover,.header nav .primary:hover{background:#126c68;border-color:#126c68}
+.page-title h1{font-family:Inter,"Segoe UI",system-ui,sans-serif;color:#203b38;font-size:1.85rem;font-weight:650;letter-spacing:-.04em}
+.eyebrow{color:#187c78}
+button,.button{background:#fff;color:var(--text);border-color:#d4dfdc}
+button:hover,.button:hover{background:#eef5f3;border-color:#9fc7c1;color:#155f5b}
+input,select,textarea,.search-field input,.location-field input{background:#fff;color:var(--text);border-color:#d5dfdc}
+input::placeholder,textarea::placeholder{color:#8a9995}
+input:focus,select:focus,textarea:focus,.search-field input:focus,.location-field input:focus{border-color:#258984;box-shadow:0 0 0 3px #187c7818}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline-color:#187c78}
+.header nav button[data-tab][aria-current="page"]{background:transparent}
+.segmented{border-color:#d9e2df}
+.segmented button[aria-pressed=true]{background:#e5f2f0;color:#126c68;box-shadow:inset 0 0 0 1px #b8d9d4}
+.quick{background:#fff;border-color:#d9e2df;color:#61716d}
+.quick:hover{background:#f1f6f4;border-color:#c7d8d3}
+.quick[aria-pressed=true]{background:#e5f2f0;border-color:#a9d0ca;color:#126c68}
+.filter-chip{background:#e5f2f0;border-color:#c5dfda;color:#176a65}
+.filter-panel,.job-card,.empty,dialog,.watch-card,.watch-form{background:#fff;border-color:#dfe7e4;box-shadow:0 1px 3px #1d383008}
+.filter-panel{border-radius:9px}
+.job-card{border-radius:9px;transition:border-color .15s,box-shadow .15s}
+.job-card:hover{transform:none;background:#fff;border-color:#9fc7c1;box-shadow:0 5px 16px #1d383012}
+.job-card h3{color:#233936}
+.company-avatar{background:#e8f2ef;color:#187c78;box-shadow:none}
+.company{color:#52645f}
+.badge{background:#edf3f1;color:#526761}
+.badge.new{background:#187c78;color:#fff}
+.badge.match{background:#e5f3eb;color:#247c59}
+.tag{border-color:#dbe4e1;color:#63736e}
+.card-foot{border-top-color:#e6ece9}
+.job-summary{background:#f0f7f5;border-color:#c9dfda}
+.job-summary h3{color:#187c78}
+.new-strip{border-color:#c5dfda;background:#eff7f5}
+.wait-banner{border-color:#e4d7b9;border-left-color:#c39743;background:#fffaf0;color:#66552e}
+.wait-banner strong{color:#735b27}.wait-banner p{color:#71633f}.wait-banner small{color:#8b7b57}
+.sys-pill{background:#e5f2f0;border-color:#b8d9d4;color:#176a65}
+.sys-pill::before{background:#258984}
+.sys-pill[data-state=wait]{background:#fff6e3;border-color:#e7d4a9;color:#765d2b}
+.filter-panel{background:#fff}
+.filter-group,.filter-panel details{border-color:#e4ebe8}
+.facet-options label:hover{background:#f1f6f4}
+.empty,.queue-empty{background:#fff}
+.queue-empty .illus stop[offset="0"]{stop-color:#187c78}
+.queue-empty .illus stop[offset="1"]{stop-color:#2a918a}
+.queue-overview,.queue-task,.waiting-run,.task-row{background:#fff;border-color:#dfe7e4}
+.queue-overview .queue-line>span{background:#f7f9f8;border-color:#e6ece9}
+.queue-overview .queue-now{background:#f5f8f7}
+.state-pill{background:#edf3f1;color:#526761}
+.state-running{--state-color:#187c78;--state-bg:#e5f2f0}
+.state-queued{--state-color:#667773;--state-bg:#edf1ef}
+.state-finished{--state-color:#247c59;--state-bg:#e5f3eb}
+.state-paused,.state-pausing{--state-color:#9a6a17;--state-bg:#fff6e3}
+.state-error{--state-color:#b44e4e;--state-bg:#fbeeee}
+.status-bar{background:#edf7f2;color:#315b49;border-color:#c4e1d1}
+.status-bar.waiting{background:#fff6e3;border-color:#e7d4a9}
+.notice{background:#eff7f5;border-color:#c5dfda;color:var(--text)}
+.notice.error{background:#fbefee;border-color:#e8c5c1}
+.toast{background:#fff;color:var(--text);border-color:#d9e2df;box-shadow:0 8px 28px #1d38301a}
+.toast.error{background:#fbefee;border-color:#e3bdb9}
+.suggest-box,.package{background:#fff;border-color:#d9e2df}
+.job-facts-grid div,.watch-stats div{background:#f5f8f7}
+.d-card,.d-stat{background:#fff;border-color:#dfe7e4}
+.d-stat:hover{background:#f8fbfa;border-color:#a9cec7}
+.d-tip{background:#fff;color:var(--text);border-color:#cbd9d5;box-shadow:0 8px 24px #1d38301a}
+.dash{--s0:#768984;--s1:#187c78;--s2:#cf7955;--s3:#47885e;--s4:#bd8b32;--s5:#a65e7b;--track:#e6efec;--grid:#dfe8e5}
+.d-bar-t,.d-meter-t,.d-sal-t{background:#e6efec}
+.d-heat-key i{background:linear-gradient(90deg,#e6efec,#187c78)}
+.d-cell{background:color-mix(in srgb,var(--s1) var(--v),#e6efec)}
+.d-cell.zero{background:#e6efec}
+.d-source{background:#edf7f2;border-color:#c4e1d1;color:#315b49}
+.d-source.paused{background:#fff6e3;border-color:#e7d4a9;color:#6d592e}
+@media(max-width:760px){
+  .header nav button[data-tab][aria-current="page"]{background:#e5f2f0;box-shadow:none;border-radius:7px}
+  .bottom-nav{background:#fffffffa;border-top-color:#dfe7e4}
+  .bottom-main-icon,.bottom-main[aria-current="page"] .bottom-main-icon{background:#187c78;box-shadow:0 3px 10px #187c7822}
+}
