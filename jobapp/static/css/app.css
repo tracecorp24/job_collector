@@ -268,3 +268,108 @@ body[data-view=jobs] #wait-banner,body[data-view=jobs] #status-bar,body[data-vie
   .new-strip{font-size:.82rem}
   .new-strip .actions{width:100%}.new-strip .actions button{flex:1}
 }
+
+/* 2026-10-17e: kurumsal palet (grafit + indigo/mor), SVG logo ve motifler, okunur kuyruk sekmesi */
+:root{--bg:#0b0d12;--surface:#12151d;--raised:#1a1e29;--border:#272c3a;--border-soft:#1e2230;--text:#eceef4;--muted:#8e95a8;--accent:#a3adff;--brand:#6f7dff;--brand-2:#a67bff;--brand-soft:#1c1f3b;--brand-line:#3a3f80;--success:#4fd1a5;--warn:#f0b955;--danger:#ff8e8e}
+*{scrollbar-color:#2c3242 transparent}
+body{background:radial-gradient(1100px 460px at 12% -8%,#6f7dff1f,transparent 62%),radial-gradient(800px 380px at 100% -4%,#a67bff17,transparent 60%),var(--bg);background-attachment:fixed}
+body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:radial-gradient(#ffffff12 1px,transparent 1.3px);background-size:22px 22px;-webkit-mask-image:linear-gradient(to bottom,#000,transparent 460px);mask-image:linear-gradient(to bottom,#000,transparent 460px)}
+input,select,textarea{background:#0f1219;border-color:var(--border)}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px #6f7dff26;outline:none}
+.search-field input{background-color:#0f1219}
+button:hover,.button:hover{border-color:var(--brand-line);background:#1f2436}
+input[type=checkbox]{accent-color:var(--brand)}
+.primary,.button.primary{background:linear-gradient(135deg,var(--brand),#8b6dff);border-color:transparent;color:#fff;box-shadow:0 4px 16px #6f7dff30}
+.primary:hover,.button.primary:hover{background:linear-gradient(135deg,#7d8aff,#9a7cff);border-color:transparent;filter:none}
+.text-button,.link{color:var(--accent)}
+.eyebrow{font-weight:700;background:linear-gradient(90deg,var(--accent),var(--brand-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* Üst çubuk ve logo */
+.header{background:linear-gradient(90deg,transparent,#6f7dff55 30%,#a67bff55 70%,transparent) bottom/100% 1px no-repeat,#0b0d12e8;border-bottom-color:transparent}
+.brand-icon{background:none;width:40px;height:40px;border-radius:11px;box-shadow:0 6px 18px #6f7dff40}
+.brand-icon svg{width:100%;height:100%;display:block}
+.brand>span:last-child{letter-spacing:-.01em}
+.brand small{color:var(--muted)}
+.header nav button{gap:.45rem}
+.nav-ico{flex-shrink:0;opacity:.85}
+.header nav button[data-tab][aria-current="page"]{box-shadow:inset 0 -2px 0 var(--brand);color:#fff}
+.header nav button[data-tab][aria-current="page"] .nav-ico{color:var(--accent);opacity:1}
+.nav-badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--brand);color:#fff;font-size:.68rem;font-weight:700;line-height:1}
+.nav-badge.live{background:var(--success);color:#05261b}
+.nav-more-menu{background:var(--surface);border-color:var(--border)}
+.header nav .nav-more-menu button:hover{background:#1d2133;border-color:transparent}
+.header nav .nav-more-menu button[aria-current="page"]{background:var(--brand-soft);color:var(--accent)}
+.sys-pill{background:var(--brand-soft);border-color:var(--brand-line);color:#d6dbff}
+.sys-pill::before{background:var(--accent)}
+/* Arama, filtre ve kartlar */
+.segmented button[aria-pressed=true]{background:var(--brand-soft);color:#fff;box-shadow:inset 0 0 0 1px var(--brand-line)}
+.quick[aria-pressed=true]{background:var(--brand-soft);border-color:var(--brand);color:#fff}
+.filter-chip{background:var(--brand-soft);border-color:var(--brand-line);color:#d6dbff}
+.filter-panel,.job-card,.empty,dialog,.watch-card,.watch-form{background:var(--surface);border-color:var(--border-soft)}
+.job-card:hover{border-color:var(--brand-line);box-shadow:0 12px 30px #0007,0 0 0 1px #6f7dff1a}
+.company-avatar{background:linear-gradient(135deg,#252a4d,#1a1e31);color:var(--accent);box-shadow:inset 0 0 0 1px #2f3563}
+.badge{background:#1e2234;color:#c5cbef}
+.badge.new{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff}
+.new-strip{border-color:var(--brand-line);background:linear-gradient(90deg,#1c1f3b,#12151d)}
+.job-summary{background:#161a31;border-color:#2f3563}
+.job-summary h3{color:var(--accent)}
+.job-facts-grid div,.watch-stats div{background:var(--raised)}
+.notice{border-color:#2d3359;background:#151830}
+.toast{background:#191d2c;border-color:#353b66}
+.suggest-box,.package{border-color:#2d3359;background:#141831}
+.metric-updated strong,.queue-line .metric-updated strong{color:var(--accent)}
+.state-running{--state-color:#a3adff;--state-bg:#1f2344}
+.state-queued{--state-color:#aab2c8;--state-bg:#1f2431}
+.task-row,.queue-task,.waiting-run{background:var(--surface)}
+/* Mobil alt menü */
+@media(max-width:760px){
+  .bottom-nav{background:#0b0d12f2}
+  .bottom-main-icon{background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 4px 16px #6f7dff55}
+  .bottom-main[aria-current="page"] .bottom-main-icon{background:linear-gradient(135deg,#7d8aff,#b48cff)}
+  .sheet-item-main{border-color:var(--brand-line);background:var(--brand-soft)}
+  .sheet-item-main .sheet-icon{background:linear-gradient(135deg,var(--brand),var(--brand-2))}
+  .brand-icon{width:34px;height:34px}
+}
+/* İlerleme çubukları */
+progress.task-progress,.status-bar progress{-webkit-appearance:none;appearance:none;width:100%;height:6px;border:0;border-radius:99px;background:#ffffff10;overflow:hidden}
+progress.task-progress::-webkit-progress-bar,.status-bar progress::-webkit-progress-bar{background:#ffffff10;border-radius:99px}
+progress.task-progress::-webkit-progress-value,.status-bar progress::-webkit-progress-value{background:var(--state-color,var(--brand));border-radius:99px}
+progress.task-progress::-moz-progress-bar,.status-bar progress::-moz-progress-bar{background:var(--state-color,var(--brand));border-radius:99px}
+/* Kuyruk sekmesi */
+.queue-sub{margin:.3rem 0 0;color:var(--muted);font-size:.88rem}
+.queue-overview{background:radial-gradient(420px 160px at 0 0,color-mix(in srgb,var(--state-color,var(--brand)) 14%,transparent),transparent 70%),var(--surface);border-radius:16px;padding:1.2rem 1.3rem}
+.queue-hero{display:flex;align-items:center;gap:1rem}
+.hero-icon{flex:0 0 54px;height:54px;border-radius:15px;display:grid;place-items:center;background:var(--state-bg,#1f2431);color:var(--state-color,var(--accent));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--state-color,var(--brand)) 30%,transparent)}
+.hero-text{flex:1;min-width:0}.hero-text h2{font-size:1.25rem;margin:0;letter-spacing:-.01em}.hero-text p{margin:.25rem 0 0;color:var(--muted);font-size:.9rem}
+.queue-overview .queue-line{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:.55rem;margin:1.1rem 0 .9rem}
+.queue-overview .queue-line>span{display:flex;flex-direction:column;gap:.1rem;background:#ffffff05;border:1px solid #ffffff0d;border-radius:11px;padding:.6rem .75rem;font-size:.74rem;color:var(--muted)}
+.queue-overview .queue-line strong{font-size:1.35rem;line-height:1.2}
+.queue-overview .queue-now{background:#ffffff06;border-radius:10px;padding:.55rem .75rem}
+.queue-overview>.actions{margin-top:.8rem}
+.queue-actions{margin:.8rem 0 0}
+.state-icon.spin{animation:qspin 1.1s linear infinite}@keyframes qspin{to{transform:rotate(360deg)}}
+.q-section-head{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin:1.4rem 0 .4rem}
+.q-section-head h3{margin:0;font-size:1rem}.q-section-head .help{margin:0}
+#live-tasks{margin-top:.4rem;gap:.5rem}
+.queue-task{padding:.75rem .95rem;border-radius:12px;border:1px solid var(--border-soft);border-left:3px solid var(--state-color,var(--border))}
+.qt-main{display:grid;grid-template-columns:auto minmax(0,1.4fr) minmax(140px,1fr) auto;align-items:center;gap:.85rem}
+.qt-icon{display:grid;color:var(--state-color,var(--muted))}
+.qt-text strong{display:block;overflow-wrap:anywhere;font-size:.95rem}.qt-text small{color:var(--muted);font-size:.78rem}
+.qt-progress{display:grid;gap:.3rem}.qt-progress small{color:var(--muted);font-size:.76rem}.qt-progress strong{color:var(--text)}
+.qt-progress .metric-new{color:var(--success)}
+.queue-task .actions{margin-top:.55rem}
+.queue-task .queue-reason{margin:.55rem 0 0}
+.qt-more{margin-top:.45rem}.qt-more .queue-metrics{margin:.6rem 0}
+.package{border-radius:14px}
+.waiting-order{background:var(--brand-soft);color:var(--accent)}
+.queue-empty{padding:2.4rem 1.2rem;background:radial-gradient(520px 230px at 50% 0,#6f7dff17,transparent 70%),var(--surface);border-style:solid}
+.queue-empty .illus{display:block;width:160px;height:auto;margin:0 auto 1rem}
+.how-steps{list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;max-width:720px;margin:1.4rem auto 1.2rem;padding:0}
+.how-steps li{display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:1rem .8rem;border:1px solid var(--border-soft);border-radius:13px;background:#ffffff03}
+.step-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--brand-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--brand-line)}
+.how-steps strong{color:var(--text);font-size:.9rem}.how-steps li>span:last-child{font-size:.78rem}
+@media(max-width:640px){
+  .qt-main{grid-template-columns:auto minmax(0,1fr) auto}.qt-progress{grid-column:2/-1;grid-row:2}
+  .queue-hero{align-items:flex-start}.hero-icon{flex-basis:44px;height:44px}.queue-hero .state-pill{display:none}
+  .how-steps{grid-template-columns:1fr}
+}
+body[data-view=queue] #status-bar{display:none!important}
