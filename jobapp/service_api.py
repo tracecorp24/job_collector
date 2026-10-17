@@ -126,7 +126,7 @@ def install(server):
         from . import logstore, problems
         return jsonify(api_version='1', running=server.state.running, run_id=server.state.run_id,
             source=Coordinator().state(), supervisor_alive=bool(service.supervisor and service.supervisor.is_alive()),
-            heartbeat_at=service.heartbeat, last_error=service.last_error,
+            heartbeat_at=service.heartbeat, last_error=service.last_error, last_error_at=service.last_error_at,
             version=config.version_info(), logging=logstore.stats(), problems=sorted(problems.active_keys))
 
     @app.get('/api/v1/jobs')
