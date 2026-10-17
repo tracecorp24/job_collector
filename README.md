@@ -442,6 +442,20 @@ Test edilen kritik güvenceler:
 4. Çift taramalarda klasör bazında bağımsız saklama, veritabanı bazında tekilleştirme (`upsert`).
 5. Kural tabanlı sınıflandırma ve Ollama/Claude zenginleştirmelerinin kesintisiz çalışması.
 
+### Canlı Ağ Doğrulama Testi: Hafif Misafir API'si (Harita Mühendisliği)
+
+Sistemin detay çekme mimarisi standart ağır web sayfası (`/jobs/view/<id>`) yerine LinkedIn'in hafif misafir parçacık API'sine (`/jobs-guest/jobs/api/jobPosting/<id>`) geçirilmiştir. Canlı ağ ortamında **"harita mühendisliği"** aramasıyla yapılan doğrulama testinin bulguları:
+
+- **Ağ Boyutu ve Bellek:** Normal görünüm sayfası ~250 KB iken, hafif API yanıtları **14.4 KB – 64.5 KB** arasında dönmüştür (ortalama %80–90 veri tasarrufu).
+- **Yanıt Süresi:** İstek başına yanıt süresi **0.29s – 0.94s** aralığında gerçekleşmiştir.
+- **Canlı Doğrulanan İlanlar:**
+  - *Artıbir Enerji - HARİTA MÜHENDİSİ (ID: 4476576400):* 64.5 KB yanıt, 0.29s süre, 2.461 karakter tam Türkçe ilan metni başarıyla çekildi.
+  - *CENGİZ İNŞAAT - Harita Mühendisi (ID: 4467554988):* 14.4 KB yanıt, 0.94s süre, 796 karakter açıklama başarıyla çekildi.
+  - *Kalyon Holding - Harita Mühendisi (ID: 4460773998):* 15.0 KB yanıt, 0.35s süre, 1.238 karakter açıklama başarıyla çekildi.
+- **Kullanıcı Deneyimi Korunması:** Arayüzde ve veritabanında kullanıcının tıkladığı bağlantı (`applyUrl`, `url`) orijinal tarayıcı görünüm URL'si (`https://www.linkedin.com/jobs/view/<id>`) olarak korunurken, motorun arka planda yaptığı çekimler hafif API üzerinden gerçekleşir.
+
+---
+
 ## Kalıcı önbellek ve kaynak koruması
 
 Tarama kuyruğu, çalışırken sorgu ve kuyruk bazında çekilen, yeni eklenen, güncellenen ve değişmeyen ilanları gösterir. İlk başlangıç zamanı, başlangıçtan geçen süre (duraklamalar dahil), durum açıklaması ve sorgu kimliği saklanır. Başlangıcı veya bitişi eski kayıtlarda kanıtlanamayan zamanlar bilinmiyor olarak gösterilir. Durumlar metin ve renk ile ayrılır; geçmişte durum filtresi kullanılabilir.

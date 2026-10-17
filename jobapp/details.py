@@ -52,7 +52,9 @@ def fill_one(server, scraper):
     scraper.last_status = None
     cached = scraper.details.get(requested_raw)
     try:
-        detail = scraper._get(url) if url and cached is None else None
+        # Hafif API Collector mimarisi: normal ~250 KB sayfa yerine hafif misafir parçacık API'si
+        target_url = scraper.detail_url(requested_raw) if hasattr(scraper, "detail_url") else url
+        detail = scraper._get(target_url) if target_url and cached is None else None
     except SourcePaused:
         return False
     except Exception as exc:  # ağ/kaynak hatası: deneme sayılır, sonsuz döngüye girmez

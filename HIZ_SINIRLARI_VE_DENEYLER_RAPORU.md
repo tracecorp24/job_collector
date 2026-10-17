@@ -113,10 +113,32 @@ Yapılan deneylerin çıktılarına dayanarak kod tabanına 4 büyük optimizasy
 
 ---
 
-## 5. TEST DOĞRULAMASI
+## 5. TEST DOĞRULAMASI VE CANLI VERİ BULGULARI
 
-Tüm güncellemelerden sonra projenin 15 test modülünü kapsayan tam regresyon testi çalıştırılmıştır:
+### 5.1 Tam Regresyon Testi
+Tüm mimari ve uç nokta güncellemelerinden sonra projenin 15 test modülünü kapsayan tam test paketi çalıştırılmıştır:
 ```text
-Ran 155 tests in 53.033s - OK (%100 Başarı)
+Ran 155 tests in 33.579s - OK (%100 Başarı)
 ```
-Hiçbir gerileme (regression) veya yan etki oluşmadığı doğrulanmıştır.
+Tüm birim ve entegrasyon testleri gerileme (regression) olmadan başarıyla geçmiştir.
+
+### 5.2 Canlı Ağ Doğrulaması: "Harita Mühendisliği" Testi
+Kullanıcı talebi doğrultusunda canlı LinkedIn misafir arayüzü üzerinde **"harita mühendisliği"** araması yapılmış ve keşfedilen hafif API (`/jobs-guest/jobs/api/jobPosting/<id>`) canlı ilanlar üzerinde doğrulanmıştır:
+
+1. **Arama Aşaması:** `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search` üzerinden Türkiye genelinde 10 adet canlı ilan kartı çekildi.
+2. **Hafif API Detay Çekimi:**
+   - **İlan 1 (Artıbir Enerji - HARİTA MÜHENDİSİ, ID: 4476576400):**
+     - Endpoint: `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4476576400`
+     - HTTP Durumu: **200 OK**
+     - Yanıt Süresi: **0.29 saniye**
+     - Yanıt Boyutu: **64.5 KB** (standart 250 KB tam sayfa yerine)
+     - Çekilen Açıklama: **2.461 karakter** eksiksiz şirket ve pozisyon gereksinimleri.
+   - **İlan 2 (CENGİZ İNŞAAT - Harita Mühendisi, ID: 4467554988):**
+     - HTTP Durumu: **200 OK** | Yanıt: **0.94s** | Boyut: **14.4 KB** | Açıklama: **796 karakter**
+   - **İlan 3 (Kalyon Holding - Harita Mühendisi, ID: 4460773998):**
+     - HTTP Durumu: **200 OK** | Yanıt: **0.35s** | Boyut: **15.0 KB** | Açıklama: **1.238 karakter**
+3. **Maliyet ve Proxy Etkisi:**
+   - Eski sayfada 1.000 ilan detayı ~**250 MB** bant genişliği tüketirken;
+   - Hafif API ile 1.000 ilan detayı ~**15 – 60 MB** tüketmektedir (%76–94 tasarruf).
+   - GB bazlı proxy maliyetini yaklaşık **6 kat** ucuzlatır.
+

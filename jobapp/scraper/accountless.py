@@ -129,6 +129,18 @@ class AccountlessScraper:
             and parsed.path.startswith(("/jobs/view/", "/jobs-guest/jobs/api/"))
         )
 
+    @staticmethod
+    def detail_url(raw):
+        """Hafif API Collector: İlan detayını çekerken hafif misafir API'sini (jobs-guest/jobs/api/jobPosting/<id>) kullanır.
+        Normal /jobs/view/ sayfası ~250 KB iken bu hafif mimari ~15-60 KB payload döndürür.
+        """
+        if isinstance(raw, dict):
+            ext_id = raw.get("external_id")
+            if ext_id:
+                return f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{ext_id}"
+            return raw.get("url")
+        return str(raw) if raw else None
+
     def _fetch_url(self, url, params=None):
         # Follow only public-job redirects; never visit a login/challenge URL.
         current_url = url
@@ -489,7 +501,7 @@ class AccountlessScraper:
                     cache_key = "cache_hits" if cached else "cache_misses"
                     self.page_report[cache_key] = self.page_report.get(cache_key, 0) + 1
                 if cached is None:
-                    detail = self._get(raw["url"])
+                    detail = self._get(self.detail_url(raw) or raw["url"])
                     if self.should_stop():
                         termination_reason = "stopped_by_user"
                         stopped_early = True
