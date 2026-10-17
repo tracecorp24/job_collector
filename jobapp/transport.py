@@ -5,6 +5,7 @@ import math
 import random
 import time
 import uuid
+import weakref
 from contextlib import contextmanager
 from datetime import timezone
 from email.utils import parsedate_to_datetime
@@ -40,6 +41,11 @@ def fingerprint(raw):
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+# Tablo varlık kontrolü her örnekte değil, süreç içinde engine başına bir kez yapılır.
+_policy_tables = weakref.WeakSet()
+_cache_tables = weakref.WeakSet()
+
+
 class SourcePaused(RuntimeError):
     def __init__(self, state):
         self.state = state
@@ -53,7 +59,7 @@ class Coordinator:
         self.interval = max(config.MIN_REQUEST_INTERVAL, config.REQUEST_INTERVAL if interval is None else interval)
         self.clock = clock or time.time
         self.sleep = sleeper or time.sleep
-        SourcePolicy.__table__.create(self.engine, checkfirst=True)
+        db.once_per_engine(_policy_tables, self.engine, lambda bind: SourcePolicy.__table__.create(bind, checkfirst=True))
 
     @contextmanager
     def transaction(self):
@@ -71,6 +77,11 @@ class Coordinator:
         return dict(connection.execute(text("SELECT * FROM source_policy WHERE source=:source"), {"source":self.source}).mappings().one())
 
     def state(self):
+        # Salt okuma: yazma kilidi almaz. Satır yalnızca hiç yoksa (ilk çağrı) bir kez oluşturulur.
+        with self.engine.connect() as connection:
+            row = connection.execute(text("SELECT * FROM source_policy WHERE source=:source"), {"source":self.source}).mappings().first()
+        if row:
+            return self.describe(dict(row))
         with self.transaction() as connection:
             return self.describe(self.row(connection))
 
@@ -169,7 +180,7 @@ class Details:
         self.engine = engine or db.engine
         self.factory = sessionmaker(bind=self.engine)
         self.clock = clock or time.time
-        DetailCache.__table__.create(self.engine, checkfirst=True)
+        db.once_per_engine(_cache_tables, self.engine, lambda bind: DetailCache.__table__.create(bind, checkfirst=True))
 
     def known(self, external_ids):
         """External ids already stored as jobs with a description."""

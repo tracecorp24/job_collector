@@ -8,6 +8,8 @@ def _env(name, default):
 
 DB_PATH = _env("JOBAPP_DB_PATH", os.path.join(PACKAGE_DIR, "jobs.db"))
 DB_URL = f"sqlite:///{DB_PATH}"
+# SQLite kilit beklemesi (ms); sürücü timeout'u ve PRAGMA busy_timeout bu tek değerden gelir.
+DB_BUSY_TIMEOUT_MS = int(_env("JOBAPP_DB_BUSY_TIMEOUT_MS", "30000"))
 HOST = _env("JOBAPP_HOST", "127.0.0.1")
 PORT = int(_env("JOBAPP_PORT", "8016"))
 OPEN_BROWSER = _env("JOBAPP_OPEN_BROWSER", "1") not in ("0", "false", "False")
