@@ -82,6 +82,9 @@ def filtered(session, args, omit=None):
     for key, col in columns.items():
         if args.get(key, "").strip():
             q = q.filter(contains(col, args[key].strip()))
+    if args.get("location_text", "").strip():
+        loc_val = args["location_text"].strip()
+        q = q.filter(or_(contains(Job.location, loc_val), contains(Job.search_location, loc_val)))
     text = args.get("search", "").strip()
     if text and args.get("semantic") not in ("1", "true"):
         q = q.filter(or_(*(contains(col, text) for col in (Job.title, Job.company, Job.description, Job.tags))))

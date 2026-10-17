@@ -55,6 +55,9 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.get_jobs('skills=Python&exclude_skills=Java')['total'], 1)
         self.assertEqual(self.get_jobs('search=KIDEMLI')['total'], 1)
         self.assertEqual(self.get_jobs('company_text=ornek')['total'], 1)
+        self.assertEqual(self.get_jobs('location_text=istan')['total'], 1)
+        self.assertEqual(self.get_jobs('location_text=ankara')['total'], 1)
+        self.assertEqual(self.get_jobs('location_text=izmir')['total'], 0)
 
     def test_date_missing_content_and_salary_units(self):
         self.seed()
