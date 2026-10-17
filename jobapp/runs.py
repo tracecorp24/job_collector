@@ -209,6 +209,8 @@ def worker(server, run_id):
                             transition(task, "error", "Arama sayfası alınamadı; tekrar devam edebilirsiniz.")
                             task.error = "Arama sayfası alınamadı. Sonuçlar korundu; tekrar devam edebilirsiniz."
                             failed.append(task.error)
+                        if task.status == "finished":
+                            reset_error_streak(run)
                         session.flush()
                         if task.status in ("finished", "stopped", "error"):
                             query_insights.persist(session, task)
@@ -276,6 +278,8 @@ def worker(server, run_id):
             transition(run, run.status, run.status_reason or next((t.status_reason for t in tasks if t.status in ("paused", "error")), ""))
             if run.status == "error":
                 schedule_error_retry(session, run)
+            elif run.status == "finished":
+                reset_error_streak(run)
             run.updated_at = datetime.utcnow()
             audit.record(session, run_id, None, "run_completed", {"status":run.status, "stats":json.loads(run.stats), "attempt_id":attempt_id})
             session.commit()
@@ -300,6 +304,12 @@ def worker(server, run_id):
             with server.SessionLocal() as session:
                 final = session.get(SearchRun, run_id)
                 server.state.last = {"state":final.status if final else "idle", "run_id":run_id}
+
+
+def reset_error_streak(run):
+    options = json.loads(run.options or "{}")
+    if options.pop("error_retry_streak", None) is not None:
+        run.options = json.dumps(options)
 
 
 def schedule_error_retry(session, run):

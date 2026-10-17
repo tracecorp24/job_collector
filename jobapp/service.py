@@ -6,11 +6,12 @@ import time
 from sqlalchemy import or_, and_, func
 from . import config, runs, audit, watches, maintenance, daily_summary
 from .models import SearchRun, SearchTask
-from .transport import Coordinator
+from .transport import Coordinator, SourcePaused
 
 log = logging.getLogger(__name__)
 heartbeat = 0.0
 last_error = ""
+last_error_at = 0.0
 supervisor = None
 
 
@@ -40,8 +41,13 @@ def tick(server, now=None):
                         continue
                     audit.record(session, run.id, None, "automatic_resume", {"reason":"source_ready_or_service_queue", "source_state":source})
                     session.commit()
-                    runs.start(server, run.id)
-                    last_error = ""
+                    try:
+                        runs.start(server, run.id)
+                    except SourcePaused:
+                        return  # Kaynak beklemesi olağan durumdur; koşu aynen bekler.
+                    except ValueError as exc:
+                        abandon(session, run, str(exc))
+                        continue
                     return
                 if run.status == "finished" and options.get("schedule_enabled") and not options.get("schedule_dispatched"):
                     due = (run.ended_at.timestamp() if run.ended_at else now) + options["repeat_seconds"]
@@ -51,14 +57,21 @@ def tick(server, now=None):
                         due = run.ended_at.replace(tzinfo=timezone.utc).timestamp() + options["repeat_seconds"]
                     if now < due:
                         continue
+                    finished = [t for t in tasks if t.status == "finished"]
+                    if not finished:
+                        options.update(schedule_enabled=False, schedule_disabled_reason="no_finished_tasks")
+                        run.options = json.dumps(options)
+                        audit.record(session, run.id, None, "scheduled_run_skipped", {"reason":"no_finished_tasks",
+                            "message":"Tamamlanmış sorgu olmadığı için tekrar turu oluşturulmadı; tekrar kapatıldı."}, "warning")
+                        session.commit()
+                        continue
                     new_id = runs.identifier()
                     next_options = dict(options, service_managed=True, parent_run_id=run.id)
                     next_options.pop("schedule_dispatched", None)
                     session.add(SearchRun(id=new_id, options=json.dumps(next_options)))
-                    for task in tasks:
-                        if task.status == "finished":
-                            session.add(SearchTask(id=runs.identifier(), run_id=new_id, position=task.position,
-                                keyword=task.keyword, location=task.location, limit=task.limit))
+                    for task in finished:
+                        session.add(SearchTask(id=runs.identifier(), run_id=new_id, position=task.position,
+                            keyword=task.keyword, location=task.location, limit=task.limit))
                     options["schedule_dispatched"] = new_id
                     run.options = json.dumps(options)
                     audit.record(session, new_id, None, "scheduled_run_created", {"parent_run_id":run.id})
@@ -70,19 +83,40 @@ def tick(server, now=None):
                 maintenance.run(session, now)
 
 
+def abandon(session, run, reason):
+    """A run that cannot be resumed must not block the candidates behind it."""
+    session.refresh(run)
+    options = json.loads(run.options or "{}")
+    for key in ("auto_resume_at", "service_managed"):
+        options.pop(key, None)
+    run.options = json.dumps(options)
+    if run.status not in runs.TERMINAL:
+        tasks = session.query(SearchTask).filter_by(run_id=run.id).all()
+        done = any(t.status == "finished" for t in tasks)
+        runs.transition(run, "finished" if done else "stopped", f"Otomatik devam başlatılamadı: {reason}")
+    audit.record(session, run.id, None, "automatic_resume_failed", {"reason":reason, "status":run.status}, "warning")
+    session.commit()
+
+
+def step(server):
+    """One supervisor turn; a successful turn clears the previous transient error."""
+    global last_error, last_error_at, heartbeat
+    try:
+        tick(server)
+        last_error = ""
+    except Exception as exc:
+        heartbeat = time.time()
+        last_error, last_error_at = str(exc), time.time()
+        log.exception("Collector supervisor failed; will retry")
+
+
 def start(server):
     global supervisor
     if supervisor and supervisor.is_alive():
         return
     def supervise():
-        global last_error, heartbeat
         while True:
-            try:
-                tick(server)
-            except Exception as exc:
-                heartbeat = time.time()
-                last_error = str(exc)
-                log.exception("Collector supervisor failed; will retry")
+            step(server)
             time.sleep(config.SERVICE_POLL_SECONDS)
     supervisor = threading.Thread(target=supervise, name="collector-supervisor", daemon=True)
     supervisor.start()
