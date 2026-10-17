@@ -31,6 +31,18 @@ PY
     chown linko:linko "$DATA/version.json" "$DATA/deploy_history.jsonl"
 }
 
+# İşletim betikleri /usr/local/bin ve systemd altında kopya durur; depodaki sürümleri değiştiyse
+# başarılı deploy'un sonunda kurulur (elle install-ops.sh unutulunca düzeltmeler canlıya ulaşmıyordu).
+sync_ops() {
+    local changed=0 name
+    for name in linko-deploy linko-backup linko-spool linko-spool-stop; do
+        cmp -s "$APP/deploy/$name.sh" "/usr/local/bin/$name" || changed=1
+    done
+    cmp -s "$APP/deploy/linko.service" /etc/systemd/system/linko.service || changed=1
+    [ "$changed" = 1 ] || return 0
+    bash "$APP/deploy/install-ops.sh" || echo "Uyarı: işletim betikleri kurulamadı; elle install-ops.sh çalıştırın." >&2
+}
+
 cd "$APP"
 PREV=$(git rev-parse HEAD)
 git fetch -q origin main
@@ -43,6 +55,7 @@ for _ in $(seq 1 12); do
     sleep 5
     if curl -fsS http://127.0.0.1:8016/healthz >/dev/null 2>&1; then
         echo "Deploy tamam: $(git log -1 --format='%h %s')"
+        sync_ops
         exit 0
     fi
 done
