@@ -754,3 +754,5 @@ body[data-theme="dark"] .d-source.paused{background:#342e1f;border-color:#665538
 }
 
 .filter-subgroup{border:0;border-top:1px solid var(--border);margin:.65rem 0 0;padding:.65rem 0 0;min-width:0}.filter-subgroup>legend{font-size:.82rem;font-weight:600;padding:0 .25rem 0 0}
+.location-filters{display:flex;flex:1;gap:.45rem;min-width:280px}.location-filters select{flex:1;min-width:0;min-height:46px}.location-filters select:disabled{opacity:.65;cursor:not-allowed}
+@media(max-width:760px){.location-filters{flex-basis:100%;min-width:0}.location-filters select{font-size:.8rem}}

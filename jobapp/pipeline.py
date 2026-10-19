@@ -13,6 +13,7 @@ from datetime import datetime
 from . import config, parse, salary, skills
 from .classify import classify_job
 from .db import SessionLocal, init_db, upsert_job, parse_date
+from .locations import normalize as normalize_location
 from .models import Job, SearchRun, SearchTask, TaskJob, SearchEvent
 from . import audit
 from .transport import SourcePaused, fingerprint
@@ -74,6 +75,7 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
         embedding = embed.embed_text(f"{parsed['title']}\n\n{description}")
         stage("embedding", "finished", available=embedding is not None, duration_ms=round((time.monotonic()-started)*1000))
     salary_parsed = salary.parse_salary(cls.get("salary", ""))
+    location_country, location_city = normalize_location(parsed.get("location") or raw.get("search_location", ""))
     record = {
         "posted_at": parse_date(raw.get("posted")),
         "experience_years": experience_years(description, parsed["title"], cls),
@@ -84,6 +86,8 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
         "normalized_title": cls.get("normalized_title") or parsed["title"],
         "company": parsed["company"],
         "location": parsed["location"],
+        "location_country": location_country,
+        "location_city": location_city,
         "workplace_type": cls.get("workplace_type") or parsed.get("workplace_type", ""),
         "category": cls["category"],
         "profession_groups": cls.get("profession_groups", ["Genel Meslekler"]),

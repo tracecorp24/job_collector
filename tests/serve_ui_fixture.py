@@ -15,6 +15,7 @@ os.environ['JOBAPP_REQUEST_INTERVAL'] = '0'
 from datetime import datetime, timedelta
 from flask import jsonify
 from jobapp import server, db
+from jobapp.locations import normalize as normalize_location
 from jobapp.models import Job, SearchRun, SearchTask, TaskJob, SearchEvent, Watch
 
 app = server.create_app()
@@ -33,7 +34,9 @@ with db.SessionLocal() as session:
         session.add(SearchTask(id='fixture-task-'+status,run_id=run.id,keyword='Örnek '+status,location='Istanbul',
                                status=status,started_at=run.started_at,status_reason=run.status_reason,limit=None))
     for i in range(60):
-        job=Job(external_id=str(10000+i),title=['Kıdemli Python Geliştirici','Veri Bilimci','Frontend Developer'][i%3],company=['Örnek Teknoloji','Nova Yazılım','Atlas Veri'][i%3],location=['Istanbul, Turkey','Ankara, Turkey','Berlin, Germany'][i%3],workplace_type=['Remote','Hybrid','Onsite'][i%3],category=['Engineering','Data','Design'][i%3],seniority=['Senior','Mid','Junior'][i%3],tags=json.dumps(['Python','SQL'] if i%3==0 else ['React','TypeScript']),description='Ekibimiz için deneyimli bir geliştirici arıyoruz.\n\nSorumluluklar\n• Ürün geliştirme\n• Ekip içi iş birliği',summary='Uzaktan çalışan ürün ekibinde Python servisleri geliştirme.',salary='100.000–140.000 TRY / ay' if i%3==0 else '',salary_min=100000 if i%3==0 else None,salary_max=140000 if i%3==0 else None,salary_currency='TRY' if i%3==0 else '',salary_period='month' if i%3==0 else '',posted_at=datetime.utcnow(),experience_years=i%6,url='https://www.linkedin.com/jobs/view/'+str(10000+i))
+        location=['Istanbul, Turkey','Ankara, Turkey','Berlin, Germany'][i%3]
+        country,city=normalize_location(location)
+        job=Job(external_id=str(10000+i),title=['Kıdemli Python Geliştirici','Veri Bilimci','Frontend Developer'][i%3],company=['Örnek Teknoloji','Nova Yazılım','Atlas Veri'][i%3],location=location,location_country=country,location_city=city,workplace_type=['Remote','Hybrid','Onsite'][i%3],category=['Engineering','Data','Design'][i%3],seniority=['Senior','Mid','Junior'][i%3],tags=json.dumps(['Python','SQL'] if i%3==0 else ['React','TypeScript']),description='Ekibimiz için deneyimli bir geliştirici arıyoruz.\n\nSorumluluklar\n• Ürün geliştirme\n• Ekip içi iş birliği',summary='Uzaktan çalışan ürün ekibinde Python servisleri geliştirme.',salary='100.000–140.000 TRY / ay' if i%3==0 else '',salary_min=100000 if i%3==0 else None,salary_max=140000 if i%3==0 else None,salary_currency='TRY' if i%3==0 else '',salary_period='month' if i%3==0 else '',posted_at=datetime.utcnow(),experience_years=i%6,url='https://www.linkedin.com/jobs/view/'+str(10000+i))
         session.add(job);session.flush()
         if i<10:
             session.add(TaskJob(task_id='fixture-search',job_id=job.id,is_new=i<6))

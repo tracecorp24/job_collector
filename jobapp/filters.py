@@ -8,7 +8,8 @@ from .db import parse_date
 FIELDS = {name: getattr(Job, column) for name, column in {
     "category": "category", "seniority": "seniority", "workplace": "workplace_type",
     "profession_group": "profession_groups", "profession_subgroup": "profession_subgroups",
-    "company": "company", "location": "location", "source": "source", "backend": "classified_by",
+    "company": "company", "location": "location", "country": "location_country", "city": "location_city",
+    "source": "source", "backend": "classified_by",
     "search_term": "search_term", "search_location": "search_location", "flag": "flag",
 }.items()}
 
@@ -66,7 +67,9 @@ def filtered(session, args, omit=None):
             continue
         conditions = []
         for v in selected:
-            if v == "__missing__" or key == "flag" and v == "clean":
+            if key in ("country", "city") and v == "Belirtilmemiş":
+                conditions.append(or_(col == "", col.is_(None), col == "Belirtilmemiş"))
+            elif v == "__missing__" or key == "flag" and v == "clean":
                 conditions.append(or_(col == "", col.is_(None), col == "Unknown"))
             elif key in ("search_term", "search_location"):
                 task_col = SearchTask.keyword if key == "search_term" else SearchTask.location

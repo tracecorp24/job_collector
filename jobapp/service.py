@@ -13,10 +13,31 @@ heartbeat = 0.0
 last_error = ""
 last_error_at = 0.0
 supervisor = None
+ROUTINE_IDLE_DELAY_SECONDS = 60
+routine_idle_since = None
+
+
+def _mark_routine_idle_start(now):
+    global routine_idle_since
+    routine_idle_since = now
+
+
+def _routine_idle_ready(now):
+    if routine_idle_since is None:
+        _mark_routine_idle_start(now)
+        return False
+    return now - routine_idle_since >= ROUTINE_IDLE_DELAY_SECONDS
+
+
+def _manual_pending(run):
+    options = json.loads(run.options or "{}")
+    return (run.status in ("queued", "paused", "error") and
+            scheduling.layer(options) == "manual" and not options.get("user_paused") and
+            (options.get("service_managed") or "auto_resume_at" in options))
 
 
 def tick(server, now=None):
-    global heartbeat, last_error
+    global heartbeat, last_error, routine_idle_since
     now = time.time() if now is None else now
     with runs.lock:
         heartbeat = time.time()
@@ -28,14 +49,17 @@ def tick(server, now=None):
                 if current != "manual":
                     pending = session.query(SearchRun).filter(SearchRun.deleted_at.is_(None),
                         SearchRun.status.in_(("queued", "paused", "error"))).order_by(SearchRun.created_at).all()
-                    if any(scheduling.layer(json.loads(r.options or "{}")) == "manual" and
-                           scheduling.eligible(session, r, now, source) for r in pending) or repair.ready(session, now, source, "manual"):
+                    if any(_manual_pending(r) for r in pending) or repair.ready(session, now, source, "manual"):
+                        _mark_routine_idle_start(now)
                         scheduling.yield_to(server, session, "manual")
                     elif current == "routine":
                         repair.discover(session)
                         if repair.ready(session, now, source):
+                            _mark_routine_idle_start(now)
                             scheduling.yield_to(server, session, "repair")
-                    session.commit()
+                if current != "routine":
+                    _mark_routine_idle_start(now)
+                session.commit()
                 return
             candidates = session.query(SearchRun).filter(SearchRun.deleted_at.is_(None), or_(
                 SearchRun.status.in_(("queued", "paused", "error")),
@@ -43,8 +67,11 @@ def tick(server, now=None):
                     func.json_extract(SearchRun.options, '$.schedule_dispatched').is_(None)))).order_by(SearchRun.created_at).all()
             candidates.sort(key=lambda run: bool(json.loads(run.options or "{}").get("during_source_wait")))
             routine = []
+            manual_waiting = False
             for run in candidates:
                 options = json.loads(run.options or "{}")
+                if _manual_pending(run):
+                    manual_waiting = True
                 if options.get("routine_city") and routine_cities.is_paused(session):
                     continue
                 # Existing source-paused work is migrated without changing its deadline.
@@ -56,6 +83,8 @@ def tick(server, now=None):
                     audit.record(session, run.id, None, "automatic_resume", {"reason":"source_ready_or_service_queue", "source_state":source})
                     session.commit()
                     try:
+                        if scheduling.layer(json.loads(run.options or "{}")) == "manual":
+                            _mark_routine_idle_start(now)
                         runs.start(server, run.id)
                     except SourcePaused:
                         return  # Kaynak beklemesi olağan durumdur; koşu aynen bekler.
@@ -91,25 +120,33 @@ def tick(server, now=None):
                     run.options = json.dumps(options)
                     audit.record(session, new_id, None, "scheduled_run_created", {"parent_run_id":run.id})
                     session.commit()
+            if manual_waiting:
+                _mark_routine_idle_start(now)
+                session.commit()
+                return
             if repair.ready(session, now, source, "manual") and repair.dispatch(server, session, now, source, "manual"):
+                _mark_routine_idle_start(now)
                 return
             if repair.dispatch(server, session, now, source):
+                _mark_routine_idle_start(now)
                 return
-            for run_id in routine:
-                try:
-                    runs.start(server, run_id)
-                except SourcePaused:
+            # Automatic searches share the same 60-second quiet period. A
+            # direct tick() remains useful for explicit queued work in tests/tools.
+            live_supervisor = bool(supervisor and supervisor.is_alive())
+            if not live_supervisor or _routine_idle_ready(now):
+                for run_id in routine:
+                    try:
+                        runs.start(server, run_id)
+                    except SourcePaused:
+                        return
+                    except ValueError as exc:
+                        abandon(session, session.get(SearchRun, run_id), str(exc))
+                        continue
                     return
-                except ValueError as exc:
-                    abandon(session, session.get(SearchRun, run_id), str(exc))
-                    continue
-                return
-            # Periodic catalogue work belongs to the live supervisor loop; a
-            # direct tick() call only advances explicitly requested work.
-            if supervisor and supervisor.is_alive() and routine_cities.dispatch(session, now, source):
-                return
-            if watches.dispatch(session, now, source):
-                return
+                if live_supervisor and routine_cities.dispatch(session, now, source):
+                    return
+                if watches.dispatch(session, now, source):
+                    return
             if maintenance.due(session, now):
                 maintenance.run(session, now)
 
@@ -142,9 +179,10 @@ def step(server):
 
 
 def start(server):
-    global supervisor
+    global supervisor, routine_idle_since
     if supervisor and supervisor.is_alive():
         return
+    routine_idle_since = time.time()
     def supervise():
         while True:
             step(server)

@@ -228,6 +228,8 @@ def install(server):
             for key, column in filters.FIELDS.items():
                 if key in ("profession_group", "profession_subgroup"):
                     continue
+                if key in ("country", "city"):
+                    continue
                 q = filters.filtered(session, request.args, omit=key)
                 if key in ("search_term", "search_location"):
                     column = SearchTask.keyword if key == "search_term" else SearchTask.location
@@ -235,6 +237,19 @@ def install(server):
                 count = func.count(func.distinct(Job.id))
                 result[key] = [{"value": value or "__missing__", "count": n}
                                for value, n in q.with_entities(func.coalesce(column, ""), count).group_by(func.coalesce(column, "")).order_by(count.desc()).all()]
+            count = func.count(func.distinct(Job.id))
+            country_query = filters.filtered(session, request.args, omit=("country", "city"))
+            result["country"] = [{"value": value or "Belirtilmemiş", "count": n}
+                                 for value, n in country_query.with_entities(Job.location_country, count)
+                                 .group_by(Job.location_country).order_by(count.desc(), Job.location_country).all()]
+            selected_country = request.args.get("country", "").strip()
+            if selected_country:
+                city_query = filters.filtered(session, request.args, omit="city")
+                result["city"] = [{"value": value or "Belirtilmemiş", "count": n}
+                                  for value, n in city_query.with_entities(Job.location_city, count)
+                                  .group_by(Job.location_city).order_by(count.desc(), Job.location_city).all()]
+            else:
+                result["city"] = []
             counts = {}
             for row in filters.filtered(session, request.args, omit=("skills", "profession_group", "profession_subgroup")).with_entities(Job.tags):
                 try:

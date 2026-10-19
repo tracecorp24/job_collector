@@ -41,6 +41,8 @@ class Job(Base):
     normalized_title = Column(String(256), default="", index=True)
     company = Column(String(256), default="", index=True)
     location = Column(String(256), default="")
+    location_country = Column(String(128), default="", index=True)
+    location_city = Column(String(128), default="", index=True)
     workplace_type = Column(String(32), default="", index=True)  # Remote/Hybrid/Onsite
 
     # Classified fields
@@ -106,6 +108,8 @@ class Job(Base):
             "normalized_title": self.normalized_title or self.title,
             "company": self.company,
             "location": self.location,
+            "country": self.location_country,
+            "city": self.location_city,
             "workplace_type": self.workplace_type,
             "category": self.category,
             "profession_groups": json.loads(self.profession_groups or '["Genel Meslekler"]'),

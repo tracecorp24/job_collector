@@ -92,9 +92,13 @@ def _migrate() -> None:
         for name, kind in (("posted_at", "DATETIME"), ("experience_years", "INTEGER"), ("deleted_at", "DATETIME"),
                            ("normalized_title", "VARCHAR(256) DEFAULT ''"),
                            ("profession_groups", "TEXT DEFAULT '[\"Genel Meslekler\"]'"),
-                           ("profession_subgroups", "TEXT DEFAULT '[\"Diğer / Belirtilmemiş\"]'")):
+                           ("profession_subgroups", "TEXT DEFAULT '[\"Diğer / Belirtilmemiş\"]'"),
+                           ("location_country", "VARCHAR(128) DEFAULT ''"),
+                           ("location_city", "VARCHAR(128) DEFAULT ''")):
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {name} {kind}"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_jobs_location_country ON jobs(location_country)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_jobs_location_city ON jobs(location_city)"))
         if "package" not in {row[1] for row in conn.execute(text("PRAGMA table_info(search_tasks)"))}:
             conn.execute(text("ALTER TABLE search_tasks ADD COLUMN package VARCHAR(160) DEFAULT ''"))
         task_columns = {row[1] for row in conn.execute(text("PRAGMA table_info(task_jobs)"))}
@@ -148,6 +152,7 @@ def _migrate() -> None:
     _repair_guest_card_fields()
     _repair_guest_noise_titles()
     _backfill_profession_taxonomy()
+    _backfill_location_taxonomy()
     _reprocess_rule_fields()
 
 
@@ -274,6 +279,25 @@ def _backfill_profession_taxonomy():
         session.commit()
 
 
+def _backfill_location_taxonomy():
+    """Normalize existing source labels once; keep the scraped location untouched."""
+    from .locations import normalize
+    from .models import Setting
+
+    marker = "location_taxonomy_v1"
+    with sessionmaker(bind=engine)() as session:
+        if session.get(Setting, marker):
+            return
+        changed = 0
+        for job in session.query(Job).yield_per(500):
+            country, city = normalize(job.location or job.search_location)
+            if job.location_country != country or job.location_city != city:
+                job.location_country, job.location_city = country, city
+                changed += 1
+        session.add(Setting(key=marker, value=json.dumps({"at": datetime.utcnow().isoformat(), "changed": changed})))
+        session.commit()
+
+
 def _backup_before_upgrade():
     """SQLite online backup is safe even when a previous server has a connection."""
     path = engine.url.database
@@ -388,6 +412,8 @@ _UPDATABLE = (
     "profession_subgroups",
     "company",
     "location",
+    "location_country",
+    "location_city",
     "workplace_type",
     "category",
     "seniority",
@@ -425,6 +451,15 @@ def upsert_job(session, record: dict) -> tuple[Job, bool]:
     ``(job, created)``.
     """
     record = dict(record)
+    if not record.get("location_country") or not record.get("location_city"):
+        from .locations import normalize
+        country, city = normalize(record.get("location") or record.get("search_location", ""))
+        record.setdefault("location_country", country)
+        record.setdefault("location_city", city)
+        if not record.get("location_country"):
+            record["location_country"] = country
+        if not record.get("location_city"):
+            record["location_city"] = city
     if isinstance(record.get("tags"), (list, tuple)):
         record["tags"] = json.dumps(list(record["tags"]), ensure_ascii=False)
     if isinstance(record.get("offerings"), (list, tuple)):

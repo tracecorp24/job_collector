@@ -4,19 +4,20 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 const debounce = (fn, ms=350) => { let timer; return (...args) => {clearTimeout(timer); timer=setTimeout(()=>fn(...args),ms);}; };
 const names = {category:'Genel kategori',seniority:'Kıdem',workplace:'Çalışma biçimi',location:'Konum',location_text:'Konum',company:'Şirket',skills:'Yetenek',flag:'İlan değerlendirmesi',backend:'Analiz yöntemi',source:'Kaynak',search_term:'Aranan unvan',search_location:'Aranan konum',search:'Arama',semantic:'Anlama göre arama',title:'Unvanda',description:'Açıklamada',company_text:'Şirket adında',phrase:'Tam ifade',exclude:'Hariç kelimeler',exclude_skills:'Hariç yetenekler',skill_mode:'Yetenek koşulu',salary_min:'En az maaş',salary_max:'En çok maaş',currency:'Para birimi',period:'Maaş dönemi',has_salary:'Maaş bilgisi',experience_min:'En az deneyim',experience_max:'En çok deneyim',experience_missing:'Deneyim bilinmiyor',run_id:'Çalışma',task_id:'Arama',discovery:'Bulunma türü',has_description:'Açıklama',has_summary:'Özet',has_embedding:'Eşleştirme verisi',quality:'Ayrıştırma kalitesi',visibility:'Görünürlük',posted_from:'Yayın başlangıcı',posted_to:'Yayın bitişi',posted_missing:'Yayın tarihi bilinmiyor',created_from:'İlk eklenme başlangıcı',created_to:'İlk eklenme bitişi',scraped_from:'Son tarama başlangıcı',scraped_to:'Son tarama bitişi'};
 const translations = {Engineering:'Mühendislik / Yazılım',Data:'Veri ve yapay zekâ',Design:'Tasarım',Product:'Ürün',Finance:'Finans',Sales:'Satış',Marketing:'Pazarlama',HR:'İnsan kaynakları',Operations:'Operasyon',Other:'Diğer',Intern:'Stajyer',Junior:'Başlangıç',Mid:'Orta seviye',Senior:'Kıdemli',Lead:'Lider',Manager:'Yönetici',Unknown:'Belirtilmemiş',Remote:'Uzaktan',Hybrid:'Hibrit',Onsite:'Ofiste',Office:'Ofiste',rules:'Hızlı analiz',local:'Yerel yapay zekâ',llm:'Bulut yapay zekâ',claude:'Bulut yapay zekâ',groq:'Groq yapay zekâ',scam:'Şüpheli ilan',ghost:'Aktifliği şüpheli',clean:'İşaretlenmemiş',__missing__:'Belirtilmemiş',queued:'Bekliyor',running:'Çalışıyor',pausing:'Duraklatılıyor',paused:'Duraklatıldı',stopping:'Durduruluyor',stopped:'Durduruldu',cancelling:'İptal ediliyor',cancelled:'İptal edildi',finished:'Tamamlandı',error:'Hata oluştu',active:'Aktif',trash:'Çöp kutusu',all:'Tümü',any:'Herhangi biri',valid:'Geçerli',invalid:'Eksik ayrıştırılan',new:'İlk kez eklenenler',month:'Aylık',year:'Yıllık',hour:'Saatlik'};
+names.country='Ülke';names.city='Şehir';
 names.profession_group='Ana meslek grubu';names.profession_subgroup='Meslek alt grubu';
 const tr = value => translations[value] || value;
 const languageNames = {tr:'Türkçe',en:'İngilizce',other:'Diğer'};
 const date = value => value ? new Date(/[zZ]|[+]\d\d:\d\d$/.test(value) ? value : value+'Z').toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short'}) : 'Belirtilmemiş';
 // Kartlar için kısa tarih: yayın günü (saat bilgisi yok), eklenme gün + saat.
 const shortDate = (value, time) => value ? new Date(/[zZ]|[+]\d\d:\d\d$/.test(value) ? value : value+'Z').toLocaleString('tr-TR', time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short',year:'numeric'}) : 'Belirtilmemiş';
-const groupKeys = ['category','seniority','workplace','location','company','skills','flag','backend','source','search_term','search_location'];
+const groupKeys = ['category','seniority','workplace','company','skills','flag','backend','source','search_term','search_location'];
 const multiKeys = new Set([...groupKeys,'profession_group','profession_subgroup','run_id','task_id','exclude_skills']);
 let prefs={}; try {prefs=JSON.parse(localStorage.getItem('linko.ui.v2')||'{}');} catch {}
 let filters={}, view=prefs.view||'cards', draft=Array.isArray(prefs.draft)?prefs.draft:[], form=prefs.form||{};
 const newId=()=>crypto.randomUUID();
 draft=draft.map(t=>({...t,id:t.id||newId()}));
-let groqAvailable=false,professionFacets={};
+let groqAvailable=false,professionFacets={},cityOptionsCountry='';
 let draftRunId=prefs.draftRunId||null, draftSaveChain=Promise.resolve(), draftSaveTimer, queueStarting=false;
 let lastJobs=[], total=0, activeTotal=0, pages=0, currentRun=null, historyRuns=[], selectedHistory=new Set(), busy=false;
 let listController, facetController, detailController, requestSerial=0, facetSerial=0;
@@ -37,6 +38,7 @@ function readLocation(){
   const query=new URLSearchParams(location.search); filters={};
   if(query.size){for(const [key,value] of query){if(key==='view'){view=value==='list'?'list':'cards';continue;}if(names[key]||['sort','page','per_page'].includes(key)){if(multiKeys.has(key)) (filters[key]??=[]).push(value);else filters[key]=value;}}}
   else filters={...(prefs.filters||{})};
+  if(!filters.country)delete filters.city;
 }
 function params(){const p=new URLSearchParams();for(const [key,value] of Object.entries(filters)){for(const v of Array.isArray(value)?value:[value]){if(v!==''&&v!=null&&v!==false)p.append(key,String(v));}}return p;}
 function persist(push=false){
@@ -63,9 +65,9 @@ function closeDialog(id){$(id).close();}
 function confirmAction(message){return new Promise(resolve=>{const dialog=$('confirm-dialog');$('confirm-text').textContent=message;let result=false;const finish=()=>{dialog.removeEventListener('close',finish);resolve(result);};$('confirm-yes').onclick=()=>{result=true;dialog.close();};$('confirm-no').onclick=()=>dialog.close();dialog.addEventListener('close',finish);dialog.showModal();$('confirm-no').focus();});}
 function button(action,text,attrs='',cls=''){return `<button data-action="${action}" ${attrs} class="${cls}">${esc(text)}</button>`;}
 function badge(text,cls=''){return text?`<span class="badge ${cls}">${esc(text)}</span>`:'';}
-function setFilter(key,value,push=true){if(value===''||value==null||Array.isArray(value)&&!value.length)delete filters[key];else filters[key]=value;delete filters.page;syncControls();persist(push);renderChips();loadAll();}
+function setFilter(key,value,push=true){if(value===''||value==null||Array.isArray(value)&&!value.length)delete filters[key];else filters[key]=value;if(key==='country'){delete filters.city;cityOptionsCountry='';}delete filters.page;syncControls();persist(push);renderChips();loadAll();}
 function syncControls(){
-  $('search').value=filters.search||'';if($('location-search'))$('location-search').value=filters.location_text||'';$('semantic-toggle').checked=filters.semantic==='1';$('sort').value=filters.sort||'recent';$('per-page').value=filters.per_page||'24';
+  $('search').value=filters.search||'';$('location-country').value=filters.country||'';$('location-city').value=filters.city||'';$('location-city').hidden=!filters.country;$('location-city').disabled=!filters.country||cityOptionsCountry!==filters.country;$('semantic-toggle').checked=filters.semantic==='1';$('sort').value=filters.sort||'recent';$('per-page').value=filters.per_page||'24';
   document.querySelectorAll('[data-filter]').forEach(el=>{const v=filters[el.dataset.filter];if(el.type==='checkbox')el.checked=v==='1';else el.value=el.type==='date'&&v?String(v).slice(0,10):v??(el.dataset.filter==='visibility'?'active':el.dataset.filter==='quality'?'valid':el.dataset.filter==='skill_mode'?'any':'');});
   $('exclude-skills').value=(filters.exclude_skills||[]).join(', ');$('run-filter').value=(filters.run_id||[])[0]||'';
   document.querySelectorAll('[data-facet]').forEach(el=>{el.checked=(filters[el.dataset.facet]||[]).includes(el.value);});
@@ -165,14 +167,25 @@ async function loadJobs(){
 async function loadFacets(){
   facetController?.abort();facetController=new AbortController();const serial=++facetSerial;
   try{const data=await api('/api/facets?'+params(),{signal:facetController.signal});if(serial!==facetSerial)return;activeTotal=data.active_total;professionFacets=data;renderProfessionFacets();
+    renderLocationFilters(data);
     for(const key of groupKeys){const box=$('facet-'+key);const query=box.querySelector('.facet-search').value.toLocaleLowerCase('tr');const items=[...(data[key]||[])];for(const value of filters[key]||[])if(!items.some(i=>i.value===value))items.push({value,count:0});
       box.querySelector('.facet-options').innerHTML=items.map(item=>`<label class="check" ${tr(item.value).toLocaleLowerCase('tr').includes(query)?'':'hidden'}><input type="checkbox" data-facet="${key}" value="${esc(item.value)}" ${(filters[key]||[]).includes(item.value)?'checked':''}><span class="facet-name">${esc(tr(item.value))}</span><small>${item.count}</small></label>`).join('')||'<p class="help">Seçenek bulunamadı.</p>';facetCollapse(box);
     }
-    const dl=$('location-datalist');if(dl&&Array.isArray(data.location)){dl.innerHTML=data.location.filter(item=>item.value&&item.value!=='__missing__').slice(0,40).map(item=>`<option value="${esc(item.value)}">`).join('');}
     $('hint-embed').textContent=`${data.missing_embeddings} ilanın eşleştirme verisi eksik.`;$('hint-classify').textContent=`${data.not_locally_classified} ilan yerel yapay zekâyla işlenmemiş.`;
     groqAvailable=!!data.groq_available;$('hint-groq').textContent=groqAvailable?`${data.not_groq_classified} ilan Groq ile analiz edilmemiş.`:'Groq anahtarı tanımlı değil.';$('classify-groq').disabled=busy||!groqAvailable;
     if(!lastJobs.length)renderJobs();
   }catch(e){if(e.name!=='AbortError')$('connection').textContent='Filtre sayıları güncellenemedi.';}
+}
+function renderLocationFilters(data){
+  const country=$('location-country'),city=$('location-city');if(!country||!city)return;
+  const selectedCountry=filters.country||'',selectedCity=filters.city||'';
+  cityOptionsCountry=selectedCountry;
+  const countryItems=[...(data.country||[])];if(selectedCountry&&!countryItems.some(item=>item.value===selectedCountry))countryItems.push({value:selectedCountry,count:0});
+  country.innerHTML='<option value="">Tüm ülkeler</option>'+countryItems.map(item=>`<option value="${esc(item.value)}">${esc(item.value)} (${Number(item.count).toLocaleString('tr-TR')})</option>`).join('');
+  country.value=selectedCountry;
+  const cityItems=selectedCountry?[...(data.city||[])]:[];if(selectedCity&&selectedCountry&&!cityItems.some(item=>item.value===selectedCity))cityItems.push({value:selectedCity,count:0});
+  city.innerHTML='<option value="">Tüm şehirler</option>'+cityItems.map(item=>`<option value="${esc(item.value)}">${esc(item.value)} (${Number(item.count).toLocaleString('tr-TR')})</option>`).join('');
+  city.hidden=!selectedCountry;city.disabled=!selectedCountry;city.value=selectedCountry?selectedCity:'';
 }
 function renderProfessionFacets(){
   const host=$('profession-tree');if(!host)return;
@@ -697,14 +710,16 @@ async function saveWatch(e){e.preventDefault();$('watch-error').textContent='';c
 async function loadWatches(){
   try{const [data,routine]=await Promise.all([api('/api/watches'),api('/api/routine-cities')]);watchData=data.watches;renderRoutineCities(routine);
     $('watch-list').innerHTML=watchData.length?watchData.map(w=>watchCard(w,data.now)).join(''):'<div class="empty"><h2>Henüz iş alarmın yok</h2><p>Formdan unvan ve konumları ekleyerek ilk alarmını kur.</p></div>';}
-  catch(e){$('watch-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;$('routine-city-count').textContent='Yüklenemedi';$('routine-city-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;$('routine-profession-list').innerHTML='';}
+  catch(e){$('watch-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;$('routine-city-count').textContent='Yüklenemedi';$('routine-city-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;}
 }
 function renderRoutineCities(data){
   const cities=data.cities||[],now=Number(data.now||Date.now()/1000),toggle=$('routine-city-toggle');
+  const defaults=[...$('routine-profession-list').querySelectorAll('.tag')].map(node=>node.textContent.trim()).filter(Boolean);
+  const professions=Array.isArray(data.professions)&&data.professions.length?data.professions:defaults;
   toggle.dataset.action=data.paused?'routine-city-resume':'routine-city-pause';toggle.textContent=data.paused?'Rutin taramaları sürdür':'Rutin taramaları duraklat';
-  $('routine-city-count').textContent=`${cities.length} şehir · ${Number(data.profession_count||0)} meslek · günlük`;
-  $('routine-profession-count').textContent=`${Number(data.profession_count||0)} meslek`;
-  $('routine-profession-list').innerHTML=(data.professions||[]).map(name=>`<span class="tag">${esc(name)}</span>`).join('');
+  $('routine-city-count').textContent=`${cities.length} şehir · ${professions.length} meslek · günlük`;
+  $('routine-profession-count').textContent=`${professions.length} meslek`;
+  $('routine-profession-list').innerHTML=professions.map(name=>`<span class="tag">${esc(name)}</span>`).join('');
   $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri, öncelikleri, ilan hedefleri ve sonraki tarama durumu</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Öncelik</th><th scope="col">Meslek başına ilan hedefi</th><th scope="col">Tarama durumu</th></tr></thead><tbody>${cities.map(city=>{const due=data.paused?'Duraklatıldı':Number(city.next_due_at)<=now?'Sırada':relTime(Number(city.next_due_at)-now);const last=city.last_run;const state=last?`${tr(last.status)} · ${Number(last.new||0)} yeni · ${due}`:due;return `<tr${city.critical?' class="routine-city-critical"':''}><td>${Number(city.order)}</td><th scope="row">${esc(city.city)}</th><td>${city.critical?badge('Kritik · ilk sırada','new'):'Rutin'}</td><td>${Number(city.quota)} ilan</td><td>${esc(state)}</td></tr>`;}).join('')}</tbody></table>`;
 }
 function watchCard(w,now){
@@ -824,7 +839,7 @@ function initialize(){
   $('acknowledge-source').onclick=acknowledgeSource;
   for(const [id,value] of Object.entries(form)){if($(id)){if($(id).type==='checkbox')$(id).checked=!!value;else $(id).value=value;}}
   $('limit-input').disabled=$('unlimited').checked;$('task-error').after($('start-scrape'));readLocation();syncControls();renderChips();renderDraft();
-  wire('search','input',debounce(e=>setFilter('search',e.target.value.trim())));if($('location-search'))wire('location-search','input',debounce(e=>setFilter('location_text',e.target.value.trim())));wire('semantic-toggle','change',e=>setFilter('semantic',e.target.checked?'1':''));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
+  wire('search','input',debounce(e=>setFilter('search',e.target.value.trim())));wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('semantic-toggle','change',e=>setFilter('semantic',e.target.checked?'1':''));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
   wire('exclude-skills','input',debounce(e=>setFilter('exclude_skills',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))));
   wire('run-filter','change',e=>{delete filters.task_id;setFilter('run_id',e.target.value?[e.target.value]:[]);});
   wire('date-preset','change',e=>setPostedPreset(Number(e.target.value)));

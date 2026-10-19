@@ -9,7 +9,7 @@ from unittest.mock import patch
 import test_light
 import test_workspace
 from test_light import card, response, DETAIL
-from jobapp import repair, runs, scheduling, server, service, watches
+from jobapp import repair, routine_cities, runs, scheduling, server, service, watches
 from jobapp.models import Job, RepairTask, SearchRun, SearchTask
 
 
@@ -81,6 +81,57 @@ class SchedulingTests(unittest.TestCase):
             options = json.loads(session.get(SearchRun, "routine").options)
             self.assertEqual(options["priority_yield"], "repair")
             self.assertEqual(options["auto_resume_at"], 0)
+
+    def test_manual_request_preempts_routine_even_during_source_cooldown(self):
+        with self.factory() as session:
+            self.run_row(session, "routine", "routine", "running")
+            self.run_row(session, "manual")
+            session.commit()
+        source = dict(paused=True, manual_pause=False, remaining_seconds=120)
+        with patch("jobapp.transport.Coordinator.state", return_value=source), \
+                patch.object(server.state, "running", True), patch.object(server.state, "run_id", "routine"), \
+                patch.object(server.state, "kind", "scrape"):
+            service.tick(server)
+            self.assertTrue(server.state.stop_flag)
+        with self.factory() as session:
+            options = json.loads(session.get(SearchRun, "routine").options)
+            self.assertEqual(options["priority_yield"], "manual")
+
+    def test_source_waiting_manual_request_blocks_new_routine_city_run(self):
+        with self.factory() as session:
+            self.run_row(session, "manual")
+            session.commit()
+        source = dict(paused=True, manual_pause=False, remaining_seconds=120)
+        with patch.object(service, "routine_idle_since", time.time()-120), \
+                patch.object(service, "supervisor", type("LiveSupervisor", (), {"is_alive":lambda self: True})()), \
+                patch("jobapp.transport.Coordinator.state", return_value=source), \
+                patch.object(runs, "start") as start, \
+                patch.object(repair, "dispatch") as repair_dispatch, \
+                patch.object(routine_cities, "dispatch") as city_dispatch:
+            service.tick(server)
+        start.assert_not_called()
+        repair_dispatch.assert_not_called()
+        city_dispatch.assert_not_called()
+
+    def test_city_routine_waits_for_sixty_seconds_of_queue_idle(self):
+        class LiveSupervisor:
+            @staticmethod
+            def is_alive():
+                return True
+
+        with patch.object(service, "routine_idle_since", None), \
+                patch.object(service, "supervisor", LiveSupervisor()), \
+                patch("jobapp.transport.Coordinator.state", return_value={"paused":False}), \
+                patch.object(repair, "dispatch", return_value=False), \
+                patch.object(watches, "dispatch", return_value=False), \
+                patch.object(service.maintenance, "due", return_value=False), \
+                patch.object(routine_cities, "dispatch", return_value="city-run") as dispatch:
+            service.tick(server, now=100)
+            service.tick(server, now=159)
+            dispatch.assert_not_called()
+            service.tick(server, now=160)
+            self.assertEqual(service.routine_idle_since, 100)
+        dispatch.assert_called_once()
 
     def test_equal_manual_priority_does_not_interrupt_current_work(self):
         with self.factory() as session:

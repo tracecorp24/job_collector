@@ -77,6 +77,31 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual({i['value'] for i in result['workplace']}, {'Remote','Hybrid'})
         self.assertEqual({i['value'] for i in result['skills']}, {'Python','SQL'})
 
+    def test_country_city_facets_are_hierarchical_and_filter_jobs(self):
+        self.seed()
+        with self.factory() as session:
+            session.query(Job).filter_by(external_id="a").one().location_country = "Türkiye"
+            session.query(Job).filter_by(external_id="a").one().location_city = "İstanbul"
+            session.query(Job).filter_by(external_id="b").one().location_country = "Türkiye"
+            session.query(Job).filter_by(external_id="b").one().location_city = "Ankara"
+            session.query(Job).filter_by(external_id="c").one().location_country = "Almanya"
+            session.query(Job).filter_by(external_id="c").one().location_city = "Berlin"
+            session.commit()
+        all_facets = self.client.get('/api/facets').json
+        self.assertEqual({item['value'] for item in all_facets['country']}, {'Türkiye', 'Almanya'})
+        self.assertEqual(all_facets['city'], [])
+        turkey_facets = self.client.get('/api/facets?country=Türkiye').json
+        self.assertEqual({item['value'] for item in turkey_facets['city']}, {'İstanbul', 'Ankara'})
+        filtered = self.get_jobs('country=Türkiye&city=Ankara')
+        self.assertEqual([job['external_id'] for job in filtered['jobs']], ['b'])
+
+    def test_default_routine_professions_are_in_server_rendered_interface(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('Yapay Zeka Mühendisliği', html)
+        self.assertIn('DevOps Mühendisliği', html)
+
     def test_discovery_ids_survive_later_searches(self):
         first,_,_=self.scrape([response(card(31)),response(DETAIL)],1)
         second,_,_=self.scrape([response(card(31)+card(32)),response(DETAIL),response(DETAIL)],2)
