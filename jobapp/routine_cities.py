@@ -1,14 +1,19 @@
-"""Default cities and per-search targets for the routine search layer."""
+"""Persistent city × profession routine searches and their default targets."""
+
+import json
+import time
+from datetime import datetime
+from flask import jsonify
+
+from . import audit, config, runs
+from .models import RoutineCitySchedule, SearchRun, SearchTask, Setting
 
 
 _CITY_ROWS = (
     # Istanbul is deliberately first: it is the critical routine location.
-    ("İstanbul", "Istanbul, Turkey", None, True),
-    ("Aarhus", "Aarhus, Denmark", 50, False),
+    ("İstanbul", "Istanbul, Turkey", 150, True),
     ("Amsterdam", "Amsterdam, Netherlands", 50, False),
     ("Ankara", "Ankara, Turkey", 50, False),
-    ("Anvers", "Antwerp, Belgium", 50, False),
-    ("Atina", "Athens, Greece", 50, False),
     ("Barcelona", "Barcelona, Spain", 50, False),
     ("Berlin", "Berlin, Germany", 50, False),
     ("Brüksel", "Brussels, Belgium", 50, False),
@@ -52,6 +57,24 @@ _CITY_ROWS = (
     ("Zürih", "Zurich, Switzerland", 50, False),
 )
 
+ROUTINE_PROFESSIONS = (
+    "Yapay Zeka Mühendisliği",
+    "Yazılım Mühendisliği",
+    "Bilgisayar Mühendisliği",
+    "Makine Mühendisliği",
+    "Elektrik-Elektronik Mühendisliği",
+    "Elektrik Güç ve Tesisat Mühendisliği",
+    "Mekatronik Mühendisliği",
+    "Veri Mühendisliği",
+    "Siber Güvenlik Mühendisliği",
+    "Endüstri Mühendisliği",
+    "Havacılık ve Uzay Mühendisliği",
+    "Kimya Mühendisliği",
+    "Bulut Bilişim Mühendisliği",
+    "Robotik Mühendisliği",
+    "DevOps Mühendisliği",
+)
+
 ROUTINE_CITIES = tuple(
     {
         "order": index,
@@ -63,12 +86,121 @@ ROUTINE_CITIES = tuple(
     for index, (city, location, quota, critical) in enumerate(_CITY_ROWS, start=1)
 )
 
+CITY_COUNT = len(ROUTINE_CITIES)
+PROFESSION_COUNT = len(ROUTINE_PROFESSIONS)
+PAUSE_KEY = "routine_cities_paused"
+ROUTINE_INTERVAL_SECONDS = 86400
+
+
+def is_paused(session):
+    setting = session.get(Setting, PAUSE_KEY)
+    return bool(setting and setting.value == "1")
+
+
+def _ensure_schedules(session):
+    rows = {row.city: row for row in session.query(RoutineCitySchedule).all()}
+    changed = False
+    for city in ROUTINE_CITIES:
+        if city["city"] not in rows:
+            row = RoutineCitySchedule(city=city["city"], next_due_at=0,
+                                      interval_seconds=ROUTINE_INTERVAL_SECONDS)
+            session.add(row)
+            rows[row.city] = row
+            changed = True
+    if changed:
+        session.flush()
+    return rows
+
+
+def _city_snapshot(session, city, row, now):
+    last = session.get(SearchRun, row.last_run_id) if row.last_run_id else None
+    last_info = None
+    if last and not last.deleted_at:
+        last_info = {
+            "id": last.id,
+            "status": last.status,
+            "created_at": last.created_at.isoformat() if last.created_at else None,
+            "new": json.loads(last.stats or "{}").get("new", 0),
+        }
+    return dict(city, enabled=True, interval_seconds=row.interval_seconds,
+                next_due_at=row.next_due_at, last_run=last_info)
+
+
+def dispatch(session, now, source):
+    """Queue one due city batch; the shared supervisor runs its 15 tasks serially."""
+    if source.get("paused") or is_paused(session):
+        return None
+    rows = _ensure_schedules(session)
+    # Initially all cities tie, so the critical city order keeps Istanbul first.
+    # After that, oldest-due city wins so a long run cannot starve the rest.
+    ordered_cities = sorted(
+        ROUTINE_CITIES,
+        key=lambda city: (rows[city["city"]].next_due_at, city["order"]),
+    )
+    for city in ordered_cities:
+        row = rows[city["city"]]
+        if row.next_due_at > now:
+            continue
+        previous = session.get(SearchRun, row.last_run_id) if row.last_run_id else None
+        if previous and not previous.deleted_at and previous.status not in runs.TERMINAL:
+            continue
+
+        run_id = runs.identifier()
+        options = dict(
+            kind="scrape", queue_layer="routine", service_managed=True,
+            routine_city=city["city"], routine_city_order=city["order"],
+            classify_backend="groq" if config.GROQ_API_KEY else "rules",
+            use_embeddings=False, mode="incremental", refresh_details=False,
+            posted_within=7 * 86400, sort_recent=True, stop_when_known=True,
+        )
+        session.add(SearchRun(id=run_id, options=json.dumps(options, ensure_ascii=False)))
+        for position, profession in enumerate(ROUTINE_PROFESSIONS):
+            task_id = runs.identifier()
+            task = SearchTask(
+                id=task_id, run_id=run_id, position=position,
+                keyword=profession, location=city["location"], limit=city["quota"],
+                package=f"Rutin · {city['city']}", profession_group="Mühendislik",
+                profession_code=f"routine-engineering-{position + 1}",
+            )
+            session.add(task)
+            audit.record(session, run_id, task_id, "task_queued", {
+                "keyword": profession, "location": city["location"],
+                "limit": city["quota"], "package": task.package,
+            })
+        row.last_run_id = run_id
+        row.last_dispatched_at = now
+        row.next_due_at = now + row.interval_seconds
+        row.updated_at = datetime.utcnow()
+        audit.record(session, run_id, None, "routine_city_run_created", {
+            "city": city["city"], "location": city["location"],
+            "order": city["order"], "critical": city["critical"],
+            "profession_count": PROFESSION_COUNT, "quota": city["quota"],
+            "next_due_at": row.next_due_at,
+        })
+        session.commit()
+        return run_id
+    return None
+
 
 def install(server):
     @server.app.get("/api/routine-cities")
     def list_routine_cities():
-        return {
-            "cities": list(ROUTINE_CITIES),
-            "total": len(ROUTINE_CITIES),
-            "default_quota": 50,
-        }
+        now = time.time()
+        with runs.lock, server.SessionLocal() as session:
+            rows = _ensure_schedules(session)
+            session.commit()
+            paused = is_paused(session)
+            cities = [_city_snapshot(session, city, rows[city["city"]], now) for city in ROUTINE_CITIES]
+            return jsonify(cities=cities, total=len(cities), default_quota=50,
+                           professions=list(ROUTINE_PROFESSIONS), profession_count=PROFESSION_COUNT,
+                           interval_seconds=ROUTINE_INTERVAL_SECONDS, paused=paused, now=now)
+
+    @server.app.post("/api/routine-cities/<action>")
+    def control_routine_cities(action):
+        if action not in ("pause", "resume"):
+            return jsonify(ok=False, error="Geçersiz rutin şehir işlemi."), 400
+        with runs.lock, server.SessionLocal() as session:
+            _ensure_schedules(session)
+            session.merge(Setting(key=PAUSE_KEY, value="1" if action == "pause" else "0"))
+            session.commit()
+            return jsonify(ok=True, paused=action == "pause")

@@ -2,7 +2,7 @@
 import json
 import time
 from sqlalchemy import func
-from .models import SearchRun, SearchTask, RepairTask, Watch
+from .models import SearchRun, SearchTask, RepairTask, Watch, RoutineCitySchedule, Setting
 from . import audit
 
 LAYERS = ("manual", "repair", "routine")
@@ -132,5 +132,8 @@ def summary(server, session, source, now=None):
                     counts[active]["queued"] -= 1
                 break
     due = session.query(Watch).filter(Watch.enabled.is_(True), Watch.next_due_at <= now).count()
+    city_paused = session.get(Setting, "routine_cities_paused")
+    if not city_paused or city_paused.value != "1":
+        due += session.query(RoutineCitySchedule).filter(RoutineCitySchedule.next_due_at <= now).count()
     return dict(order=list(LAYERS), active_layer=active, source_paused=source["paused"],
         routine_schedules_due=due, layers=[dict(key=name, label=LABELS[name], priority=i+1, **counts[name]) for i,name in enumerate(LAYERS)])

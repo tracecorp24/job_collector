@@ -274,6 +274,18 @@ class Watch(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
 
 
+class RoutineCitySchedule(Base):
+    """Persistent due time and last run for one configured city batch."""
+    __tablename__ = "routine_city_schedules"
+    city = Column(String(128), primary_key=True)
+    next_due_at = Column(Float, default=0, index=True)
+    interval_seconds = Column(Integer, default=86400)
+    last_run_id = Column(String(40), nullable=True)
+    last_dispatched_at = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
 class AppLog(Base):
     """Sunucu süreç logu (journald'daki satırların kalıcı, sorgulanabilir kopyası)."""
     __tablename__ = "app_logs"

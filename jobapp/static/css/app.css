@@ -32,6 +32,9 @@ body:not(.dev) .dev-only{display:none!important}
 .routine-city-heading h2{margin:0;font-size:1.15rem}
 .routine-city-heading .eyebrow{margin:.1rem 0 .25rem}
 .routine-city-panel>p{max-width:900px;margin:.7rem 0}
+.routine-profession-heading{margin:.8rem 0 1rem}
+.routine-profession-heading h3{margin:.7rem 0;font-size:.95rem}
+.routine-professions{display:flex;flex-wrap:wrap;gap:.35rem}
 .routine-city-table-wrap{max-height:34rem;overflow:auto;border:1px solid var(--border);border-radius:10px}
 .routine-city-table{width:100%;border-collapse:collapse;font-size:.86rem}
 .routine-city-table th,.routine-city-table td{padding:.55rem .75rem;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}

@@ -4,7 +4,7 @@ import logging
 import threading
 import time
 from sqlalchemy import or_, and_, func
-from . import config, runs, audit, watches, maintenance, daily_summary, repair, scheduling
+from . import config, runs, audit, watches, maintenance, daily_summary, repair, scheduling, routine_cities
 from .models import SearchRun, SearchTask
 from .transport import Coordinator, SourcePaused
 
@@ -45,6 +45,8 @@ def tick(server, now=None):
             routine = []
             for run in candidates:
                 options = json.loads(run.options or "{}")
+                if options.get("routine_city") and routine_cities.is_paused(session):
+                    continue
                 # Existing source-paused work is migrated without changing its deadline.
                 tasks = session.query(SearchTask).filter_by(run_id=run.id).order_by(SearchTask.position).all()
                 if scheduling.eligible(session, run, now, source):
@@ -101,6 +103,10 @@ def tick(server, now=None):
                 except ValueError as exc:
                     abandon(session, session.get(SearchRun, run_id), str(exc))
                     continue
+                return
+            # Periodic catalogue work belongs to the live supervisor loop; a
+            # direct tick() call only advances explicitly requested work.
+            if supervisor and supervisor.is_alive() and routine_cities.dispatch(session, now, source):
                 return
             if watches.dispatch(session, now, source):
                 return

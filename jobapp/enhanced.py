@@ -545,13 +545,15 @@ def install(server):
             from .models import RepairTask
             from .models import Setting
             session.merge(Setting(key="completion_paused", value="1"))
+            session.merge(Setting(key="routine_cities_paused", value="1"))
             completion_paused = session.query(RepairTask).filter(RepairTask.status.in_(("pending", "retry"))).update(
                 {RepairTask.status:"paused"}, synchronize_session=False)
             if server.state.running and server.state.kind == "repair":
                 server.state.stop_flag = True
             session.commit()
         server.state.emit("task_control", {"action":"cancel_all"})
-        return jsonify(ok=True, paused=paused, completion_paused=completion_paused, schedules_disabled=schedules, watches_disabled=len(watches))
+        return jsonify(ok=True, paused=paused, completion_paused=completion_paused,
+                       schedules_disabled=schedules, watches_disabled=len(watches), routine_cities_paused=True)
 
     @app.post("/api/runs/<run_id>/<action>")
     def run_action(run_id, action):

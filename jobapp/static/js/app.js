@@ -402,9 +402,9 @@ async function controlTask(runId,taskId,action){
   if(action==='resume'){closeDialog('history-dialog');showTab('queue');}
 }
 async function cancelAll(){
-  if(!await confirmAction('Çalışan ve bekleyen tüm taramalar beklemeye alınacak, iş alarmları kapatılacak. Hiçbiri kendiliğinden başlamaz; istediğini Geçmiş’ten "Devam et" ile veya Düzenli taramalar’dan tekrar açarak başlatabilirsin. Devam edilsin mi?'))return;
+  if(!await confirmAction('Çalışan ve bekleyen tüm taramalar beklemeye alınacak; iş alarmları ve rutin şehir taramaları duraklatılacak. Hiçbiri kendiliğinden başlamaz. Devam edilsin mi?'))return;
   const r=await api('/api/queue/cancel-all',{method:'POST'});
-  toast(`${r.paused} tarama beklemeye alındı, ${r.watches_disabled} iş alarmı kapatıldı.`);
+  toast(`${r.paused} tarama beklemeye alındı, ${r.watches_disabled} iş alarmı kapatıldı. Rutin şehir taramaları duraklatıldı.`);
   if(currentRun)currentRun=await api('/api/runs/'+currentRun.id).catch(()=>currentRun);renderRun();await pollStatus();loadWatches().catch(()=>{});
 }
 async function runAction(id,action){
@@ -695,13 +695,17 @@ async function saveWatch(e){e.preventDefault();$('watch-error').textContent='';c
   try{if(watchEditing)await api('/api/watches/'+watchEditing,{method:'PUT',body});else await api('/api/watches',{method:'POST',body});toast(watchEditing?'İş alarmı güncellendi.':'İş alarmı kaydedildi. İlk tur, kuyruk ve kaynak uygun olduğunda başlar.');resetWatchForm();await loadWatches();}
   catch(err){$('watch-error').textContent=err.message;}finally{$('watch-save').disabled=false;}}
 async function loadWatches(){
-  try{const [data,routine]=await Promise.all([api('/api/watches'),api('/api/routine-cities')]);watchData=data.watches;renderRoutineCities(routine.cities||[]);
+  try{const [data,routine]=await Promise.all([api('/api/watches'),api('/api/routine-cities')]);watchData=data.watches;renderRoutineCities(routine);
     $('watch-list').innerHTML=watchData.length?watchData.map(w=>watchCard(w,data.now)).join(''):'<div class="empty"><h2>Henüz iş alarmın yok</h2><p>Formdan unvan ve konumları ekleyerek ilk alarmını kur.</p></div>';}
-  catch(e){$('watch-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;$('routine-city-count').textContent='Yüklenemedi';$('routine-city-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;}
+  catch(e){$('watch-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;$('routine-city-count').textContent='Yüklenemedi';$('routine-city-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;$('routine-profession-list').innerHTML='';}
 }
-function renderRoutineCities(cities){
-  $('routine-city-count').textContent=`${cities.length} şehir · İstanbul ilk sırada`;
-  $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri ve varsayılan ilan hedefleri</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Öncelik</th><th scope="col">Varsayılan ilan hedefi</th></tr></thead><tbody>${cities.map(city=>`<tr${city.critical?' class="routine-city-critical"':''}><td>${Number(city.order)}</td><th scope="row">${esc(city.city)}</th><td>${city.critical?badge('Kritik · ilk sırada','new'):'Rutin'}</td><td>${city.quota==null?'Limitsiz':Number(city.quota)+' ilan / arama'}</td></tr>`).join('')}</tbody></table>`;
+function renderRoutineCities(data){
+  const cities=data.cities||[],now=Number(data.now||Date.now()/1000),toggle=$('routine-city-toggle');
+  toggle.dataset.action=data.paused?'routine-city-resume':'routine-city-pause';toggle.textContent=data.paused?'Rutin taramaları sürdür':'Rutin taramaları duraklat';
+  $('routine-city-count').textContent=`${cities.length} şehir · ${Number(data.profession_count||0)} meslek · günlük`;
+  $('routine-profession-count').textContent=`${Number(data.profession_count||0)} meslek`;
+  $('routine-profession-list').innerHTML=(data.professions||[]).map(name=>`<span class="tag">${esc(name)}</span>`).join('');
+  $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri, öncelikleri, ilan hedefleri ve sonraki tarama durumu</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Öncelik</th><th scope="col">Meslek başına ilan hedefi</th><th scope="col">Tarama durumu</th></tr></thead><tbody>${cities.map(city=>{const due=data.paused?'Duraklatıldı':Number(city.next_due_at)<=now?'Sırada':relTime(Number(city.next_due_at)-now);const last=city.last_run;const state=last?`${tr(last.status)} · ${Number(last.new||0)} yeni · ${due}`:due;return `<tr${city.critical?' class="routine-city-critical"':''}><td>${Number(city.order)}</td><th scope="row">${esc(city.city)}</th><td>${city.critical?badge('Kritik · ilk sırada','new'):'Rutin'}</td><td>${Number(city.quota)} ilan</td><td>${esc(state)}</td></tr>`;}).join('')}</tbody></table>`;
 }
 function watchCard(w,now){
   const last=w.last_run,running=!!last&&!['finished','cancelled','stopped'].includes(last.status);
@@ -730,6 +734,7 @@ async function dispatch(action,el){
   if(action==='disable-schedule'){await api(`/api/service/schedules/${run}/stop`,{method:'POST'});toast('Yeni tekrarlar kapatıldı.');return openService();}
   if(action==='maintenance-home'){await openDrawer();document.querySelector('.maintenance').open=true;document.querySelector('.maintenance').scrollIntoView({block:'start'});return;}
   if(action==='new-search')return openDrawer();if(action==='dashboard')return showTab('dashboard');if(action==='queue')return showTab('queue');if(action==='watches')return showTab('watches');
+  if(action==='routine-city-pause'||action==='routine-city-resume'){await api('/api/routine-cities/'+(action==='routine-city-pause'?'pause':'resume'),{method:'POST'});toast(action==='routine-city-pause'?'Rutin şehir taramaları duraklatıldı; çalışan tur tamamlanacak.':'Rutin şehir taramaları yeniden etkinleştirildi.');await loadWatches();await pollStatus();return;}
   if(action==='dev-menu')return openDev();if(action==='dev-off'){devMode=false;saveDev();applyDev();closeDialog('dev-dialog');toast('Geliştirici modu kapatıldı.');return;}
   if(action.startsWith('watch-'))return watchAction(action.slice(6),id);if(action==='history')return openHistory();if(action==='daily-summary')return openDailySummary();if(action==='reset')return resetFilters();if(action==='job')return openJob(id);if(action==='similar')return similar(id);
   if(action==='completion-pause'||action==='completion-resume'){await api('/api/completion-queue/'+action.slice(11),{method:'POST'});await pollStatus();return;}
