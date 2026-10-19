@@ -749,3 +749,5 @@ body[data-theme="dark"] .d-source.paused{background:#342e1f;border-color:#665538
   body[data-theme="dark"] .bottom-nav{background:#1c2421f5;border-top-color:#343f3b}
   body[data-theme="dark"] .bottom-main-icon,body[data-theme="dark"] .bottom-main[aria-current="page"] .bottom-main-icon{background:#287e75;box-shadow:0 3px 10px #287e7533}
 }
+
+.filter-subgroup{border:0;border-top:1px solid var(--border);margin:.65rem 0 0;padding:.65rem 0 0;min-width:0}.filter-subgroup>legend{font-size:.82rem;font-weight:600;padding:0 .25rem 0 0}

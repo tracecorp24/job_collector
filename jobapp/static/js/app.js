@@ -79,6 +79,38 @@ function facetCollapse(box){
   box.querySelector('.facet-options').classList.toggle('collapsed',!open&&!query);
   const more=box.querySelector('.facet-more');more.hidden=count<=6||!!query;more.textContent=open?'Daha az göster':`Tümünü göster (${count})`;
 }
+function organizeFilterGroups(){
+  const sectionFor=selector=>document.querySelector(selector).closest('details.filter-group');
+  const skillsSection=sectionFor('#exclude-skills');
+  const companyText=document.querySelector('[data-filter="company_text"]').closest('label');
+  $('facet-company').append(companyText);
+  $('facet-skills').querySelector('summary').textContent='Yetenekler';
+  $('facet-skills').append(skillsSection.querySelector('.fields'));
+  skillsSection.remove();
+
+  const moveFacet=(key,host)=>{
+    const old=$('facet-'+key),section=document.createElement('fieldset');
+    section.id=old.id;section.className='facet-block filter-subgroup';
+    const legend=document.createElement('legend');legend.textContent=names[key];
+    old.querySelector('summary').remove();section.append(legend,...old.childNodes);
+    old.remove();host.append(section);
+  };
+  const experience=sectionFor('[data-filter="experience_min"]');
+  experience.querySelector('summary').textContent='Kıdem ve deneyim';
+  moveFacet('seniority',experience);
+  experience.append(experience.querySelector('.fields'));
+
+  const history=sectionFor('#run-filter');
+  history.querySelector('summary').textContent='Arama ve tarama geçmişi';
+  for(const key of ['search_term','search_location','source'])moveFacet(key,history);
+  moveFacet('backend',$('content-filters').parentElement);
+  moveFacet('flag',sectionFor('[data-filter="quality"]'));
+
+  const legacy=document.createElement('details');legacy.className='advanced';
+  const summary=document.createElement('summary');summary.textContent='Gelişmiş: genel kategori';
+  legacy.append(summary);$('facet-professions').append(legacy);moveFacet('category',legacy);
+  sectionFor('[data-filter="title"]').querySelector('summary').textContent='Gelişmiş metin araması';
+}
 function renderChips(){
   const entries=Object.entries(filters).filter(([k,v])=>names[k]&&!['sort','page','per_page'].includes(k)&&!((k==='visibility'&&v==='active')||(k==='quality'&&v==='valid')||(k==='skill_mode'&&v==='any')));
   $('active-filters').innerHTML=entries.flatMap(([key,value])=>(Array.isArray(value)?value:[value]).map(v=>`<button class="filter-chip" data-remove-filter="${esc(key)}" data-value="${esc(v)}" aria-label="${esc(names[key])} filtresini kaldır">${esc(key==='created_from'&&v===seen.mark?'Son kontrolden beri':names[key])}${key==='created_from'&&v===seen.mark?'':': '+esc(v==='1'?'Evet':v==='0'?'Hayır':/^\d{4}-\d\d-\d\dT/.test(v)?date(v):tr(v))} <span aria-hidden="true">×</span></button>`)).join('');
@@ -737,7 +769,7 @@ document.addEventListener('change',event=>{
 document.addEventListener('input',event=>{
   const el=event.target;if(el.dataset.draft!=null){const t=draft[Number(el.dataset.draft)];t[el.dataset.key]=el.dataset.key==='limit'?(el.value===''?null:Number(el.value)):el.value;persist();scheduleDraftSave();}
   if(el.id==='profession-filter-search')renderProfessionFacets();if(el.dataset.filter&&el.tagName==='INPUT'&&el.type!=='checkbox')scheduleFilters(el.dataset.filter,el.value);
-  if(el.classList.contains('facet-search')){const query=el.value.toLocaleLowerCase('tr');el.closest('.filter-group').querySelectorAll('.facet-options label').forEach(label=>{label.hidden=!label.textContent.toLocaleLowerCase('tr').includes(query);});facetCollapse(el.closest('.filter-group'));}
+  if(el.classList.contains('facet-search')){const query=el.value.toLocaleLowerCase('tr');el.closest('.facet-block').querySelectorAll('.facet-options label').forEach(label=>{label.hidden=!label.textContent.toLocaleLowerCase('tr').includes(query);});facetCollapse(el.closest('.facet-block'));}
 });
 // Panel kartları ilgili filtreyle İlanlar sekmesini açar: bir değer, ya da "created_from:7" gibi son N gün penceresi.
 function openJobsFromDashboard(el){
@@ -779,9 +811,10 @@ function initialize(){
   const reportDialog=document.createElement('dialog');reportDialog.id='report-dialog';reportDialog.className='wide-dialog';reportDialog.setAttribute('aria-labelledby','report-title');reportDialog.innerHTML='<div class="dialog-heading"><h2 id="report-title">Arama raporu ve verim</h2><button data-close="report-dialog" aria-label="Raporu kapat">✕</button></div><button id="refresh-report">Raporu yenile</button><div id="report-content"></div>';document.body.append(reportDialog);
   const logQuery=document.createElement('input');logQuery.id='log-query';logQuery.type='search';logQuery.placeholder='İstek / ilan / deneme kimliği veya mesaj ara';logQuery.setAttribute('aria-label','İşlem kayıtlarında ara');$('log-totals').before(logQuery);
   for(const [value,label] of [['cache_hit','Önbellekten alınan detaylar'],['cache_miss','Detayı yenilenen ilanlar'],['source_paused','Kaynak nedeniyle duraklamalar'],['shared_rate_wait','Ortak istek sırası'],['processing_stage','İşleme aşamaları'],['processing_result','İşleme sonuçları'],['job_skipped','Elenen ilanlar'],['checkpoint_saved','Devam noktaları'],['user_action','Kullanıcı işlemleri'],['run_started','Çalıştırma / deneme kimlikleri'],['task_queued','Kuyruğa alınan görevler']])$('log-kind').add(new Option(label,value));
-  $('facet-filters').innerHTML=groupKeys.map(key=>`<details class="filter-group" id="facet-${key}"><summary>${names[key]}</summary><input class="facet-search" type="search" placeholder="Seçeneklerde ara…" aria-label="${names[key]} seçeneklerinde ara"><div class="facet-options"></div><button type="button" class="text-button facet-more" data-facet-more="${key}" hidden></button></details>`).join('');
+  $('facet-filters').innerHTML=groupKeys.map(key=>`<details class="filter-group facet-block" id="facet-${key}"><summary>${names[key]}</summary><input class="facet-search" type="search" placeholder="Seçeneklerde ara…" aria-label="${names[key]} seçeneklerinde ara"><div class="facet-options"></div><button type="button" class="text-button facet-more" data-facet-more="${key}" hidden></button></details>`).join('');
   $('date-filters').innerHTML=[['posted','Yayın tarihi'],['created','İlk eklenme'],['scraped','Son tarama']].map(([key,label])=>`<fieldset><legend>${label}</legend><div class="field-pair"><label>Başlangıç<input type="date" data-filter="${key}_from"></label><label>Bitiş<input type="date" data-filter="${key}_to"></label></div>${key==='posted'?'<label class="check"><input type="checkbox" data-filter="posted_missing">Yayın tarihi belirtilmemiş</label>':''}</fieldset>`).join('');
   $('content-filters').innerHTML=[['has_description','Açıklama'],['has_summary','Yapay zekâ özeti'],['has_embedding','Eşleştirme verisi']].map(([key,label])=>`<label>${label}<select data-filter="${key}"><option value="">Tümü</option><option value="1">Var</option><option value="0">Yok</option></select></label>`).join('');
+  organizeFilterGroups();
   const legacyButton=document.createElement('button');legacyButton.id='legacy-log';legacyButton.textContent='Kaynak metin kaydı';legacyButton.hidden=true;$('download-logs').after(legacyButton);
   $('acknowledge-source').onclick=acknowledgeSource;
   for(const [id,value] of Object.entries(form)){if($(id)){if($(id).type==='checkbox')$(id).checked=!!value;else $(id).value=value;}}
