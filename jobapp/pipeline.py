@@ -217,6 +217,7 @@ def run_scrape(keywords, locations, limit=None, classify_backend="rules",
     session = SessionLocal()
 
     def on_job(raw):
+        checkpoint_after_save = raw.pop("_checkpoint_after_save", None)
         raw.update(search_id=active_search_id, run_id=run_id)
         last_stage = "export"
         def processing_event(kind, data):
@@ -246,6 +247,11 @@ def run_scrape(keywords, locations, limit=None, classify_backend="rules",
             session.flush()
             if active_search_id and not session.get(TaskJob, (active_search_id, job.id)):
                 session.add(TaskJob(task_id=active_search_id, job_id=job.id, is_new=created, outcome=outcome))
+            if checkpoint_after_save is not None and active_search_id:
+                if not job.quality_ok:
+                    checkpoint_after_save["collected"] -= 1
+                # The saved job, search membership and resume cursor commit together.
+                session.get(SearchTask, active_search_id).checkpoint = json.dumps(checkpoint_after_save)
             session.commit()
             if job.deleted_at and exporter and exporter.current:
                 from .search_export import _write_json
@@ -320,7 +326,7 @@ def run_scrape(keywords, locations, limit=None, classify_backend="rules",
     return stats
 
 
-def run_embed_backfill(limit=None, emit=None, should_stop=None, force=False, skip_ids=None) -> dict:
+def run_embed_backfill(limit=None, emit=None, should_stop=None, force=False, skip_ids=None, ready_only=False) -> dict:
     """Compute embeddings for jobs already in the DB that don't have one yet
     — no re-scraping. Requires Ollama running locally (see embed.py).
 
@@ -338,6 +344,8 @@ def run_embed_backfill(limit=None, emit=None, should_stop=None, force=False, ski
     stats = {"embedded": 0, "skipped": 0, "total": 0}
     try:
         q = session.query(Job).filter(Job.quality_ok.is_(True), Job.deleted_at.is_(None))
+        if ready_only:
+            q = ready_for_analysis(q)
         if not force:
             q = q.filter(Job.embedding.is_(None))
         if skip_ids:
@@ -395,7 +403,14 @@ def run_embed_backfill(limit=None, emit=None, should_stop=None, force=False, ski
     return stats
 
 
-def run_classify_backfill(backend="local", limit=None, model=None, emit=None, should_stop=None, force=False, skip_ids=None) -> dict:
+def ready_for_analysis(query):
+    """Deferred descriptions must arrive before optional source-wait enrichment."""
+    from sqlalchemy import func
+    return query.filter(Job.description.isnot(None), func.trim(Job.description) != "",
+        func.coalesce(func.json_extract(Job.raw, '$.detail_pending'), 0) == 0)
+
+
+def run_classify_backfill(backend="local", limit=None, model=None, emit=None, should_stop=None, force=False, skip_ids=None, patient=True, ready_only=False) -> dict:
     """Re-classify jobs already in the DB that haven't been classified by
     ``backend`` yet — no re-scraping. ``backend`` is "local" (Ollama) or
     "claude"; both fall back to leaving the job's existing classification
@@ -414,6 +429,8 @@ def run_classify_backfill(backend="local", limit=None, model=None, emit=None, sh
     try:
         q = session.query(Job).filter(Job.quality_ok.is_(True), Job.deleted_at.is_(None))
         expected = "llm" if backend == "claude" else backend
+        if ready_only:
+            q = ready_for_analysis(q)
         if not force:
             q = q.filter(Job.classified_by != expected)
         if skip_ids:
@@ -437,7 +454,7 @@ def run_classify_backfill(backend="local", limit=None, model=None, emit=None, sh
             _emit("processing_stage", {"stage":"classify", "phase":"started", "job_id":job.id, "backend":backend, "model":config.GROQ_CLASSIFY_MODEL if backend == "groq" else model or config.OLLAMA_MODEL})
             cls = classify_job(
                 job.title, job.description,
-                workplace_type=job.workplace_type, backend=backend, model=model, patient=True,
+                workplace_type=job.workplace_type, backend=backend, model=model, patient=patient,
             )
             if cls.get("classified_by") != expected:
                 _emit("processing_result", {"stage":"classify", "status":"failed", "job_id":job.id,

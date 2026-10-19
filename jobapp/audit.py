@@ -2,8 +2,9 @@
 import json
 import logging
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import func
+from . import config
 from . import config
 from .models import SearchEvent, SearchRun, SearchTask, TaskJob, Job
 
@@ -61,6 +62,9 @@ def report(session, run_id, task_id=None):
                    duplicates=0, detail_failures=0, invalid_cards=0, not_processed=0,
                    processing_failures=0, quality_rejections=0, model_fallbacks=0, retry_waits=0, wait_seconds=0,
                    cache_hits=0, cache_misses=0, source_pauses=0, pause_seconds=0)
+    metrics.update(shared_wait_seconds=0, source_wait_seconds=0, http_seconds=0, processing_seconds=0,
+                   network_cards=0, snapshot_resumes=0)
+    pause_intervals, cache_reasons = [], Counter()
     statuses = Counter()
     returned_ids, collected_ids, failed_ids = set(), set(), set()
     reasons, timeline, last_error = {}, [], None
@@ -69,13 +73,24 @@ def report(session, run_id, task_id=None):
         data = json.loads(event.data)
         if event.kind in ("cache_hit", "cache_miss"):
             metrics["cache_hits" if event.kind == "cache_hit" else "cache_misses"] += 1
+            if event.kind == "cache_miss":
+                cache_reasons[data.get("reason", "unknown")] += 1
         elif event.kind == "source_paused":
             metrics["source_pauses"] += 1
             # Detay tamamlayıcının beklemesi çoğu zaman koşu bittikten sonra olur; koşunun donma oranını şişirmesin.
             if data.get("source") != "detail_filler":
                 metrics["pause_seconds"] += data.get("remaining_seconds") or data.get("seconds") or 0
+            start = event.created_at.replace(tzinfo=timezone.utc).timestamp()
+            end = min(data.get("blocked_until", start), datetime.now(timezone.utc).timestamp())
+            if end > start:
+                pause_intervals.append((start, end))
+        elif event.kind == "shared_rate_wait_finished":
+            metrics["shared_wait_seconds"] += data.get("seconds", 0)
+        elif event.kind == "processing_stage" and data.get("phase") == "finished":
+            metrics["processing_seconds"] += data.get("duration_ms", 0)/1000
         elif event.kind == "request_finished":
             metrics["requests"] += 1
+            metrics["http_seconds"] += data.get("duration_ms", 0)/1000
             metrics["search_requests" if data.get("params") else "detail_requests"] += 1
             statuses[str(data.get("status") or "network_error")] += 1
         elif event.kind == "page_result":
@@ -83,6 +98,10 @@ def report(session, run_id, task_id=None):
             for key in ("collected", "duplicates", "detail_failures", "invalid_cards", "not_processed"):
                 metrics[key] += data.get(key, 0)
             metrics["returned_cards"] += data.get("cards_returned", 0)
+            if data.get("from_checkpoint"):
+                metrics["snapshot_resumes"] += 1
+            else:
+                metrics["network_cards"] += data.get("cards_returned", 0)
             returned_ids.update(data.get("returned_ids", []))
             collected_ids.update(data.get("collected_ids", []))
             failed_ids.update(data.get("failed_ids", []))
@@ -103,6 +122,15 @@ def report(session, run_id, task_id=None):
         if event.kind == "error":
             last_error = data
     links = session.query(TaskJob).filter(TaskJob.task_id.in_(ids))
+    # Source pauses can overlap across events; count each elapsed second once.
+    merged = []
+    for start, end in sorted(pause_intervals):
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    metrics["source_wait_seconds"] = round(sum(end-start for start, end in merged), 3)
+    metrics["cache_miss_reasons"] = dict(cache_reasons)
     linked = session.query(Job).join(TaskJob, TaskJob.job_id == Job.id).filter(TaskJob.task_id.in_(ids)).distinct()
     metrics.update(found_jobs=linked.count(), new_jobs=links.filter(TaskJob.is_new.is_(True)).count(),
                    updated_jobs=links.filter(TaskJob.is_new.is_(False), TaskJob.outcome != "unchanged").count(),
@@ -122,9 +150,19 @@ def report(session, run_id, task_id=None):
     metrics.update(rate_429=round(statuses.get("429", 0) / total_req, 4) if total_req > 0 else 0.0,
                    cache_hit_rate=round(metrics["cache_hits"] / cache_total, 4) if cache_total > 0 else 0.0,
                    useful_jobs_per_request=round(metrics["new_jobs"] / total_req, 4) if total_req > 0 else 0.0,
-                   avg_cards_per_page=round(metrics["returned_cards"] / search_req, 2) if search_req > 0 else 0.0,
+                   avg_cards_per_page=round(metrics["network_cards"] / search_req, 2) if search_req > 0 else 0.0,
                    total_run_seconds=round(elapsed, 1),
                    frozen_ratio=round(metrics["pause_seconds"] / elapsed, 4) if elapsed > 0 else 0.0)
+    metrics["requests_per_unique_job"] = round(metrics["requests"]/len(collected_ids), 3) if collected_ids else None
+    pending = set()
+    for task in tasks:
+        checkpoint = json.loads(task.checkpoint or "{}")
+        page = checkpoint.get("page_snapshot") or {}
+        if task.status not in ("finished", "stopped", "cancelled"):
+            pending.update(r["external_id"] for r in page.get("cards", []) if r and r["external_id"] not in checkpoint.get("seen", []))
+    pending.update(job.external_id for job in linked.filter(Job.deleted_at.is_(None),
+        func.json_extract(Job.raw, '$.detail_pending') == 1))
+    metrics["pending_unique_details"] = len(pending)
     findings = []
     def finding(code, title, evidence, steps, severity="info"):
         findings.append(dict(code=code, title=title, evidence=evidence, next_steps=steps, severity=severity))
@@ -134,7 +172,7 @@ def report(session, run_id, task_id=None):
                 ["Kaynak durumundaki bekleme süresinin dolmasını bekleyin.", "Güvenlik kontrolünde erişimi kontrol edip duraklatmayı kaldırın; ardından aynı süreçten devam edin."], "warning")
     if metrics["cache_hits"]:
         finding("cache", "Geçerli önbellekteki detaylar yeniden indirilmedi.", metrics["cache_hits"],
-                ["Önbellek 72 saat geçerlidir; süresi dolan veya kart bilgisi değişen ilanlar yeniden alınır."])
+                [f"Önbellek {config.DETAIL_CACHE_TTL_SECONDS/3600:g} saat geçerlidir; süresi dolan veya kart bilgisi değişen ilanlar yeniden alınır."])
     if not has_pages and kind == "scrape":
         finding("limited_history", "Bu süreç için ayrıntılı sayfa geçmişi bulunmuyor.",
                 "Eski süreçlerin bilinmeyen istek sayıları ve yanıtları sonradan tahmin edilmez.",

@@ -123,7 +123,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(run['status'],'paused')
         folder=run['tasks'][0]['folder']
         self.assertEqual(run['tasks'][0]['count'],1)
-        with patch('requests.Session.get',side_effect=[response(card(1)+card(2)),response(DETAIL)]) as get:
+        with patch('requests.Session.get',side_effect=[response(DETAIL)]) as get:
             self.assertEqual(self.client.post(f"/api/runs/{run['id']}/resume").status_code,200)
             server.state.thread.join(timeout=15)
         resumed=self.client.get('/api/runs/'+run['id']).json
@@ -131,7 +131,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(resumed['tasks'][0]['folder'],folder)
         self.assertEqual(resumed['tasks'][0]['count'],2)
         self.assertEqual(resumed['stats']['new'],2)
-        self.assertEqual(get.call_count,2)
+        self.assertEqual(get.call_count,1)
         self.assertEqual(self.get_jobs()['total'],2)
 
     def test_recovery_and_pending_task_reorder(self):

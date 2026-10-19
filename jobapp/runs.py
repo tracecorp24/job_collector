@@ -326,6 +326,7 @@ def schedule_error_retry(session, run):
 
 
 def maintenance_worker(server, run_id):
+    import time
     from .pipeline import run_embed_backfill, run_classify_backfill
     attempt_id = identifier()
     try:
@@ -367,14 +368,19 @@ def maintenance_worker(server, run_id):
                 server.state.emit(kind, dict(data, run_id=run_id, task_id=task_id))
 
         remaining_limit = None if options.get("limit") is None else max(0, options["limit"] - len(completed))
+        background = options.get("during_source_wait", False)
+        deadline = Coordinator().state()["blocked_until"] - 5 if background else None
+        completed_before = len(completed)
+        def should_yield():
+            return server.state.stop_flag or bool(background and (time.time() >= deadline or len(completed)-completed_before >= 5))
         common = dict(limit=remaining_limit, force=options.get("force", False), skip_ids=sorted(completed),
-                      emit=emit, should_stop=lambda: server.state.stop_flag)
+                      emit=emit, should_stop=should_yield, ready_only=background)
         if remaining_limit == 0:
             result = {"total":0, "termination_reason":"completed"}
         elif options["kind"] == "embed":
             result = run_embed_backfill(**common)
         else:
-            result = run_classify_backfill(backend=options.get("backend", "local"), model=options.get("model"), **common)
+            result = run_classify_backfill(backend=options.get("backend", "local"), model=options.get("model"), patient=not background, **common)
         with server.SessionLocal() as session:
             run = session.get(SearchRun, run_id)
             task = session.get(SearchTask, task_id)
@@ -387,9 +393,16 @@ def maintenance_worker(server, run_id):
                 run.status = "paused"
             elif task.error or result.get("termination_reason") == "model_unavailable":
                 run.status = "error"
+            elif background and result.get("termination_reason") == "stopped_by_user":
+                run.status = "paused"
             else:
                 run.status = "finished"
             reason = "Kullanıcı işlemi durdurdu." if run.status == "stopped" else "Kullanıcı işlemi duraklattı." if run.status == "paused" else task.error or "Analiz modeli erişilemedi veya kotası doldu." if run.status == "error" else "İşlem tamamlandı."
+            if background and run.status == "paused" and not server.state.stop_flag:
+                reason = "Analiz grubu tamamlandı; kaynak beklemesinde kaldığı yerden devam edecek."
+                current_options = json.loads(run.options or "{}")
+                current_options["auto_resume_at"] = 0
+                run.options = json.dumps(current_options)
             transition(run, run.status, reason)
             transition(task, run.status, reason)
             audit.record(session, run_id, task_id, "run_completed", {"attempt_id":attempt_id, "status":run.status, "stats":result})

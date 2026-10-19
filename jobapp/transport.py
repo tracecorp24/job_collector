@@ -98,6 +98,9 @@ class Coordinator:
                 "blocked_until":row["blocked_until"],"remaining_seconds":math.ceil(remaining),
                 "reason":row["reason"],"message":message,"status_code":row["status_code"],
                 "violation_streak":row["violation_streak"],"interval_floor":max(config.MIN_REQUEST_INTERVAL,row["interval_floor"]),
+                "effective_interval":max(self.interval, config.MIN_REQUEST_INTERVAL, row["interval_floor"]),
+                "interval_with_jitter_max":max(self.interval, config.MIN_REQUEST_INTERVAL, row["interval_floor"])*(1+config.REQUEST_JITTER),
+                "next_request_at":row["next_request_at"],
                 "acknowledge_allowed":False}
 
     def ensure_allowed(self):
@@ -108,6 +111,7 @@ class Coordinator:
 
     def acquire(self, should_stop=lambda:False, emit=None):
         announced = False
+        started = self.clock()
         while not should_stop():
             now = self.clock()
             with self.transaction() as connection:
@@ -122,12 +126,23 @@ class Coordinator:
                     interval *= 1 + random.uniform(0, config.REQUEST_JITTER)
                     connection.execute(text("UPDATE source_policy SET lease_owner=:owner, lease_until=:lease, next_request_at=:next, interval_floor=:floor WHERE source=:source"),
                                        {"owner":owner,"lease":now+config.NETWORK_LEASE_SECONDS,"next":now+interval,"floor":max(config.MIN_REQUEST_INTERVAL,row["interval_floor"]),"source":self.source})
-                    return owner
+                    break
             if not announced and emit:
-                emit("shared_rate_wait", {"source":self.source,"seconds":round(wait,3),"reason":"Web ve CLI için ortak istek sırası bekleniyor."})
+                emit("shared_rate_wait", {"source":self.source,"seconds":round(wait,3),
+                     "effective_interval":state["effective_interval"], "reason":"Kaynağı koruyan ortak istek aralığı bekleniyor."})
                 announced = True
             self.sleep(min(0.25, wait))
-        return None
+        else:
+            owner = None
+        if announced and emit:
+            try:
+                emit("shared_rate_wait_finished", {"seconds":round(max(0, self.clock()-started),3),
+                                                  "outcome":"acquired" if owner else "cancelled"})
+            except BaseException:
+                if owner:
+                    self.release(owner)
+                raise
+        return owner
 
     def release(self, owner):
         with self.transaction() as connection:
@@ -197,9 +212,18 @@ class Details:
 
     def get_many(self, raws, force=False, allow_stale_ids=()):
         """Read a page's detail cache together; cache survives result deletion."""
-        if force:
-            return {}
+        decisions = self.lookup_many(raws, force=force, allow_stale_ids=allow_stale_ids)
+        return {key:result["value"] for key,result in decisions.items() if result["value"] is not None}
+
+    def lookup(self, raw, force=False, allow_stale=False):
+        return self.lookup_many([raw], force=force,
+            allow_stale_ids={raw["external_id"]} if allow_stale else set())[raw["external_id"]]
+
+    def lookup_many(self, raws, force=False, allow_stale_ids=()):
+        """Explain per-card cache decisions using the existing batched read."""
         by_id = {raw["external_id"]: raw for raw in raws}
+        if force:
+            return {key:{"value":None,"reason":"forced_refresh"} for key in by_id}
         if not by_id:
             return {}
         allow_stale_ids = set(allow_stale_ids)
@@ -235,10 +259,14 @@ class Details:
             for external_id, raw in by_id.items():
                 cached = cached_by_id.get(external_id)
                 stale_allowed = external_id in allow_stale_ids and cached is not None and cached.status == 200
-                if cached is None or (cached.expires_at <= now and not stale_allowed) or cached.fingerprint != fingerprint(raw):
-                    continue
-                result[external_id] = {"description":cached.description,"status":cached.status,
-                                       "fetched_at":cached.fetched_at,"expires_at":cached.expires_at}
+                reason = ("not_cached" if cached is None else "card_changed" if cached.fingerprint != fingerprint(raw)
+                          else "expired" if cached.expires_at <= now and not stale_allowed else None)
+                if reason:
+                    result[external_id] = {"value":None,"reason":reason}
+                else:
+                    result[external_id] = {"reason":"known_stale" if cached.expires_at <= now else "fresh",
+                        "value":{"description":cached.description,"status":cached.status,
+                                 "fetched_at":cached.fetched_at,"expires_at":cached.expires_at}}
             session.commit()
             return result
 
