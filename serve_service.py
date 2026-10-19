@@ -20,8 +20,6 @@ def main():
     http = create_server(application, host=config.HOST, port=config.PORT, threads=12,
         channel_timeout=120, max_request_body_size=1024*1024)
     service.start(server)
-    from jobapp import details
-    details.start(server)
     from jobapp import problems
     problems.start(server)
     logging.getLogger("linko").info("Servis başladı: http://%s:%s, veritabanı %s, sürüm %s", config.HOST, config.PORT, config.DB_PATH,

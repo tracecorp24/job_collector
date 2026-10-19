@@ -1,5 +1,42 @@
 # Linko Scrapper Light
 
+### Üç katmanlı görev kuyruğu
+
+Tek toplayıcı, hazır işleri şu sırayla çalıştırır:
+
+1. **Manuel görevler:** Kullanıcının başlattığı aramalar, analizler, alan düzeltmeleri,
+   “Devam et” ve “Şimdi çalıştır” istekleri. Düzenleme aşamasındaki taslaklar otomatik başlamaz.
+2. **Eksik/hatalı ilanlar:** Açıklaması ertelenmiş veya eksik ilanlar ve boş kaynak alanları.
+   Önce alınmış veri kaydedilir, ardından yeni detay istenir.
+3. **Rutin taramalar:** Kayıtlı şehir × meslek listeleri ve zamanlanmış tekrarlar.
+
+Daha yüksek öncelikli hazır iş geldiğinde alt katman güvenli noktada sırayı bırakır;
+devam noktası ve elde edilen ilanlar korunur. Kullanıcının duraklattığı işler otomatik başlamaz.
+Kaynak beklerken yeni görev eklenebilir; ağ isteği gerektiren işler bekleme dolunca başlar.
+Geçici hatalarda görev bazında artan bekleme uygulanır. 404/410 ile kaldırılmış ilanlar
+ayrı gösterilir. Tek hatalı ilan diğer hazır işleri engellemez; ortak hız sınırı korunur.
+
+İlan detayından yeniden alınacak alanlar seçilebilir. `POST /api/jobs/<id>/repair`,
+`fields` listesinde `description`, `title`, `company`, `location`, `tags`, `experience_years`,
+`workplace_type`, `category`, `seniority` kabul eder. Türetilen alanlar, açıklama mevcutsa
+kaynağa gitmeden işlenir. `fetch-detail` ucu da manuel kuyruğa ekler ve 202 döner.
+Maaş gibi isteğe bağlı alanlar zorunlu eksik sayılmaz; bulunamayan bilgiler uydurulmaz.
+
+Görev kaynağı ve önceliği mevcut `search_runs.options` alanında, alan tamamlama işleri
+yeni `repair_tasks` tablosunda saklanır. Mevcut veriler korunur; yeniden başlatmada işler
+devam eder. Veritabanı ile JSON havuzları birlikte güncellenir. Önce kartları kaydeden akış
+ve açıklama geldikten sonra seçili analiz yöntemiyle işleme davranışı korunur.
+
+`/api/scrape/status` ve `/api/v1/status`, `queue_layers` ile üç katmanın sayaçlarını,
+`completion_queue` ile tamamlama durumunu verir. `/api/completion-queue?status=retry`
+alanları, hata nedenini ve sonraki deneme zamanını gösterir. Ayrı detay worker'ı yerine
+tek supervisor bütün toplama işlerini sıralar.
+
+Otomatik tamamlama katmanı kuyruk ekranından duraklatılıp devam ettirilebilir;
+`POST /api/completion-queue/pause` ve `/resume` aynı işlemi API üzerinden yapar.
+“Tüm kuyruğu iptal et” otomatik tamamlamayı da duraklatır. Yeni manuel alan istekleri
+üst katmanda çalışmaya devam edebilir; otomatik katman ancak açıkça devam ettirilince açılır.
+
 > **Şifreler ve anahtarlar nerede?** Ana dizindeki `SIFRELER.txt` dosyasında: arayüz
 > kullanıcı/şifresi, servis API anahtarı, Groq API anahtarı. Dosya `.gitignore` içinde
 > olduğu için GitHub'a gitmez; yalnızca bu bilgisayarda durur, yedeğini kendin al.

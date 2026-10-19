@@ -215,6 +215,20 @@ class SearchEvent(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class RepairTask(Base):
+    """Durable completion task, including its stage, fields and retry deadline."""
+    __tablename__ = "repair_tasks"
+    source = Column(String(32), primary_key=True)
+    external_id = Column(String(64), primary_key=True)
+    raw = Column(Text, default="{}")
+    stage = Column(String(16), default="detail", index=True)
+    status = Column(String(16), default="pending", index=True)
+    attempts = Column(Integer, default=0)
+    next_attempt_at = Column(Float, default=0, index=True)
+    last_error = Column(Text, default="")
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
 class DetailCache(Base):
     __tablename__ = "detail_cache"
     source = Column(String(32), primary_key=True)

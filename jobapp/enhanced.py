@@ -8,7 +8,7 @@ from flask import jsonify, request, Response
 from sqlalchemy import func, String
 from werkzeug.datastructures import MultiDict
 
-from . import config, runs, filters, audit, professions
+from . import config, runs, filters, audit, professions, scheduling
 from .models import Job, SearchRun, SearchTask, TaskJob, SearchEvent
 from .search_export import _write_json
 from .transport import Coordinator, SourcePaused
@@ -85,6 +85,79 @@ def task_data(body):
 
 def install(server):
     app = server.app
+
+    @app.get("/api/completion-queue")
+    def completion_queue():
+        from .models import RepairTask
+        from .repair import summary
+        with server.SessionLocal() as session:
+            query = session.query(RepairTask)
+            status_filter = request.args.get("status")
+            if status_filter:
+                if status_filter not in ("pending", "retry", "paused", "done", "deleted", "unavailable"):
+                    raise ValueError("Geçersiz tamamlama durumu.")
+                query = query.filter(RepairTask.status == status_filter)
+            items = query.order_by(RepairTask.updated_at.desc()).limit(100).all()
+            return jsonify(**summary(session), items=[dict(source=t.source, external_id=t.external_id,
+                stage=t.stage, status=t.status, attempts=t.attempts, next_attempt_at=t.next_attempt_at,
+                fields=json.loads(t.raw or "{}").get("_repair_fields", ["description"]),
+                queue_layer=json.loads(t.raw or "{}").get("_queue_layer", "repair"), last_error=t.last_error) for t in items])
+
+    @app.post("/api/jobs/<int:job_id>/repair")
+    def repair_job(job_id):
+        from . import repair
+        body = request.get_json(silent=True) or {}
+        if not isinstance(body, dict):
+            raise ValueError("İstek gövdesi JSON nesnesi olmalı.")
+        with runs.lock, server.SessionLocal() as session:
+            job = session.get(Job, job_id)
+            if not job or job.deleted_at:
+                return jsonify(error="İlan bulunamadı."), 404
+            if job.source != config.SOURCE_LINKEDIN or not str(job.external_id).isdigit():
+                raise ValueError("Bu kaynak için alan tamamlama desteklenmiyor.")
+            fields = body.get("fields", [f for f in repair.SOURCE_FIELDS if not (getattr(job, f) or "").strip()] or ["description"])
+            if not isinstance(fields, list) or not fields or any(not isinstance(f, str) or f not in repair.SOURCE_FIELDS+repair.DERIVED_FIELDS for f in fields):
+                raise ValueError("Tamamlanacak alanları geçerli bir liste olarak seçin.")
+            if server.state.running and server.state.kind == "repair" and server.state.last.get("external_id") == job.external_id:
+                return jsonify(error="Bu ilanın alanları şu anda işleniyor."), 409
+            if not (job.description or "").strip() and "description" not in fields:
+                fields = fields + ["description"]
+            try:
+                raw = json.loads(job.raw or "{}")
+            except (ValueError, TypeError):
+                raw = {}
+            if not isinstance(raw, dict):
+                raw = {}
+            if raw.get("detail_pending") and "description" not in fields:
+                fields = fields + ["description"]
+            raw.update(external_id=job.external_id, url=job.url, card_layout="guest",
+                card_lines=[job.title, job.company, job.location], description=job.description or "",
+                search_term=job.search_term, search_location=job.search_location,
+                _repair_existing_job_id=job.id, _repair_fields=list(dict.fromkeys(fields)),
+                _repair_force=True, _repair_values={}, _queue_layer="manual")
+            raw["_repair_revision"] = repair.revision(job)
+            repair.enqueue(session, raw, "Kullanıcı seçili alanları yeniden çekmeyi istedi.", replace=True)
+            audit.record(session, None, None, "repair_requested", {"job_id":job.id, "fields":raw["_repair_fields"], "queue_layer":"manual"})
+            scheduling.yield_to(server, session, "manual")
+            session.commit()
+            return jsonify(ok=True, queued=True, queue_layer="manual", fields=raw["_repair_fields"]), 202
+
+    @app.post("/api/completion-queue/<action>")
+    def control_completion(action):
+        from .models import RepairTask, Setting
+        if action not in ("pause", "resume"):
+            raise ValueError("Geçersiz tamamlama işlemi.")
+        with runs.lock, server.SessionLocal() as session:
+            session.merge(Setting(key="completion_paused", value="1" if action == "pause" else "0"))
+            states = ("pending", "retry") if action == "pause" else ("paused",)
+            session.query(RepairTask).filter(RepairTask.status.in_(states),
+                func.coalesce(func.json_extract(RepairTask.raw, '$._queue_layer'), "repair") == "repair").update(
+                    {RepairTask.status:"paused" if action == "pause" else "pending"}, synchronize_session=False)
+            if action == "pause" and scheduling.active_layer(server, session) == "repair":
+                server.state.stop_flag = True
+            audit.record(session, None, None, "user_action", {"scope":"completion_queue", "action":action})
+            session.commit()
+        return jsonify(ok=True)
 
     @app.errorhandler(SourcePaused)
     def source_blocked(exc):
@@ -244,12 +317,11 @@ def install(server):
         if backend not in ("rules", "local", "claude", "groq"):
             raise ValueError("Geçersiz analiz yöntemi.")
         with runs.lock:
-            if server.state.running:
-                raise ValueError("Devam eden işlem var. Bitmesini bekleyin veya duraklatın.")
             run_id = runs.identifier()
             with server.SessionLocal() as session:
-                options = {"kind":"scrape", "audit_version":audit.VERSION, "classify_backend": backend, "use_embeddings": bool(body.get("use_embeddings")), **scrape_options(body)}
-                session.add(SearchRun(id=run_id, options=json.dumps(options)))
+                options = {"kind":"scrape", "queue_layer":"manual", "service_managed":True, "audit_version":audit.VERSION, "classify_backend": backend, "use_embeddings": bool(body.get("use_embeddings")), **scrape_options(body)}
+                run = SearchRun(id=run_id, options=json.dumps(options))
+                session.add(run)
                 audit.record(session, run_id, None, "run_created", {"actor":"web", "options":options})
                 for i, item in enumerate(tasks):
                     if session.get(SearchTask, item["id"]):
@@ -257,8 +329,8 @@ def install(server):
                     session.add(SearchTask(run_id=run_id, position=i, **item))
                     audit.record(session, run_id, item["id"], "task_queued", item)
                 session.commit()
-            runs.start(server, run_id)
-        return jsonify(ok=True, run_id=run_id)
+                queued = scheduling.submit(server, session, run)
+        return jsonify(ok=True, run_id=run_id, queued=queued, scheduled=queued)
     app.view_functions["api_scrape"] = scrape
 
     @app.post("/api/queue")
@@ -275,7 +347,7 @@ def install(server):
                 run = SearchRun(id=runs.identifier(), status="queued")
                 session.add(run)
                 audit.record(session, run.id, None, "run_created", {"actor":"queue_editor"})
-            options = {"kind":"scrape", "audit_version":audit.VERSION, "classify_backend":body.get("classify_backend", "rules"), "use_embeddings":bool(body.get("use_embeddings")), **scrape_options(body)}
+            options = {"kind":"scrape", "queue_layer":"manual", "audit_version":audit.VERSION, "classify_backend":body.get("classify_backend", "rules"), "use_embeddings":bool(body.get("use_embeddings")), **scrape_options(body)}
             if options["classify_backend"] not in ("rules", "local", "claude", "groq"):
                 raise ValueError("Geçersiz analiz yöntemi.")
             if run.options != json.dumps(options):
@@ -470,9 +542,16 @@ def install(server):
             watches = session.query(Watch).filter(Watch.enabled.is_(True)).all()
             for watch in watches:
                 watch.enabled = False
+            from .models import RepairTask
+            from .models import Setting
+            session.merge(Setting(key="completion_paused", value="1"))
+            completion_paused = session.query(RepairTask).filter(RepairTask.status.in_(("pending", "retry"))).update(
+                {RepairTask.status:"paused"}, synchronize_session=False)
+            if server.state.running and server.state.kind == "repair":
+                server.state.stop_flag = True
             session.commit()
         server.state.emit("task_control", {"action":"cancel_all"})
-        return jsonify(ok=True, paused=paused, schedules_disabled=schedules, watches_disabled=len(watches))
+        return jsonify(ok=True, paused=paused, completion_paused=completion_paused, schedules_disabled=schedules, watches_disabled=len(watches))
 
     @app.post("/api/runs/<run_id>/<action>")
     def run_action(run_id, action):
@@ -484,23 +563,8 @@ def install(server):
             if action != "purge":
                 audit.record(session, run_id, None, "user_action", {"action":action, "previous_status":run.status})
             if action == "resume":
-                options = json.loads(run.options or "{}")
-                source_paused = options.get("kind", "scrape") == "scrape" and Coordinator().state()["paused"]
-                if (server.state.running or source_paused) and not active and run.status in ("queued", "paused", "error"):
-                    # Sistem meşgulken başlatma sıraya alınır; servis, kaynak ve sıra uygun olunca kendisi başlatır.
-                    options.pop("user_paused", None)
-                    if run.status == "queued":
-                        options["service_managed"] = True
-                    else:
-                        options.setdefault("auto_resume_at", 0)
-                    run.options = json.dumps(options)
-                    audit.record(session, run_id, None, "queue_scheduled", {"reason":"source_paused" if source_paused else "busy"})
-                    session.commit()
-                    return jsonify(ok=True, scheduled=True)
-                if server.state.running:
-                    raise ValueError("Önce devam eden işlemi duraklatın.")
-                session.commit()
-                runs.start(server, run_id)
+                queued = scheduling.submit(server, session, run)
+                return jsonify(ok=True, queued=queued, scheduled=queued, run_id=run.id)
             elif action in ("pause", "stop", "cancel"):
                 options = json.loads(run.options or "{}")
                 options.pop("auto_resume_at", None)
@@ -593,12 +657,11 @@ def install(server):
                 if task.status == "stopping":
                     server.state.task_stop_id = task_id
             elif action == "resume":
-                if server.state.running or task.status not in ("paused", "error"):
-                    raise ValueError("Önce devam eden işlemi duraklatın.")
+                if task.status not in ("paused", "error"):
+                    raise ValueError("Bu sorgu devam ettirilemez.")
                 audit.record(session, run_id, task_id, "user_action", {"action":action, "scope":"task"})
-                session.commit()
-                runs.start(server, run_id)
-                return jsonify(ok=True)
+                queued = scheduling.submit(server, session, run)
+                return jsonify(ok=True, queued=queued, scheduled=queued)
             else:
                 raise ValueError("Geçersiz sorgu işlemi.")
             audit.record(session, run_id, task_id, "user_action", {"action":action, "scope":"task", "status":task.status, "reason":task.status_reason})
@@ -613,6 +676,10 @@ def install(server):
     def status():
         data = {"running": server.state.running, "kind": server.state.kind, **server.state.last}
         data["source_state"] = Coordinator().state()
+        from . import repair
+        with server.SessionLocal() as session:
+            data["completion_queue"] = repair.summary(session)
+            data["queue_layers"] = scheduling.summary(server, session, data["source_state"])
         ident = getattr(server.state, "run_id", None)
         if ident:
             with server.SessionLocal() as session:
@@ -661,7 +728,7 @@ def install(server):
 
     def start_maintenance(kind):
         body = request.get_json(silent=True) or {}
-        options = dict(kind=kind, force=bool(body.get("force")), limit=filters.number(MultiDict(body), "limit", True),
+        options = dict(kind=kind, queue_layer="manual", force=bool(body.get("force")), limit=filters.number(MultiDict(body), "limit", True),
                        backend=body.get("backend", "local"), model=body.get("model"), audit_version=audit.VERSION)
         if body.get("during_source_wait"):
             options.update(during_source_wait=True, service_managed=True, auto_resume_at=0)
@@ -670,8 +737,6 @@ def install(server):
         if options["backend"] not in ("local", "claude", "groq"):
             raise ValueError("Geçersiz analiz yöntemi.")
         with runs.lock, server.SessionLocal() as session:
-            if server.state.running and not options.get("during_source_wait"):
-                raise ValueError("Başka işlem sürüyor. Önce bitmesini bekleyin veya duraklatın.")
             if options.get("during_source_wait"):
                 for existing in session.query(SearchRun).filter(SearchRun.deleted_at.is_(None), SearchRun.status.in_(("queued", "paused", "running"))):
                     previous = json.loads(existing.options or "{}")
@@ -683,8 +748,9 @@ def install(server):
             audit.record(session, run_id, None, "run_created", {"actor":"web", "options":options})
             audit.record(session, run_id, task_id, "task_queued", {"kind":kind})
             session.commit()
+            queued = True
             if not options.get("during_source_wait"):
-                runs.start(server, run_id)
-            return jsonify(ok=True, run_id=run_id, task_id=task_id, queued=bool(options.get("during_source_wait")))
+                queued = scheduling.submit(server, session, session.get(SearchRun, run_id))
+            return jsonify(ok=True, run_id=run_id, task_id=task_id, queued=queued, scheduled=queued)
     app.view_functions["api_embed"] = lambda: start_maintenance("embed")
     app.view_functions["api_classify"] = lambda: start_maintenance("classify")

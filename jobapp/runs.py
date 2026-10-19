@@ -71,6 +71,7 @@ def identifier():
 
 
 def snapshot(session, run):
+    from .scheduling import layer
     tasks = session.query(SearchTask).filter_by(run_id=run.id).order_by(SearchTask.position).all()
     stats = json.loads(run.stats)
     links = session.query(TaskJob.is_new, TaskJob.outcome, func.count()).join(SearchTask, SearchTask.id == TaskJob.task_id).filter(SearchTask.run_id == run.id).group_by(TaskJob.is_new, TaskJob.outcome).all()
@@ -81,7 +82,7 @@ def snapshot(session, run):
     task_counts = {t.id:dict(new=0, updated=0, unchanged=0) for t in tasks}
     for task_id, is_new, outcome, count in session.query(TaskJob.task_id, TaskJob.is_new, TaskJob.outcome, func.count()).filter(TaskJob.task_id.in_(task_counts)).group_by(TaskJob.task_id, TaskJob.is_new, TaskJob.outcome):
         task_counts[task_id][outcome if outcome in counts else "new" if is_new else "updated"] += count
-    return {"id": run.id, "kind":json.loads(run.options).get("kind", "scrape"), "status": run.status, "stats": stats,
+    return {"id": run.id, "kind":json.loads(run.options).get("kind", "scrape"), "queue_layer":layer(json.loads(run.options or "{}")), "status": run.status, "stats": stats,
             "next_attempt_at":json.loads(run.options or "{}").get("auto_resume_at"),
             "automatic_resume":run.status in ("paused", "error") and not json.loads(run.options or "{}").get("user_paused") and ("auto_resume_at" in json.loads(run.options or "{}") or any(json.loads(t.stats or "{}").get("termination_reason") == "source_paused" for t in tasks if t.status == "paused")),
             **timing(run), "has_started":has_started(run) or any(has_started(t) for t in tasks),
@@ -123,6 +124,7 @@ def start(server, run_id):
         options = json.loads(run.options or "{}")
         options.pop("auto_resume_at", None)
         options.pop("user_paused", None)
+        options.pop("priority_yield", None)
         run.options = json.dumps(options)
         run.updated_at = datetime.utcnow()
         session.commit()
@@ -195,10 +197,14 @@ def worker(server, run_id):
                         stats["collected"] = stats.get("collected", 0) + 1
                         run.stats = json.dumps(stats)
                     elif kind == "task_done":
+                        yielding = json.loads(run.options or "{}").get("priority_yield")
+                        if yielding and server.state.stop_flag:
+                            data["reason"] = "priority_yield"
                         task.stats = json.dumps({**json.loads(task.stats), **data.get("stats", {}), "termination_reason": data.get("reason")})
                         stopping = task.status == "stopping" or run.status == "stopping"
                         reason = (
                             "Kullanıcı sorguyu durdurdu. Toplanan ilanlar korundu." if stopping else
+                            "Daha yüksek öncelikli görevler için sıra bırakıldı; devam noktası korundu." if yielding and server.state.stop_flag else
                             "Kullanıcı taramayı duraklattı." if server.state.stop_flag else
                             "Hedefe ulaşıldı." if data.get("reason") == "reached_limit" else
                             "Yeni ilan verimi eşik altına (%20) düştü; kota koruması için tamamlandı." if data.get("reason") == "low_yield_threshold" else
@@ -275,6 +281,8 @@ def worker(server, run_id):
                 run.status = "error"
             else:
                 run.status = "finished"
+            if run.status == "paused" and json.loads(run.options or "{}").get("priority_yield"):
+                run.status_reason = "Daha yüksek öncelikli görevler için sıra bırakıldı; otomatik devam edecek."
             transition(run, run.status, run.status_reason or next((t.status_reason for t in tasks if t.status in ("paused", "error")), ""))
             if run.status == "error":
                 schedule_error_retry(session, run)

@@ -57,8 +57,6 @@ def main():
         channel_timeout=120, max_request_body_size=1024*1024)
     from jobapp import service, server
     service.start(server)
-    from jobapp import details
-    details.start(server)
 
     print("\n" + "=" * 56)
     print("  Linko Scrapper Light")

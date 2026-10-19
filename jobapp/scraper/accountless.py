@@ -534,6 +534,9 @@ class AccountlessScraper:
                             if self.emit:
                                 self.emit("cache_store", {"external_id":job_id, "expires_at":cached["expires_at"]})
                 if cached is None or cached["status"] != 200:
+                    if self.emit:
+                        self.emit("detail_missing", {"raw":dict(raw, search_term=keyword, search_location=location),
+                            "status":cached["status"] if cached else getattr(self, "last_status", None)})
                     desc_failures += 1
                     self.page_report["detail_failures"] += 1
                     self.page_report["failed_ids"].append(job_id)

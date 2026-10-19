@@ -1,7 +1,7 @@
-"""Önce kart, detay sonra: taramada açıklaması istenmeyen ilanların detayını arka planda tamamlar.
+"""Önce kart, detay sonra akışının uyumluluk ve denetim yardımcıları.
 
-Tarama sayfasındaki ilanlar tek istekle listeye düşer (`detail_pending`). Bu iş parçacığı, tarama
-çalışmıyorken ve kaynak duraklatılmamışken en yeni bekleyen ilanın detayını çeker. İstekler
+Tarama sayfasındaki ilanlar tek istekle listeye düşer (`detail_pending`). Üretimde tamamlama
+işlerini `repair` modülü ve tek supervisor sıralar; bu modül ayrı worker başlatmaz. İstekler
 kazıyıcının `_get` yolundan geçer: ortak istek sırası, rastgele aralık, 429 duraklatması ve güvenlik
 kontrolü tespiti aynen uygulanır. Tarama başlarsa bekleyen istek bırakılır; tarama önceliklidir.
 İstek, kaynak duraklatması ve detay sonucu olayları `search_events`e ilanın koşusuyla (yoksa
@@ -128,21 +128,6 @@ def fill_one(server, scraper, target_job_id=None):
 
 
 def start(server):
-    global worker
-    if worker and worker.is_alive():
-        return
-
-    def loop():
-        from .scraper.accountless import AccountlessScraper
-        scraper = None
-        while True:
-            busy = False
-            try:
-                scraper = scraper or AccountlessScraper(should_stop=lambda: server.state.running)
-                busy = fill_one(server, scraper)
-            except Exception:
-                log.exception("Detay tamamlayıcı hata verdi; yeniden denenecek")
-            time.sleep(1 if busy else config.SERVICE_POLL_SECONDS)
-
-    worker = threading.Thread(target=loop, name="detail-filler", daemon=True)
-    worker.start()
+    """Compatibility entry point: the supervisor owns all collector work."""
+    from . import service
+    service.start(server)

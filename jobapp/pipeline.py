@@ -145,6 +145,10 @@ def run_scrape(keywords, locations, limit=None, classify_backend="rules",
         nonlocal active_search_id
         payload = data or {}
         payload = dict(payload, attempt_id=attempt_id)
+        if kind == "detail_missing":
+            from .repair import enqueue
+            enqueue(session, dict(payload["raw"], search_id=active_search_id, run_id=run_id), "Tarama sırasında açıklama alınamadı.")
+            session.commit()
         if exporter and kind == "task_start":
             active_search_id = search_id or uuid.uuid4().hex
             folder = exporter.resume(resume_folder) if resume_folder else exporter.begin(payload["keyword"], payload.get("location", ""), limit=payload.get("limit"))

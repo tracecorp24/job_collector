@@ -124,8 +124,14 @@ def install(server):
     def status():
         from .transport import Coordinator
         from . import logstore, problems
+        from . import scheduling, repair
+        source = Coordinator().state()
+        with server.SessionLocal() as session:
+            queue_layers = scheduling.summary(server, session, source)
+            completion_queue = repair.summary(session)
         return jsonify(api_version='1', running=server.state.running, run_id=server.state.run_id,
-            source=Coordinator().state(), supervisor_alive=bool(service.supervisor and service.supervisor.is_alive()),
+            queue_layers=queue_layers, completion_queue=completion_queue,
+            source=source, supervisor_alive=bool(service.supervisor and service.supervisor.is_alive()),
             heartbeat_at=service.heartbeat, last_error=service.last_error, last_error_at=service.last_error_at,
             version=config.version_info(), logging=logstore.stats(), problems=sorted(problems.active_keys))
 
@@ -183,7 +189,7 @@ def install(server):
                     return jsonify(error='Aynı Idempotency-Key farklı istekle kullanılamaz.'), 409
                 return jsonify(run_id=saved['run_id'], replay=True), 200
             run_id = runs.identifier()
-            options = dict(kind='scrape', service_managed=True, schedule_enabled=bool(repeat), repeat_seconds=repeat,
+            options = dict(kind='scrape', queue_layer='manual', service_managed=True, schedule_enabled=bool(repeat), repeat_seconds=repeat,
                 classify_backend=backend, use_embeddings=bool(body.get('use_embeddings')), **scrape_options(body))
             session.add(SearchRun(id=run_id, options=json.dumps(options)))
             for i, task in enumerate(tasks):
@@ -193,6 +199,8 @@ def install(server):
                 audit.record(session, run_id, task['id'], 'task_queued', task)
             session.add(Setting(key=marker, value=json.dumps(dict(digest=digest,run_id=run_id))))
             audit.record(session, run_id, None, 'run_created', {'actor':'service_api','options':options})
+            from . import scheduling
+            scheduling.yield_to(server, session, "manual")
             session.commit()
         return jsonify(run_id=run_id, replay=False), 202
 

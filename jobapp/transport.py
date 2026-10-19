@@ -259,7 +259,8 @@ class Details:
             for external_id, raw in by_id.items():
                 cached = cached_by_id.get(external_id)
                 stale_allowed = external_id in allow_stale_ids and cached is not None and cached.status == 200
-                reason = ("not_cached" if cached is None else "card_changed" if cached.fingerprint != fingerprint(raw)
+                reason = ("not_cached" if cached is None else "empty_description" if cached.status == 200 and not (cached.description or "").strip()
+                          else "card_changed" if cached.fingerprint != fingerprint(raw)
                           else "expired" if cached.expires_at <= now and not stale_allowed else None)
                 if reason:
                     result[external_id] = {"value":None,"reason":reason}

@@ -68,6 +68,11 @@ def supervisor_error(session, now):
 
 def detail_backlog(session, now):
     count = details.pending_count(session)
+    paused = session.get(Setting, "completion_paused")
+    if paused and paused.value == "1":
+        session.merge(Setting(key=BACKLOG_KEY, value=json.dumps({"min":count, "since":now})))
+        session.commit()
+        return None  # An explicit user pause is not a stalled collector.
     row = session.get(Setting, BACKLOG_KEY)
     try:
         saved = json.loads(row.value) if row else None

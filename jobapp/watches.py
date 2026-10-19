@@ -132,17 +132,20 @@ def _log_waiting(session, watch, now):
         log.info("Düzenli tarama '%s' bekliyor: önceki tur (%s) henüz bitmedi.", watch.name, watch.last_run_id[:8])
 
 
-def dispatch(session, now, source):
+def dispatch(session, now, source, only_id=None, manual=False):
     """Create at most one due watch run. Called by the supervisor with runs.lock held."""
-    if source.get("paused"):
+    if source.get("paused") and not manual:
         return None
-    for watch in session.query(Watch).filter(Watch.enabled.is_(True), Watch.next_due_at <= now).order_by(Watch.next_due_at):
+    query = session.query(Watch).filter(Watch.enabled.is_(True), Watch.next_due_at <= now)
+    if only_id:
+        query = query.filter(Watch.id == only_id)
+    for watch in query.order_by(Watch.next_due_at):
         if _busy(session, watch):
             _log_waiting(session, watch, now)
             continue
         _waiting.pop(watch.id, None)
         run_id = runs.identifier()
-        options = dict(kind="scrape", service_managed=True, watch_id=watch.id, classify_backend="groq" if config.GROQ_API_KEY else "rules",
+        options = dict(kind="scrape", queue_layer="manual" if manual else "routine", service_managed=True, watch_id=watch.id, classify_backend="groq" if config.GROQ_API_KEY else "rules",
                        use_embeddings=False, mode="incremental", refresh_details=False,
                        posted_within=watch.posted_within, sort_recent=True, stop_when_known=True)
         session.add(SearchRun(id=run_id, options=json.dumps(options)))
@@ -221,7 +224,11 @@ def install(server):
             watch.enabled = True
             watch.next_due_at = time.time()
             session.commit()
-            return jsonify(watch=serialize(session, watch))
+            ident = dispatch(session, time.time(), {"paused":False}, only_id=watch.id, manual=True)
+            from . import scheduling
+            scheduling.yield_to(server, session, "manual")
+            session.commit()
+            return jsonify(watch=serialize(session, watch), run_id=ident, queued=True)
 
     @app.delete("/api/watches/<watch_id>")
     def delete_watch(watch_id):
