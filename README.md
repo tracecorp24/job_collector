@@ -10,6 +10,8 @@ Tek toplayıcı, hazır işleri şu sırayla çalıştırır:
    Önce alınmış veri kaydedilir, ardından yeni detay istenir.
 3. **Rutin taramalar:** Kayıtlı şehir × meslek listeleri ve zamanlanmış tekrarlar.
 
+Rutin şehir havuzunda 47 şehir bulunur. İstanbul ilk sıradadır, kritik önceliklidir ve ilan hedefi limitsizdir; diğer şehirlerin varsayılan hedefi arama başına 50 ilandır. Şehir ve hedef listesi İş alarmları ekranında ve `GET /api/routine-cities` uç noktasında görüntülenir. Meslek listesi henüz eklenmediği için bu katalog otomatik şehir × meslek görevleri oluşturmaz.
+
 Daha yüksek öncelikli hazır iş geldiğinde alt katman güvenli noktada sırayı bırakır;
 devam noktası ve elde edilen ilanlar korunur. Kullanıcının duraklattığı işler otomatik başlamaz.
 Kaynak beklerken yeni görev eklenebilir; ağ isteği gerektiren işler bekleme dolunca başlar.

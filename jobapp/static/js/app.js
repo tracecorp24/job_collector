@@ -663,9 +663,13 @@ async function saveWatch(e){e.preventDefault();$('watch-error').textContent='';c
   try{if(watchEditing)await api('/api/watches/'+watchEditing,{method:'PUT',body});else await api('/api/watches',{method:'POST',body});toast(watchEditing?'İş alarmı güncellendi.':'İş alarmı kaydedildi. İlk tur, kuyruk ve kaynak uygun olduğunda başlar.');resetWatchForm();await loadWatches();}
   catch(err){$('watch-error').textContent=err.message;}finally{$('watch-save').disabled=false;}}
 async function loadWatches(){
-  try{const data=await api('/api/watches');watchData=data.watches;
+  try{const [data,routine]=await Promise.all([api('/api/watches'),api('/api/routine-cities')]);watchData=data.watches;renderRoutineCities(routine.cities||[]);
     $('watch-list').innerHTML=watchData.length?watchData.map(w=>watchCard(w,data.now)).join(''):'<div class="empty"><h2>Henüz iş alarmın yok</h2><p>Formdan unvan ve konumları ekleyerek ilk alarmını kur.</p></div>';}
-  catch(e){$('watch-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;}
+  catch(e){$('watch-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;$('routine-city-count').textContent='Yüklenemedi';$('routine-city-list').innerHTML=`<p class="field-error">${esc(e.message)}</p>`;}
+}
+function renderRoutineCities(cities){
+  $('routine-city-count').textContent=`${cities.length} şehir · İstanbul ilk sırada`;
+  $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri ve varsayılan ilan hedefleri</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Öncelik</th><th scope="col">Varsayılan ilan hedefi</th></tr></thead><tbody>${cities.map(city=>`<tr${city.critical?' class="routine-city-critical"':''}><td>${Number(city.order)}</td><th scope="row">${esc(city.city)}</th><td>${city.critical?badge('Kritik · ilk sırada','new'):'Rutin'}</td><td>${city.quota==null?'Limitsiz':Number(city.quota)+' ilan / arama'}</td></tr>`).join('')}</tbody></table>`;
 }
 function watchCard(w,now){
   const last=w.last_run,running=!!last&&!['finished','cancelled','stopped'].includes(last.status);

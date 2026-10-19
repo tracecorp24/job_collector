@@ -620,6 +620,8 @@ from .service_api import install as install_service_api
 install_service_api(sys.modules[__name__])
 from .watches import install as install_watches
 install_watches(sys.modules[__name__])
+from .routine_cities import install as install_routine_cities
+install_routine_cities(sys.modules[__name__])
 from .titles import install as install_titles
 install_titles(sys.modules[__name__])
 from .logs_api import install as install_logs_api
