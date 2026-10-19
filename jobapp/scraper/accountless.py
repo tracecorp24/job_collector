@@ -301,7 +301,7 @@ class AccountlessScraper:
         done = 0
         self._log(
             f"Kuyruk başlatıldı: {total} arama görevi planlandı. "
-            f"Ortak asgari istek aralığı: {self.coordinator.interval:.1f}s. "
+            f"Ortak etkin istek aralığı: {self.coordinator.state()['effective_interval']:.1f}s + rastgele pay. "
             f"Erişim sınırlarında kalıcı duraklatma devrede.", "info",
         )
         try:
@@ -373,10 +373,22 @@ class AccountlessScraper:
         start_offset = checkpoint.get("offset", page * 10)
         seen = set(checkpoint.get("seen", []))
         resume_page = page if checkpoint else -1
+        # Only source listing filters identify the page. A CLI/web transition can
+        # express the same defaults differently (e.g. absent vs defer_details=False).
+        identity = {"keyword": keyword, "location": location, "options": {
+            key:self.search_options[key] for key in ("posted_within", "sort_recent") if self.search_options.get(key)}}
+        saved_page = checkpoint.get("page_snapshot")
+        if (not isinstance(saved_page, dict) or saved_page.get("identity") != identity
+                or saved_page.get("page") != page or not isinstance(saved_page.get("cards"), list)):
+            saved_page = None  # Legacy checkpoints continue through the existing listing path.
+
+        def checkpoint_state():
+            return {"version": 2, "page": page, "offset": start_offset, "seen": sorted(seen),
+                    "collected": collected, "page_snapshot": saved_page}
 
         def save_checkpoint():
             if self.emit:
-                self.emit("checkpoint", {"page": page, "offset": start_offset, "seen": list(seen), "collected": collected})
+                self.emit("checkpoint", checkpoint_state())
         pages_scanned = 0
         prev_card_count = 0
         total_cards_seen = 0
@@ -405,32 +417,36 @@ class AccountlessScraper:
             self.page_report = {"page": page + 1, "offset": start_offset, "keyword": keyword, "location": location,
                                 "cards_returned": 0, "collected": 0, "duplicates": 0, "detail_failures": 0, "invalid_cards": 0,
                                 "collected_ids": [], "duplicate_ids": [], "failed_ids": []}
-            save_checkpoint()
             pages_scanned += 1
-            self._log(f"📄 [Sayfa {page + 1}] LinkedIn istek gönderiliyor (start={start_offset})...", "info")
-
-            params = {"keywords": keyword, "location": location, "start": start_offset}
-            if self.search_options.get("posted_within"):
-                params["f_TPR"] = f"r{int(self.search_options['posted_within'])}"
-            if self.search_options.get("sort_recent"):
-                params["sortBy"] = "DD"
-            soup = self._get(self.SEARCH_URL, params)
-
-            if soup is None:
-                self._report_page(interrupted=True)
-                if self.should_stop():
-                    termination_reason = "stopped_by_user"
-                else:
-                    termination_reason = "page_fetch_failed"
-                    self._log(f"⚠️ [Sayfa {page + 1}] Sayfa içeriği alınamadı (bağlantı hatası veya engel).", "warning")
-                break
-
-            cards = soup.select("div.base-search-card")
-            parsed_cards = [self._card(card) for card in cards]
+            from_checkpoint = saved_page is not None
+            if from_checkpoint:
+                cards = saved_page["cards"]
+                self._log(f"📄 [Sayfa {page + 1}] Saklanan kartlardan devam ediliyor; arama sayfası yeniden istenmedi.")
+            else:
+                save_checkpoint()
+                self._log(f"📄 [Sayfa {page + 1}] LinkedIn istek gönderiliyor (start={start_offset})...", "info")
+                params = {"keywords": keyword, "location": location, "start": start_offset}
+                if self.search_options.get("posted_within"):
+                    params["f_TPR"] = f"r{int(self.search_options['posted_within'])}"
+                if self.search_options.get("sort_recent"):
+                    params["sortBy"] = "DD"
+                soup = self._get(self.SEARCH_URL, params)
+                if soup is None:
+                    self._report_page(interrupted=True)
+                    termination_reason = "stopped_by_user" if self.should_stop() else "page_fetch_failed"
+                    break
+                cards = [self._card(card) for card in soup.select("div.base-search-card")]
+                saved_page = {"identity": identity, "page": page, "cards": cards,
+                              "fetched_at": time.time(), "request_id": getattr(self, "last_response_request_id", None)}
+                if self.search_options.get("stop_when_known"):
+                    saved_page["known_ids"] = sorted(self.details.known([r["external_id"] for r in cards if r]))
+                save_checkpoint()  # Persist every pending card before the first detail request.
+            parsed_cards = cards
             card_count = len(cards)
             self.page_report["cards_returned"] = card_count
-            self.page_report["request_id"] = getattr(self, "last_response_request_id", None)
-            self.page_report["returned_ids"] = [raw["external_id"] for raw in parsed_cards if raw]
+            self.page_report["from_checkpoint"] = from_checkpoint
+            self.page_report["request_id"] = saved_page.get("request_id")
+            self.page_report["returned_ids"] = [r["external_id"] for r in cards if r]
             total_cards_seen += card_count
             self._log(f"📄 [Sayfa {page + 1}] {card_count} adet ilan kartı bulundu.", "info")
             if pages_scanned > 1 and prev_card_count > 0 and 0 < card_count < prev_card_count * 0.5:
@@ -459,10 +475,14 @@ class AccountlessScraper:
             check_yield = bool(low_yield_threshold and low_yield_threshold > 0)
             # Önce kart: yeni ilanın detayı burada istenmez, arka planda tamamlanır (jobapp/details.py).
             defer_details = self.search_options.get("defer_details") and not self.refresh_details
-            known = self.details.known(self.page_report["returned_ids"]) if stop_when_known or defer_details or check_yield else set()
-            cached_details = self.details.get_many([raw for raw in parsed_cards if raw],
+            if "known_ids" not in saved_page:
+                saved_page["known_ids"] = sorted(self.details.known(self.page_report["returned_ids"])) if stop_when_known or defer_details or check_yield else []
+                save_checkpoint()
+            known = set(saved_page["known_ids"])
+            cache_results = self.details.lookup_many([raw for raw in parsed_cards if raw],
                 force=self.refresh_details, allow_stale_ids=known)
-            unknown_on_page = 0
+            cached_details = {key:result["value"] for key,result in cache_results.items() if result["value"] is not None}
+            unknown_on_page = sum(1 for raw in parsed_cards if raw and raw["external_id"] not in known)
             for parsed_card in parsed_cards:
                 if self.should_stop():
                     termination_reason = "stopped_by_user"
@@ -486,8 +506,6 @@ class AccountlessScraper:
                 new_on_page += 1
                 job_id = raw["external_id"]
 
-                if job_id not in known:
-                    unknown_on_page += 1
                 cached = cached_details.get(job_id)
                 deferred = cached is None and defer_details
                 if deferred:
@@ -496,7 +514,7 @@ class AccountlessScraper:
                     self.page_report["deferred_details"] = self.page_report.get("deferred_details", 0) + 1
                 if self.emit:
                     self.emit("detail_deferred" if deferred else "cache_hit" if cached else "cache_miss", {"external_id":job_id,
-                              "forced":self.refresh_details, "fetched_at":cached["fetched_at"] if cached else None})
+                              "forced":self.refresh_details, "reason":cache_results[job_id]["reason"], "fetched_at":cached["fetched_at"] if cached else None})
                 if not deferred:
                     cache_key = "cache_hits" if cached else "cache_misses"
                     self.page_report[cache_key] = self.page_report.get(cache_key, 0) + 1
@@ -526,6 +544,7 @@ class AccountlessScraper:
                            search_term=keyword, search_location=location)
                 if deferred:
                     raw["detail_pending"] = True
+                raw["_checkpoint_after_save"] = dict(checkpoint_state(), seen=sorted(seen | {job_id}), collected=collected+1)
                 outcome = on_job(raw)
                 if outcome == "failed":
                     save_checkpoint()
@@ -599,6 +618,8 @@ class AccountlessScraper:
             # The source may return a different page size. Advance by returned
             # card slots (including invalid/duplicate cards), not saved jobs.
             start_offset += card_count
+            saved_page = None
+            save_checkpoint()
 
         duration = round(time.monotonic() - start_time, 2)
         stats = {

@@ -38,9 +38,10 @@ class ServiceTests(unittest.TestCase):
             self.assertNotIn('1',checkpoint['seen'])
             self.assertEqual(session.query(Job).count(),0)
             self.assertEqual(task.status,'error')
-        with patch('requests.Session.get',side_effect=[response(card(1))]):
+        with patch('requests.Session.get',side_effect=AssertionError('valid cached detail must be reused')) as get:
             self.assertEqual(self.client.post('/api/runs/'+ident+'/resume').status_code,200)
             server.state.thread.join(10)
+        get.assert_not_called()
         self.assertEqual(self.client.get('/api/runs/'+ident).json['tasks'][0]['count'],1)
 
     def test_changed_content_invalidates_embedding(self):
@@ -76,7 +77,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.meta(task)['limit'],3)
         with self.engine.begin() as conn:
             conn.execute(text('UPDATE source_policy SET blocked_until=0'))
-        with patch('requests.Session.get',side_effect=[response(card(1)+card(2)+card(3)),response(DETAIL),response(DETAIL)]):
+        with patch('requests.Session.get',side_effect=[response(DETAIL),response(card(3)),response(DETAIL)]):
             self.client.post('/api/runs/'+run['id']+'/resume')
             server.state.thread.join(10)
         self.assertEqual(self.meta(task)['limit'],3)

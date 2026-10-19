@@ -21,7 +21,7 @@ MAX_ATTEMPTS = 3
 DESCRIPTION_SELECTOR = ".show-more-less-html__markup, .description__text"
 PENDING = "deleted_at IS NULL AND json_extract(raw, '$.detail_pending') = 1"
 SYSTEM_RUN = "detail-filler"  # koşusu bilinmeyen ilanlar için; search_runs'ta karşılığı yok
-RECORDED = {"request_started", "request_finished", "waiting"}  # ölçüm olayları; log/job_progress yazılmaz
+RECORDED = {"request_started", "request_finished", "waiting", "shared_rate_wait", "shared_rate_wait_finished"}
 worker = None
 
 

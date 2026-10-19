@@ -374,10 +374,17 @@ def install(server):
             if request.args.get("task_id"):
                 reports = reports.filter_by(task_id=request.args["task_id"])
             totals = {"cards_returned": 0, "collected": 0, "duplicates": 0, "detail_failures": 0, "not_processed": 0, "invalid_cards": 0}
+            returned_ids, collected_ids = set(), set()
+            network_cards = 0
             for report in reports:
                 data = json.loads(report.data)
                 for key in totals:
                     totals[key] += data.get(key, 0)
+                returned_ids.update(data.get("returned_ids", []))
+                collected_ids.update(data.get("collected_ids", []))
+                if not data.get("from_checkpoint"):
+                    network_cards += data.get("cards_returned", 0)
+            totals.update(unique_returned=len(returned_ids), unique_collected=len(collected_ids), network_cards=network_cards)
             return jsonify(events=events, totals=totals, next_before=rows[199].id if len(rows) > 200 else None)
 
     @app.get("/api/runs/<run_id>/logs/download")
@@ -656,20 +663,28 @@ def install(server):
         body = request.get_json(silent=True) or {}
         options = dict(kind=kind, force=bool(body.get("force")), limit=filters.number(MultiDict(body), "limit", True),
                        backend=body.get("backend", "local"), model=body.get("model"), audit_version=audit.VERSION)
+        if body.get("during_source_wait"):
+            options.update(during_source_wait=True, service_managed=True, auto_resume_at=0)
         if options["limit"] == 0:
             raise ValueError("İşlem limiti pozitif bir tam sayı olmalı.")
         if options["backend"] not in ("local", "claude", "groq"):
             raise ValueError("Geçersiz analiz yöntemi.")
         with runs.lock, server.SessionLocal() as session:
-            if server.state.running:
+            if server.state.running and not options.get("during_source_wait"):
                 raise ValueError("Başka işlem sürüyor. Önce bitmesini bekleyin veya duraklatın.")
+            if options.get("during_source_wait"):
+                for existing in session.query(SearchRun).filter(SearchRun.deleted_at.is_(None), SearchRun.status.in_(("queued", "paused", "running"))):
+                    previous = json.loads(existing.options or "{}")
+                    if not previous.get("user_paused") and all(previous.get(k) == options.get(k) for k in ("kind", "backend", "model", "force", "limit", "during_source_wait")):
+                        return jsonify(ok=True, run_id=existing.id, reused=True, queued=True)
             run_id, task_id = runs.identifier(), runs.identifier()
             session.add(SearchRun(id=run_id, options=json.dumps(options)))
             session.add(SearchTask(id=task_id, run_id=run_id, limit=options["limit"], keyword={"embed": "Eşleştirme verilerini hazırla"}.get(kind, "Kayıtlı ilanları analiz et")))
             audit.record(session, run_id, None, "run_created", {"actor":"web", "options":options})
             audit.record(session, run_id, task_id, "task_queued", {"kind":kind})
             session.commit()
-            runs.start(server, run_id)
-            return jsonify(ok=True, run_id=run_id, task_id=task_id)
+            if not options.get("during_source_wait"):
+                runs.start(server, run_id)
+            return jsonify(ok=True, run_id=run_id, task_id=task_id, queued=bool(options.get("during_source_wait")))
     app.view_functions["api_embed"] = lambda: start_maintenance("embed")
     app.view_functions["api_classify"] = lambda: start_maintenance("classify")

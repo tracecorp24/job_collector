@@ -151,7 +151,7 @@ class TransportTests(unittest.TestCase):
         # Advance persisted test-only deadline; production never bypasses it.
         with self.engine.begin() as connection:
             connection.execute(text('UPDATE source_policy SET blocked_until=0'))
-        with patch('requests.Session.get',side_effect=[response(card(1)+card(2)),response(DETAIL)]) as get:
+        with patch('requests.Session.get',side_effect=[response(DETAIL)]) as get:
             self.assertEqual(self.client.post('/api/runs/'+run['id']+'/resume').status_code,200)
             server.state.thread.join(10)
         result=self.client.get('/api/runs/'+run['id']).json
@@ -159,7 +159,8 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(result['tasks'][0]['id'],task['id'])
         self.assertEqual(result['tasks'][0]['folder'],task['folder'])
         self.assertEqual(result['tasks'][0]['count'],2)
-        self.assertEqual(get.call_count,2)
+        self.assertEqual(get.call_count,1)
+        self.assertTrue(get.call_args.args[0].endswith('/jobs-guest/jobs/api/jobPosting/2'))
 
     def test_invalid_mode_rejected(self):
         result=self.client.post('/api/queue',json={'tasks':[{'keyword':'AI'}],'mode':'invalid'})

@@ -29,6 +29,7 @@ def tick(server, now=None):
                 SearchRun.status.in_(("queued", "paused", "error")),
                 and_(SearchRun.status == "finished", func.json_extract(SearchRun.options, '$.schedule_enabled') == 1,
                     func.json_extract(SearchRun.options, '$.schedule_dispatched').is_(None)))).order_by(SearchRun.created_at).all()
+            candidates.sort(key=lambda run: bool(json.loads(run.options or "{}").get("during_source_wait")))
             for run in candidates:
                 options = json.loads(run.options or "{}")
                 # Existing source-paused work is migrated without changing its deadline.
@@ -38,6 +39,8 @@ def tick(server, now=None):
                     run.status in ("paused", "error") and not options.get("user_paused") and ("auto_resume_at" in options or source_wait))
                 if eligible and now >= options.get("auto_resume_at", 0):
                     if options.get("kind", "scrape") == "scrape" and source["paused"]:
+                        continue
+                    if options.get("during_source_wait") and (not source["paused"] or source["remaining_seconds"] <= 5):
                         continue
                     audit.record(session, run.id, None, "automatic_resume", {"reason":"source_ready_or_service_queue", "source_state":source})
                     session.commit()

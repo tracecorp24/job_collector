@@ -82,7 +82,7 @@ class QueueControlTests(unittest.TestCase):
         self.assertEqual(paused['status'],'paused')
         self.assertIn('duraklat',paused['tasks'][0]['status_reason'])
         self.assertEqual(paused['tasks'][0]['count'],1)
-        with patch('requests.Session.get',side_effect=[response(card(1)+card(2)),response(DETAIL),response('')]):
+        with patch('requests.Session.get',side_effect=[response(DETAIL),response('')]):
             self.assertEqual(self.client.post('/api/runs/'+run_id+'/tasks/live/resume').status_code,200)
             server.state.thread.join(10)
         finished=self.client.get('/api/runs/'+run_id).json
