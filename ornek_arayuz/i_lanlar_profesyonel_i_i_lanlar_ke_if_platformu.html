@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="tr" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>İlanlar — Profesyonel İş İlanları Keşif Platformu</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            canvas: {
+              light: '#F3F4F6',
+              dark: '#0F1318'
+            },
+            surface: {
+              light: '#FFFFFF',
+              dark: '#161B22'
+            },
+            card: {
+              light: '#FFFFFF',
+              dark: '#181D24'
+            },
+            subtle: {
+              light: '#EBF0F5',
+              dark: '#21262D'
+            },
+            brand: {
+              primary: '#0A66C2',
+              primaryHover: '#004182',
+              indeed: '#2557A7',
+              tint: '#E8F3FF',
+              success: '#057642',
+              successTint: '#E6F4EA'
+            },
+            ink: {
+              primary: '#111827',
+              secondary: '#4B5563',
+              muted: '#6B7280'
+            }
+          },
+          boxShadow: {
+            'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.06)',
+            'card-hover': '0 10px 25px -5px rgba(10, 102, 194, 0.12), 0 0 0 1px #0A66C2',
+            'card-dark': '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+            'card-dark-hover': '0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 0 1px #70B5F9',
+            'command': '0 4px 16px -2px rgba(10, 102, 194, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+            'command-dark': '0 4px 16px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12)',
+            'popover': '0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08)'
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(107, 114, 128, 0.28);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(107, 114, 128, 0.48);
+    }
+
+    /* Accordion smooth transition */
+    .filter-body {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .filter-body.open {
+      grid-template-rows: 1fr;
+    }
+    .filter-body-inner {
+      overflow: hidden;
+    }
+
+    /* Live indicator pulse */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.85); opacity: 0.8; }
+      70% { transform: scale(1.9); opacity: 0; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+    .live-dot::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background-color: #057642;
+      animation: pulse-ring 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    /* Card micro-interaction */
+    .job-card {
+      transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease;
+    }
+    .job-card:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body class="bg-canvas-light dark:bg-canvas-dark text-ink-primary dark:text-zinc-100 min-h-screen flex flex-col selection:bg-[#0A66C2]/15 selection:text-[#0A66C2] transition-colors duration-200">
+
+  <!-- TOP HEADER (Bespoke Brand Identity & Status Navigation) -->
+  <header class="sticky top-0 z-30 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md border-b border-black/[0.08] dark:border-white/[0.08]">
+    <div class="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="h-16 flex items-center justify-between gap-4">
+        
+        <!-- Bespoke Logo & Wordmark (Authentic Brand Identity) -->
+        <div class="flex items-center gap-6">
+          <a href="#" class="flex items-center gap-3 group focus:outline-none select-none">
+            <!-- Custom Geometric "İ" Emblem -->
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#004182] via-[#0A66C2] to-[#2557A7] text-white flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+                <rect x="8" y="9" width="8" height="11" rx="2" />
+                <path d="M10 9V7a2 2 0 0 1 4 0v2" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-baseline gap-1">
+                <span class="font-display font-black text-xl tracking-tight text-slate-900 dark:text-white">ilanlar</span>
+                <span class="w-2 h-2 rounded-full bg-[#0A66C2]"></span>
+              </div>
+              <p class="text-[10px] font-medium text-ink-muted uppercase tracking-widest hidden sm:block">Kariyer & İlan Platformu</p>
+            </div>
+          </a>
+
+          <!-- Live Feed Status Tag -->
+          <div class="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-subtle-light dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-xs font-medium text-ink-secondary dark:text-zinc-300">
+            <span class="relative flex h-2 w-2 live-dot">
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-[#057642]"></span>
+            </span>
+            <span>Canlı Akış</span>
+            <span class="text-ink-muted">·</span>
+            <span class="font-mono font-semibold text-slate-900 dark:text-white">1.164 Aktif İlan</span>
+          </div>
+        </div>
+
+        <!-- Right Utilities & Theme Controls -->
+        <div class="flex items-center gap-2.5">
+          <!-- Mobile Filter Drawer Trigger -->
+          <button id="mobileFilterBtn" type="button" class="lg:hidden inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-[#1B1F23] border border-black/10 dark:border-white/10 shadow-xs cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-[#0A66C2] dark:text-[#70B5F9]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+            </svg>
+            <span>Filtrele</span>
+            <span id="mobileFilterCount" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#0A66C2] text-white">0</span>
+          </button>
+
+          <!-- Theme Switcher Button -->
+          <button id="themeToggleBtn" type="button" title="Görünüm Modunu Değiştir" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-light dark:bg-surface-dark hover:bg-subtle-light dark:hover:bg-subtle-dark border border-black/[0.08] dark:border-white/[0.08] text-xs font-medium text-ink-secondary dark:text-zinc-300 transition-colors cursor-pointer">
+            <svg id="themeIconSun" class="w-4 h-4 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <svg id="themeIconMoon" class="w-4 h-4 block dark:hidden text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <span id="themeLabel" class="hidden sm:inline">Koyu Tema</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO SEARCH SECTION (Indeed & LinkedIn Proportions - Unified Command Bar) -->
+  <section class="bg-surface-light dark:bg-surface-dark border-b border-black/[0.07] dark:border-white/[0.08] py-4 shadow-xs">
+    <div class="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 space-y-3.5">
+      
+      <!-- Unified Command Search Bar -->
+      <div class="bg-canvas-light dark:bg-canvas-dark p-1.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.1] shadow-command dark:shadow-command-dark">
+        <div class="flex flex-col md:flex-row items-stretch md:items-center bg-surface-light dark:bg-[#1A2028] rounded-xl divide-y md:divide-y-0 md:divide-x divide-black/[0.08] dark:divide-white/[0.08]">
+          
+          <!-- What: Keyword Input (Role, Company, Skill) -->
+          <div class="flex-1 flex items-center gap-3 px-4 py-3 min-w-0">
+            <svg class="w-5 h-5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <div class="flex-1 min-w-0">
+              <label for="keywordInput" class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">Ne / Pozisyon, Şirket veya Yetenek</label>
+              <input
+                id="keywordInput"
+                type="text"
+                placeholder="Unvan, şirket veya yetenek ara... (örn. makine mühendisi)"
+                class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-ink-muted focus:outline-none truncate pt-0.5"
+              />
+            </div>
+            <button id="clearKeywordBtn" type="button" class="hidden text-ink-muted hover:text-ink-primary dark:hover:text-white p-1 rounded-md">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Where: Location Input -->
+          <div class="md:w-80 lg:w-96 flex items-center gap-3 px-4 py-3 min-w-0">
+            <svg class="w-5 h-5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+            <div class="flex-1 min-w-0">
+              <label for="locationInput" class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">Nerede / Şehir veya İlçe</label>
+              <input
+                id="locationInput"
+                type="text"
+                placeholder="Konum ara... (örn. İstanbul)"
+                class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-ink-muted focus:outline-none truncate pt-0.5"
+              />
+            </div>
+            <button id="clearLocationBtn" type="button" class="hidden text-ink-muted hover:text-ink-primary dark:hover:text-white p-1 rounded-md">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Controls: Smart Search & Search Action Button -->
+          <div class="px-3 py-2.5 flex items-center justify-between md:justify-end gap-3 shrink-0">
+            <label for="smartSearchToggle" class="inline-flex items-center gap-2 cursor-pointer select-none group pr-1">
+              <input id="smartSearchToggle" type="checkbox" class="sr-only peer" />
+              <div class="w-8 h-4.5 bg-black/15 dark:bg-white/15 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3.5 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all after:shadow-xs relative peer-checked:bg-[#0A66C2] dark:peer-checked:bg-[#70B5F9] w-8 h-[18px]"></div>
+              <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                Akıllı arama
+              </span>
+            </label>
+
+            <button
+              id="heroSearchBtn"
+              type="button"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-colors cursor-pointer"
+            >
+              <span>İlan Bul</span>
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+              </svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- FILTER & VIEW TOOLBAR RIBBON (Unified Baseline) -->
+      <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 pt-1">
+        
+        <!-- Left Filter Pills Row -->
+        <div class="flex flex-wrap items-center gap-2">
+          
+          <!-- Zaman Filtreleri -->
+          <button
+            type="button"
+            data-quick="24h"
+            class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+          >
+            <span class="w-2 h-2 rounded-full bg-[#057642]"></span>
+            <span>Son 24 saat</span>
+            <span class="font-mono text-[10px] text-ink-muted ml-0.5" data-pill-count="24h">4</span>
+          </button>
+
+          <button
+            type="button"
+            data-quick="7d"
+            class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+          >
+            <span>Son 7 gün</span>
+            <span class="font-mono text-[10px] text-ink-muted ml-0.5" data-pill-count="7d">12</span>
+          </button>
+
+          <span class="h-4 w-[1px] bg-black/15 dark:bg-white/15 mx-0.5 hidden sm:inline-block"></span>
+
+          <!-- Ülke · Şehir Konum Filtresi (Zaman filtrelerinin hemen yanında) -->
+          <div class="relative shrink-0" id="countryCityDropdownWrapper">
+            <button
+              id="countryCityTriggerBtn"
+              type="button"
+              class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-slate-900 dark:text-zinc-200 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shadow-2xs cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+              </svg>
+              <span id="countryCityActiveText">Ülke · Şehir: Tümü</span>
+              <span id="countryCityCountBadge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-mono font-semibold bg-[#0A66C2] text-white">0</span>
+              <svg id="countryCityChevron" class="w-3.5 h-3.5 text-ink-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <!-- Popover Picker -->
+            <div
+              id="countryCityPopover"
+              class="hidden absolute left-0 mt-2 w-80 rounded-2xl bg-surface-light dark:bg-[#1E242C] shadow-popover border border-black/10 dark:border-white/10 z-40 p-3.5 space-y-2.5"
+            >
+              <div class="flex items-center justify-between px-1">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Ülke ve Şehir Seçimi</span>
+                <button id="clearCountryCityBtn" type="button" class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer">
+                  Sıfırla
+                </button>
+              </div>
+
+              <div class="relative">
+                <input
+                  id="countryCityQuickSearch"
+                  type="text"
+                  placeholder="Ülke veya şehir ara (örn. İstanbul, Berlin)"
+                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-slate-900 dark:text-zinc-100 placeholder-ink-muted focus:outline-none focus:border-[#0A66C2]"
+                />
+              </div>
+
+              <div id="countryCityOptionsList" class="max-h-56 overflow-y-auto divide-y divide-black/[0.04] dark:divide-white/[0.04] pr-0.5"></div>
+            </div>
+          </div>
+
+          <!-- Hızlı Kısayol -->
+          <button
+            type="button"
+            data-country-city-pill="Türkiye · İstanbul"
+            class="cc-quick-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+          >
+            <span>🇹🇷 Türkiye · İstanbul</span>
+            <span class="font-mono text-[10px] text-ink-muted ml-0.5">12</span>
+          </button>
+
+          <span class="h-4 w-[1px] bg-black/15 dark:bg-white/15 mx-0.5 hidden sm:inline-block"></span>
+
+          <!-- Diğer Hızlı Filtreler -->
+          <button
+            type="button"
+            data-quick="remote"
+            class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+          >
+            <span>Uzaktan</span>
+            <span class="font-mono text-[10px] text-ink-muted ml-0.5" data-pill-count="remote">2</span>
+          </button>
+
+          <button
+            type="button"
+            data-quick="hybrid"
+            class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+          >
+            <span>Hibrit</span>
+            <span class="font-mono text-[10px] text-ink-muted ml-0.5" data-pill-count="hybrid">3</span>
+          </button>
+
+          <button
+            type="button"
+            data-quick="salary"
+            class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+          >
+            <span>Maaşı belirtilen</span>
+            <span class="font-mono text-[10px] text-ink-muted ml-0.5" data-pill-count="salary">5</span>
+          </button>
+
+          <!-- Aktif Filtre Rozetleri -->
+          <div id="activeFilterChips" class="flex items-center gap-1.5 pl-2 border-l border-black/10 dark:border-white/10 empty:hidden"></div>
+        </div>
+
+        <!-- Right Sort & View Controls -->
+        <div class="flex items-center gap-3 self-end lg:self-auto shrink-0">
+          <!-- Sort Dropdown -->
+          <div class="flex items-center gap-2 bg-surface-light dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] shadow-2xs">
+            <label for="sortSelect" class="text-xs font-medium text-ink-muted shrink-0">Sırala:</label>
+            <select
+              id="sortSelect"
+              class="bg-transparent text-xs font-semibold text-slate-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="recent" class="bg-white dark:bg-zinc-900">Son taranan</option>
+              <option value="newest" class="bg-white dark:bg-zinc-900">En yeni ilanlar</option>
+              <option value="exp_asc" class="bg-white dark:bg-zinc-900">Deneyim (Azdan çoğa)</option>
+              <option value="exp_desc" class="bg-white dark:bg-zinc-900">Deneyim (Çoktan aza)</option>
+              <option value="company" class="bg-white dark:bg-zinc-900">Şirket adı (A-Z)</option>
+            </select>
+          </div>
+
+          <!-- View Mode Toggle (Cards | List) -->
+          <div class="inline-flex p-0.5 rounded-lg bg-subtle-light dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08]">
+            <button
+              id="viewCardsBtn"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-white dark:bg-zinc-800 text-[#0A66C2] dark:text-[#70B5F9] shadow-xs cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+              </svg>
+              <span>Kartlar</span>
+            </button>
+            <button
+              id="viewListBtn"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-ink-muted hover:text-slate-900 dark:hover:text-white cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+              <span>Liste</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- MAIN WORKSPACE LAYOUT (Proportional 280px Sidebar + High Density Feed) -->
+  <div class="max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex items-start gap-6">
+
+    <!-- LEFT SIDEBAR: FILTERS ("Filtrele") -->
+    <aside id="filterSidebar" class="w-72 shrink-0 hidden lg:block sticky top-[80px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1">
+      <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-card dark:shadow-card-dark overflow-hidden border border-black/[0.06] dark:border-white/[0.08]">
+        
+        <!-- Filter Header -->
+        <div class="p-4 border-b border-black/[0.06] dark:border-white/[0.06] bg-canvas-light/35 dark:bg-white/[0.01]">
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <h2 class="font-display font-bold text-sm text-slate-900 dark:text-white">Filtrele</h2>
+              <span id="sidebarActiveBadge" class="hidden px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-[#E8F3FF] text-[#0A66C2] dark:bg-[#0A66C2]/30 dark:text-[#70B5F9]">0</span>
+            </div>
+            <button
+              id="clearAllFiltersBtn"
+              type="button"
+              class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline px-1 py-0.5 transition-colors cursor-pointer"
+            >
+              Temizle
+            </button>
+          </div>
+          <p class="text-[11px] leading-relaxed text-ink-muted">
+            Farklı başlıklar birlikte uygulanır; aynı başlıkta birden çok seçim “veya” demektir.
+          </p>
+        </div>
+
+        <!-- 12 Accordion Filter Sections -->
+        <div id="accordionContainer" class="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+
+          <!-- 1. Ana meslek grubu ve alt uzmanlık -->
+          <div class="filter-section" data-section="category">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Ana meslek grubu ve alt uzmanlık</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body open">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1 hover:text-slate-900 dark:hover:text-white">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="category" value="Finans" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Finans ve Muhasebe</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">3</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1 hover:text-slate-900 dark:hover:text-white">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="category" value="İnsan kaynakları" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">İnsan ve Eğitim (İK)</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">3</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1 hover:text-slate-900 dark:hover:text-white">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="category" value="Veri ve yapay zekâ" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Teknoloji ve Mühendislik</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">2</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1 hover:text-slate-900 dark:hover:text-white">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="category" value="Pazarlama" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Pazarlama ve İletişim</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">2</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1 hover:text-slate-900 dark:hover:text-white">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="category" value="Satış" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Ticaret ve Müşteri</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">1</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1 hover:text-slate-900 dark:hover:text-white">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="category" value="Hukuk" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Hukuk ve Uyum</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">1</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1 hover:text-slate-900 dark:hover:text-white">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="category" value="Operasyon" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Yönetim ve Operasyon</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">2</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Çalışma biçimi -->
+          <div class="filter-section" data-section="workMode">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Çalışma biçimi</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body open">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="workMode" value="Ofiste" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Ofiste</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">7</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="workMode" value="Hibrit" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Hibrit</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">3</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="workMode" value="Uzaktan" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Uzaktan</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">2</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Konum -->
+          <div class="filter-section" data-section="district">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Konum</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted pt-1 pb-0.5">Ülke · Şehir</div>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="countryCity" value="Türkiye · İstanbul" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Türkiye · İstanbul</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">12</span>
+                </label>
+                <div class="text-[10px] font-bold uppercase tracking-wider text-ink-muted pt-2 pb-0.5">İlçe Kırılımı</div>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="district" value="Şişli" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Türkiye · İstanbul (Şişli)</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">3</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="district" value="Ümraniye" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Türkiye · İstanbul (Ümraniye)</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">1</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="district" value="Ataşehir" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Türkiye · İstanbul (Ataşehir)</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">1</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="district" value="Kadıköy" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Türkiye · İstanbul (Kadıköy)</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">1</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Şirket -->
+          <div class="filter-section" data-section="company">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Şirket</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="company" value="Kalkınma Yatırım Bankası" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Kalkınma Yatırım Bankası</span>
+                  </span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="company" value="Viennalife" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Viennalife</span>
+                  </span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="company" value="Kale Jet Engines" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">Kale Jet Engines</span>
+                  </span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2 truncate">
+                    <input type="checkbox" data-filter-group="company" value="IPEKYOL GROUP" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span class="truncate">IPEKYOL GROUP</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Yetenekler -->
+          <div class="filter-section" data-section="skills">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Yetenekler</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 flex flex-wrap gap-1.5">
+                <button type="button" data-skill-filter="python" class="skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 hover:text-[#0A66C2] border border-transparent cursor-pointer">python</button>
+                <button type="button" data-skill-filter="sql" class="skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 hover:text-[#0A66C2] border border-transparent cursor-pointer">sql</button>
+                <button type="button" data-skill-filter="ms office" class="skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 hover:text-[#0A66C2] border border-transparent cursor-pointer">ms office</button>
+                <button type="button" data-skill-filter="project finance" class="skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 hover:text-[#0A66C2] border border-transparent cursor-pointer">project finance</button>
+                <button type="button" data-skill-filter="recruiting" class="skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 hover:text-[#0A66C2] border border-transparent cursor-pointer">recruiting</button>
+                <button type="button" data-skill-filter="sales" class="skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 hover:text-[#0A66C2] border border-transparent cursor-pointer">sales</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Gelişmiş metin araması -->
+          <div class="filter-section" data-section="advancedText">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Gelişmiş metin araması</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-2">
+                <input id="excludeTextInput" type="text" placeholder="Hariç tutulacak kelimeler..." class="w-full px-3 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:border-[#0A66C2]" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. Maaş -->
+          <div class="filter-section" data-section="salary">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Maaş</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <input id="sidebarSalaryCheckbox" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                  <span>Sadece maaş bilgisi paylaşılanlar</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 8. Kıdem ve deneyim -->
+          <div class="filter-section" data-section="seniority">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Kıdem ve deneyim</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body open">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="seniority" value="Başlangıç" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Başlangıç</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">1</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="seniority" value="Orta seviye" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Orta seviye</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">4</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="seniority" value="Kıdemli" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Kıdemli</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">6</span>
+                </label>
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="seniority" value="Yönetici" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Yönetici</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">1</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 9. Tarihler -->
+          <div class="filter-section" data-section="dates">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Tarihler</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input type="checkbox" data-filter-group="date" value="today" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Bugün yayınlananlar</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">4</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 10. Arama ve tarama geçmişi -->
+          <div class="filter-section" data-section="history">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Arama ve tarama geçmişi</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input id="onlyNewSidebarCheck" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Sadece yeni ilanlar (Yeni)</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">9</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 11. İçerik ve analiz -->
+          <div class="filter-section" data-section="analysis">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">İçerik ve analiz</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-1.5">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input id="hasSkillsCheck" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Yetenek etiketleri ayrıştırılmış</span>
+                  </span>
+                  <span class="font-mono text-[10px] text-ink-muted">6</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 12. Görünürlük ve yönetim -->
+          <div class="filter-section" data-section="visibility">
+            <button type="button" class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Görünürlük ve yönetim</span>
+              <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div class="filter-body">
+              <div class="filter-body-inner px-4 pb-3.5 space-y-2">
+                <label class="flex items-center justify-between gap-2 text-xs text-ink-secondary dark:text-zinc-300 cursor-pointer py-1">
+                  <span class="flex items-center gap-2">
+                    <input id="showHiddenCheck" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0" />
+                    <span>Gizlenen ilanları göster</span>
+                  </span>
+                  <span id="hiddenCountLabel" class="font-mono text-[10px] text-ink-muted">0</span>
+                </label>
+                <button id="restoreHiddenBtn" type="button" class="hidden w-full text-left text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer">
+                  Tüm gizlenen ilanları geri yükle
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 min-w-0">
+      
+      <!-- Results Meta Bar: "1.164 ilan" & "Sayfa başına [24]" -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+        <div class="flex items-baseline gap-2">
+          <span id="totalJobsLabel" class="font-mono font-bold text-sm text-slate-900 dark:text-white">1.164 ilan</span>
+          <span id="filteredSubtext" class="text-xs text-ink-muted hidden"></span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label for="perPageSelect" class="text-xs font-medium text-ink-secondary dark:text-zinc-400">Sayfa başına</label>
+          <select
+            id="perPageSelect"
+            class="bg-surface-light dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08] rounded-lg px-2.5 py-1 text-xs font-mono font-medium text-slate-900 dark:text-zinc-200 focus:outline-none shadow-2xs cursor-pointer"
+          >
+            <option value="12">12</option>
+            <option value="24" selected>24</option>
+            <option value="48">48</option>
+            <option value="96">96</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Notification Banner: "51 yeni ilan son kontrolünden beri eklendi" -->
+      <div id="newJobsBanner" class="mb-4 rounded-xl bg-[#E8F3FF] dark:bg-[#1C2532] border border-[#0A66C2]/25 dark:border-[#70B5F9]/30 shadow-xs p-3.5 sm:px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative overflow-hidden">
+        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0A66C2] dark:bg-[#70B5F9]"></div>
+        <div class="flex items-center gap-3 pl-1">
+          <div class="w-8 h-8 rounded-full bg-[#0A66C2] text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-900 dark:text-zinc-200">
+            <strong class="font-bold text-[#0A66C2] dark:text-[#70B5F9]"><span id="newCountNumber">51</span> yeni ilan</strong> son kontrolünden beri eklendi
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 self-end sm:self-auto">
+          <button
+            id="onlyNewBannerBtn"
+            type="button"
+            class="px-4 py-1.5 rounded-full text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-all cursor-pointer"
+          >
+            Sadece yenileri göster
+          </button>
+          <button
+            id="markSeenBtn"
+            type="button"
+            class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface-light dark:bg-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/15 text-ink-secondary dark:text-zinc-300 border border-black/10 dark:border-white/10 transition-colors cursor-pointer"
+          >
+            Görüldü say
+          </button>
+        </div>
+      </div>
+
+      <!-- JOBS CONTAINER (Grid or List) -->
+      <div id="jobsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark p-12 text-center my-4">
+        <div class="w-12 h-12 rounded-2xl bg-subtle-light dark:bg-white/5 mx-auto flex items-center justify-center text-ink-muted mb-3">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+        </div>
+        <h3 class="font-display font-bold text-base text-slate-900 dark:text-white mb-1">Eşleşen ilan bulunamadı</h3>
+        <p class="text-xs text-ink-secondary dark:text-zinc-400 max-w-md mx-auto mb-4">
+          Seçtiğiniz arama kriterlerine veya filtrelere uygun aktif bir ilan kalmadı. Filtreleri sıfırlayarak tüm ilanları tekrar görüntüleyebilirsiniz.
+        </p>
+        <button id="emptyResetBtn" type="button" class="px-5 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors cursor-pointer">
+          Filtreleri Temizle
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- SLIDE-OVER DRAWER FOR JOB DETAILS ("İlana git ↗") -->
+  <div id="jobDrawerBackdrop" class="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] hidden opacity-0 transition-opacity duration-200">
+    <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+      <div id="jobDrawerPanel" class="w-screen max-w-xl bg-surface-light dark:bg-surface-dark shadow-2xl border-l border-black/10 dark:border-white/10 flex flex-col justify-between overflow-y-auto">
+        <div id="jobDrawerContent" class="p-6 sm:p-8 space-y-6"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION FOR HIDE / UNDO ("Gizle") -->
+  <div id="toastBar" class="fixed bottom-5 right-5 z-50 hidden items-center gap-3 px-4 py-3 rounded-xl bg-slate-900 dark:bg-zinc-800 text-white shadow-xl border border-white/10 text-xs">
+    <span id="toastMessage">İlan gizlendi.</span>
+    <button id="toastUndoBtn" type="button" class="font-semibold text-[#70B5F9] hover:underline cursor-pointer">Geri al</button>
+  </div>
+
+  <script>
+    // Authentic dataset matching all 12 cards and exact taxonomy from user's screenshot
+    const JOBS_DATA = [
+      {
+        id: 1,
+        initial: "K",
+        brandHue: "bg-blue-500/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300 border-blue-500/20",
+        title: "Finansal Analist",
+        company: "Kalkınma Yatırım Bankası",
+        location: "Ümraniye",
+        city: "İstanbul",
+        workMode: "Ofiste",
+        experienceText: "2+ yıl deneyim",
+        experienceYears: 2,
+        isNew: true,
+        departmentTag: "Finans",
+        seniority: "Orta seviye",
+        categoryBreadcrumb: "Finans ve Muhasebe → Finansal Analiz ve Bütçe",
+        skills: [],
+        postedLabel: "Bugün",
+        isToday: true,
+        daysAgo: 0,
+        hasSalary: true,
+        salaryRange: "65.000 ₺ – 85.000 ₺ / ay",
+        summary: "Yatırım projelerinin finansal fizibilite modellerini hazırlamak, bütçe-gerçekleşme sapma analizlerini yürütmek ve üst yönetim raporlamalarına destek vermek."
+      },
+      {
+        id: 2,
+        initial: "W",
+        brandHue: "bg-purple-500/10 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300 border-purple-500/20",
+        title: "İK ve İdari İşler Uzmanı (İstanbul - Anadolu Yakası)",
+        company: "Workforce İnsan Kaynakları",
+        location: "İstanbul, Türkiye · Ofiste",
+        city: "İstanbul",
+        workMode: "Ofiste",
+        experienceText: "3+ yıl deneyim",
+        experienceYears: 3,
+        isNew: true,
+        departmentTag: "İnsan kaynakları",
+        seniority: "Kıdemli",
+        categoryBreadcrumb: "Yönetim ve İdari İşler → İdari Destek ve Asistanlık",
+        skills: ["insan kaynakları", "idari işler", "bordro", "ms office"],
+        postedLabel: "3 gün önce",
+        isToday: false,
+        daysAgo: 3,
+        hasSalary: false,
+        salaryRange: "Belirtilmemiş",
+        summary: "Anadolu yakasındaki bölge operasyonlarının özlük, bordro, puantaj ve idari satınalma süreçlerinin uçtan uca koordinasyonu."
+      },
+      {
+        id: 3,
+        initial: "G",
+        brandHue: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 border-amber-500/20",
+        title: "Manager Project Finance",
+        company: "Gizli Şirket",
+        location: "İstanbul, Türkiye",
+        city: "İstanbul",
+        workMode: "Hibrit",
+        experienceText: "10+ yıl deneyim",
+        experienceYears: 10,
+        isNew: true,
+        departmentTag: "Finans",
+        seniority: "Yönetici",
+        categoryBreadcrumb: "Finans ve Muhasebe → Finansal Analiz ve Bütçe",
+        skills: ["structured finance", "project finance", "corporate lending", "investment banking"],
+        postedLabel: "Bugün",
+        isToday: true,
+        daysAgo: 0,
+        hasSalary: true,
+        salaryRange: "160.000 ₺ – 220.000 ₺ / ay",
+        summary: "Büyük ölçekli altyapı ve enerji yatırımlarında proje finansmanı yapılandırma, sendikasyon kredileri ve uluslararası finans kuruluşlarıyla müzakere yönetimi."
+      },
+      {
+        id: 4,
+        initial: "N",
+        brandHue: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 border-emerald-500/20",
+        title: "Ofis Asistanı",
+        company: "NewMind AI",
+        location: "Şişli · Ofiste",
+        city: "İstanbul",
+        workMode: "Ofiste",
+        experienceText: "3+ yıl deneyim",
+        experienceYears: 3,
+        isNew: true,
+        departmentTag: "Operasyon",
+        seniority: "Kıdemli",
+        categoryBreadcrumb: "Genel Meslekler → Diğer / Belirtilmemiş",
+        skills: ["office", "administration", "ms office", "scheduling"],
+        postedLabel: "5 gün önce",
+        isToday: false,
+        daysAgo: 5,
+        hasSalary: false,
+        salaryRange: "Belirtilmemiş",
+        summary: "Teknoloji ekibinin günlük ofis operasyonlarını, yönetici takvim planlamalarını, misafir ağırlama ve kurumsal tedarik süreçlerini yönetmek."
+      },
+      {
+        id: 5,
+        initial: "H",
+        brandHue: "bg-rose-500/10 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 border-rose-500/20",
+        title: "İnsan Kaynakları Müdürü",
+        company: "H&F İnsan Kaynakları ve Yönetim Danışmanlığı",
+        location: "Ataşehir",
+        city: "İstanbul",
+        workMode: "Hibrit",
+        experienceText: "5+ yıl deneyim",
+        experienceYears: 5,
+        isNew: true,
+        departmentTag: "İnsan kaynakları",
+        seniority: "Kıdemli",
+        categoryBreadcrumb: "İnsan ve Eğitim → İnsan Kaynakları",
+        skills: ["recruiting", "onboarding", "performance management", "payroll"],
+        postedLabel: "Bugün",
+        isToday: true,
+        daysAgo: 0,
+        hasSalary: true,
+        salaryRange: "110.000 ₺ – 145.000 ₺ / ay",
+        summary: "Yetenek kazanımı stratejilerini kurgulamak, performans değerlendirme sistemlerini yönetmek ve organizasyonel gelişim projelerine liderlik etmek."
+      },
+      {
+        id: 6,
+        initial: "L",
+        brandHue: "bg-sky-500/10 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 border-sky-500/20",
+        title: "Satış Elemanı",
+        company: "Legal Yayıncılık A.Ş.",
+        location: "İstanbul, Türkiye · Ofiste",
+        city: "İstanbul",
+        workMode: "Ofiste",
+        experienceText: "0+ yıl deneyim",
+        experienceYears: 0,
+        isNew: true,
+        departmentTag: "Satış",
+        seniority: "Başlangıç",
+        categoryBreadcrumb: "Ticaret ve Müşteri → Satış ve İş Geliştirme",
+        skills: ["sales", "marketing", "telemarketing", "legaltech"],
+        postedLabel: "4 gün önce",
+        isToday: false,
+        daysAgo: 4,
+        hasSalary: true,
+        salaryRange: "38.000 ₺ + Prim",
+        summary: "Hukuk büroları ve kurumsal hukuk departmanlarına dijital içtihat ve mevzuat veri tabanı çözümlerinin tanıtımı ve aktif satışı."
+      },
+      {
+        id: 7,
+        initial: "A",
+        brandHue: "bg-indigo-500/10 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 border-indigo-500/20",
+        title: "Junior/Senior Maritime Lawyer",
+        company: "Aydin Lawyers",
+        location: "Şişli · Ofiste",
+        city: "İstanbul",
+        workMode: "Ofiste",
+        experienceText: "1+ yıl deneyim",
+        experienceYears: 1,
+        isNew: false,
+        departmentTag: "Diğer",
+        seniority: "Kıdemli",
+        categoryBreadcrumb: "Hukuk ve Uyum → Hukuk",
+        skills: [],
+        postedLabel: "5 gün önce",
+        isToday: false,
+        daysAgo: 5,
+        hasSalary: false,
+        salaryRange: "Belirtilmemiş",
+        summary: "Deniz ticareti hukuku, gemi kira sözleşmeleri (charterparty), P&I kulüp uyuşmazlıkları ve uluslararası tahkim dosyalarının takibi."
+      },
+      {
+        id: 8,
+        initial: "V",
+        brandHue: "bg-teal-500/10 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300 border-teal-500/20",
+        title: "Veri Analitiği Bölüm Yönetmeni",
+        company: "Viennalife",
+        location: "Kadıköy",
+        city: "İstanbul",
+        workMode: "Uzaktan",
+        experienceText: "3+ yıl deneyim",
+        experienceYears: 3,
+        isNew: false,
+        departmentTag: "Veri ve yapay zekâ",
+        seniority: "Orta seviye",
+        categoryBreadcrumb: "Teknoloji ve Mühendislik → Veri ve Analitik",
+        skills: ["python", "sql", "machine learning"],
+        postedLabel: "5 gün önce",
+        isToday: false,
+        daysAgo: 5,
+        hasSalary: true,
+        salaryRange: "95.000 ₺ – 130.000 ₺ / ay",
+        summary: "Sigorta ve emeklilik portföyünde müşteri kayıp (churn) modelleri, çapraz satış algoritmaları ve analitik veri ambarı mimarisini yönetmek."
+      },
+      {
+        id: 9,
+        initial: "K",
+        brandHue: "bg-orange-500/10 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300 border-orange-500/20",
+        title: "Mekanik Tasarım Kıdemli Mühendisi",
+        company: "Kale Jet Engines",
+        location: "İstanbul, Türkiye",
+        city: "İstanbul",
+        workMode: "Ofiste",
+        experienceText: "4+ yıl deneyim",
+        experienceYears: 4,
+        isNew: false,
+        departmentTag: "Tasarım",
+        seniority: "Kıdemli",
+        categoryBreadcrumb: "Genel Meslekler → Diğer / Belirtilmemiş",
+        skills: [],
+        postedLabel: "5 gün önce",
+        isToday: false,
+        daysAgo: 5,
+        hasSalary: false,
+        salaryRange: "Belirtilmemiş",
+        summary: "Turbojet ve turbofan motor alt sistemlerinin 3B CAD mekanik tasarımlarını, tolerans analizlerini ve prototip doğrulama testlerini gerçekleştirmek."
+      },
+      {
+        id: 10,
+        initial: "O",
+        brandHue: "bg-cyan-500/10 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300 border-cyan-500/20",
+        title: "Dijital Pazarlama Yöneticisi",
+        company: "Osmanlı Yatırım Menkul Değerler A.Ş.",
+        location: "İstanbul, Türkiye · Ofiste",
+        city: "İstanbul",
+        workMode: "Ofiste",
+        experienceText: "8+ yıl deneyim",
+        experienceYears: 8,
+        isNew: true,
+        departmentTag: "Pazarlama",
+        seniority: "Kıdemli",
+        categoryBreadcrumb: "Pazarlama ve İletişim → Dijital Pazarlama",
+        skills: [],
+        postedLabel: "5 gün önce",
+        isToday: false,
+        daysAgo: 5,
+        hasSalary: false,
+        salaryRange: "Belirtilmemiş",
+        summary: "Yatırım ürünleri için performans pazarlaması, yatırımcı edinim hunileri (funnel), SEO/SEM stratejileri ve dijital büyüme bütçesinin yönetimi."
+      },
+      {
+        id: 11,
+        initial: "L",
+        brandHue: "bg-pink-500/10 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300 border-pink-500/20",
+        title: "Grafik Tasarım ve Pazarlama Asistanı",
+        company: "Lena Proje Pazarlama",
+        location: "Gaziosmanpaşa · Ofiste",
+        city: "İstanbul",
+        workMode: "Uzaktan",
+        experienceText: "2+ yıl deneyim",
+        experienceYears: 2,
+        isNew: true,
+        departmentTag: "Pazarlama",
+        seniority: "Orta seviye",
+        categoryBreadcrumb: "Pazarlama ve İletişim → Dijital Pazarlama",
+        skills: [],
+        postedLabel: "2 gün önce",
+        isToday: false,
+        daysAgo: 2,
+        hasSalary: false,
+        salaryRange: "Belirtilmemiş",
+        summary: "Gayrimenkul ve kurumsal proje lansmanları için sosyal medya kreatifleri, katalog tasarımları ve dijital kampanya görsellerini hazırlamak."
+      },
+      {
+        id: 12,
+        initial: "I",
+        brandHue: "bg-teal-600/10 text-teal-800 dark:bg-teal-500/15 dark:text-teal-300 border-teal-500/20",
+        title: "İşe Alım Uzmanı",
+        company: "IPEKYOL GROUP",
+        location: "Şişli · Hibrit",
+        city: "İstanbul",
+        workMode: "Hibrit",
+        experienceText: "2+ yıl deneyim",
+        experienceYears: 2,
+        isNew: true,
+        departmentTag: "İnsan kaynakları",
+        seniority: "Orta seviye",
+        categoryBreadcrumb: "İnsan ve Eğitim → İnsan Kaynakları",
+        skills: [],
+        postedLabel: "Bugün",
+        isToday: true,
+        daysAgo: 0,
+        hasSalary: false,
+        salaryRange: "Belirtilmemiş",
+        summary: "Merkez ofis ve perakende mağaza organizasyonu için uçtan uca mülakat, değerlendirme merkezi ve iş teklifi süreçlerini yürütmek."
+      }
+    ];
+
+    // Country · City Options Catalog
+    const COUNTRY_CITY_OPTIONS = [
+      { id: "Türkiye · İstanbul", country: "Türkiye", city: "İstanbul", flag: "🇹🇷", count: 12, districts: "Tüm İlçeler (Şişli, Ümraniye, Ataşehir, Kadıköy...)" },
+      { id: "Türkiye · İstanbul (Avrupa)", country: "Türkiye", city: "İstanbul (Avrupa)", flag: "🇹🇷", count: 4, matchDistricts: ["Şişli", "Gaziosmanpaşa"] },
+      { id: "Türkiye · İstanbul (Anadolu)", country: "Türkiye", city: "İstanbul (Anadolu)", flag: "🇹🇷", count: 4, matchDistricts: ["Ümraniye", "Ataşehir", "Kadıköy", "Anadolu Yakası"] },
+      { id: "Türkiye · Ankara", country: "Türkiye", city: "Ankara", flag: "🇹🇷", count: 0, districts: "Çankaya, Söğütözü, ODTÜ Teknokent" },
+      { id: "Türkiye · İzmir", country: "Türkiye", city: "İzmir", flag: "🇹🇷", count: 0, districts: "Konak, Bayraklı, Urla" },
+      { id: "Almanya · Berlin", country: "Almanya", city: "Berlin", flag: "🇩🇪", count: 0, districts: "Mitte, Kreuzberg (Avrupa Uzaktan / Hibrit)" },
+      { id: "Hollanda · Amsterdam", country: "Hollanda", city: "Amsterdam", flag: "🇳🇱", count: 0, districts: "Zuidas, Noord" },
+      { id: "İngiltere · Londra", country: "İngiltere", city: "Londra", flag: "🇬🇧", count: 0, districts: "City of London, Canary Wharf" }
+    ];
+
+    // Enrich JOBS_DATA with country & countryCity fields
+    JOBS_DATA.forEach((job) => {
+      job.country = "Türkiye";
+      job.countryCity = `${job.country} · ${job.city}`;
+    });
+
+    // State Management
+    const state = {
+      keyword: "",
+      location: "",
+      smartSearch: false,
+      sortBy: "recent",
+      viewMode: "cards", // 'cards' | 'list'
+      quickPills: new Set(),
+      countryCities: new Set(),
+      countryCityQuery: "",
+      categories: new Set(),
+      workModes: new Set(),
+      districts: new Set(),
+      companies: new Set(),
+      seniorities: new Set(),
+      dates: new Set(),
+      selectedSkill: null,
+      excludeText: "",
+      onlyNew: false,
+      onlySalary: false,
+      onlyWithSkills: false,
+      showHidden: false,
+      hiddenIds: new Set(),
+      lastHiddenId: null,
+      bannerDismissed: false
+    };
+
+    // DOM Elements
+    const jobsGrid = document.getElementById("jobsGrid");
+    const emptyState = document.getElementById("emptyState");
+    const totalJobsLabel = document.getElementById("totalJobsLabel");
+    const filteredSubtext = document.getElementById("filteredSubtext");
+    const keywordInput = document.getElementById("keywordInput");
+    const locationInput = document.getElementById("locationInput");
+    const clearKeywordBtn = document.getElementById("clearKeywordBtn");
+    const clearLocationBtn = document.getElementById("clearLocationBtn");
+    const smartSearchToggle = document.getElementById("smartSearchToggle");
+    const sortSelect = document.getElementById("sortSelect");
+    const viewCardsBtn = document.getElementById("viewCardsBtn");
+    const viewListBtn = document.getElementById("viewListBtn");
+    const newJobsBanner = document.getElementById("newJobsBanner");
+    const onlyNewBannerBtn = document.getElementById("onlyNewBannerBtn");
+    const markSeenBtn = document.getElementById("markSeenBtn");
+    const activeFilterChips = document.getElementById("activeFilterChips");
+    const sidebarActiveBadge = document.getElementById("sidebarActiveBadge");
+    const hiddenCountLabel = document.getElementById("hiddenCountLabel");
+    const restoreHiddenBtn = document.getElementById("restoreHiddenBtn");
+    const toastBar = document.getElementById("toastBar");
+    const toastMessage = document.getElementById("toastMessage");
+    const toastUndoBtn = document.getElementById("toastUndoBtn");
+
+    let toastTimeout = null;
+
+    // Filter logic
+    function getFilteredJobs() {
+      return JOBS_DATA.filter((job) => {
+        if (!state.showHidden && state.hiddenIds.has(job.id)) {
+          return false;
+        }
+
+        if (state.keyword.trim() !== "") {
+          const q = state.keyword.toLocaleLowerCase("tr-TR").trim();
+          const haystack = [
+            job.title,
+            job.company,
+            job.departmentTag,
+            job.categoryBreadcrumb,
+            job.seniority,
+            ...job.skills,
+            state.smartSearch ? job.summary : ""
+          ].join(" ").toLocaleLowerCase("tr-TR");
+          if (!haystack.includes(q)) return false;
+        }
+
+        if (state.excludeText.trim() !== "") {
+          const ex = state.excludeText.toLocaleLowerCase("tr-TR").trim();
+          const haystack = (job.title + " " + job.company + " " + job.skills.join(" ")).toLocaleLowerCase("tr-TR");
+          if (haystack.includes(ex)) return false;
+        }
+
+        if (state.location.trim() !== "") {
+          const locQ = state.location.toLocaleLowerCase("tr-TR").trim();
+          const locHaystack = (job.location + " " + job.city).toLocaleLowerCase("tr-TR");
+          if (!locHaystack.includes(locQ)) return false;
+        }
+
+        if (state.quickPills.has("24h") && !job.isToday) return false;
+        if (state.quickPills.has("7d") && job.daysAgo > 7) return false;
+        if (state.quickPills.has("remote") && job.workMode !== "Uzaktan") return false;
+        if (state.quickPills.has("hybrid") && job.workMode !== "Hibrit") return false;
+        if (state.quickPills.has("salary") && !job.hasSalary) return false;
+
+        if (state.onlyNew && !job.isNew) return false;
+        if (state.onlySalary && !job.hasSalary) return false;
+        if (state.onlyWithSkills && job.skills.length === 0) return false;
+
+        if (state.categories.size > 0) {
+          let matchCat = false;
+          state.categories.forEach((cat) => {
+            if (
+              job.departmentTag.toLocaleLowerCase("tr-TR").includes(cat.toLocaleLowerCase("tr-TR")) ||
+              job.categoryBreadcrumb.toLocaleLowerCase("tr-TR").includes(cat.toLocaleLowerCase("tr-TR"))
+            ) {
+              matchCat = true;
+            }
+          });
+          if (!matchCat) return false;
+        }
+
+        if (state.workModes.size > 0 && !state.workModes.has(job.workMode)) {
+          return false;
+        }
+
+        if (state.countryCities.size > 0) {
+          let matchCC = false;
+          state.countryCities.forEach((ccId) => {
+            const opt = COUNTRY_CITY_OPTIONS.find((o) => o.id === ccId);
+            if (opt && opt.matchDistricts) {
+              if (opt.matchDistricts.some((d) => job.location.includes(d) || job.title.includes(d))) {
+                matchCC = true;
+              }
+            } else if (job.countryCity === ccId) {
+              matchCC = true;
+            }
+          });
+          if (!matchCC) return false;
+        }
+
+        if (state.districts.size > 0) {
+          let matchDist = false;
+          state.districts.forEach((d) => {
+            if (job.location.includes(d)) matchDist = true;
+          });
+          if (!matchDist) return false;
+        }
+
+        if (state.companies.size > 0 && !state.companies.has(job.company)) {
+          return false;
+        }
+
+        if (state.seniorities.size > 0 && !state.seniorities.has(job.seniority)) {
+          return false;
+        }
+
+        if (state.dates.has("today") && !job.isToday) {
+          return false;
+        }
+
+        if (state.selectedSkill && !job.skills.includes(state.selectedSkill)) {
+          return false;
+        }
+
+        return true;
+      }).sort((a, b) => {
+        if (state.sortBy === "newest") return a.daysAgo - b.daysAgo;
+        if (state.sortBy === "exp_asc") return a.experienceYears - b.experienceYears;
+        if (state.sortBy === "exp_desc") return b.experienceYears - a.experienceYears;
+        if (state.sortBy === "company") return a.company.localeCompare(b.company, "tr");
+        return a.id - b.id;
+      });
+    }
+
+    function renderActiveFilterChips() {
+      const chips = [];
+      if (state.onlyNew) {
+        chips.push({ label: "Sadece yeni ilanlar", clear: () => { state.onlyNew = false; document.getElementById("onlyNewSidebarCheck").checked = false; updateBannerBtnState(); } });
+      }
+      if (state.selectedSkill) {
+        chips.push({ label: `Yetenek: ${state.selectedSkill}`, clear: () => { state.selectedSkill = null; updateSkillChipStyles(); } });
+      }
+      state.countryCities.forEach((cc) => {
+        chips.push({
+          label: `Konum: ${cc}`,
+          clear: () => {
+            uncheckSidebar("countryCity", cc);
+            syncCountryCityUI();
+          }
+        });
+      });
+      state.categories.forEach((c) => {
+        chips.push({ label: c, clear: () => uncheckSidebar("category", c) });
+      });
+      state.workModes.forEach((m) => {
+        chips.push({ label: m, clear: () => uncheckSidebar("workMode", m) });
+      });
+      state.seniorities.forEach((s) => {
+        chips.push({ label: s, clear: () => uncheckSidebar("seniority", s) });
+      });
+
+      const totalActive =
+        chips.length +
+        state.quickPills.size +
+        state.districts.size +
+        state.companies.size +
+        (state.keyword ? 1 : 0) +
+        (state.location ? 1 : 0);
+
+      if (totalActive > 0) {
+        sidebarActiveBadge.textContent = totalActive;
+        sidebarActiveBadge.classList.remove("hidden");
+      } else {
+        sidebarActiveBadge.classList.add("hidden");
+      }
+
+      activeFilterChips.innerHTML = "";
+      chips.forEach((chip) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-[#E8F3FF] dark:bg-[#0A66C2]/25 text-[#0A66C2] dark:text-[#70B5F9] border border-[#0A66C2]/30 hover:bg-[#0A66C2]/15 transition-colors shrink-0 cursor-pointer";
+        btn.innerHTML = `<span>${chip.label}</span><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
+        btn.addEventListener("click", () => {
+          chip.clear();
+          render();
+        });
+        activeFilterChips.appendChild(btn);
+      });
+    }
+
+    function uncheckSidebar(group, val) {
+      const box = document.querySelector(`input[data-filter-group="${group}"][value="${val}"]`);
+      if (box) box.checked = false;
+      if (group === "countryCity") state.countryCities.delete(val);
+      if (group === "category") state.categories.delete(val);
+      if (group === "workMode") state.workModes.delete(val);
+      if (group === "seniority") state.seniorities.delete(val);
+    }
+
+    function syncCountryCityUI() {
+      const triggerBtn = document.getElementById("countryCityTriggerBtn");
+      const activeText = document.getElementById("countryCityActiveText");
+      const countBadge = document.getElementById("countryCityCountBadge");
+      const optionsList = document.getElementById("countryCityOptionsList");
+
+      if (state.countryCities.size === 0) {
+        activeText.textContent = "Ülke · Şehir: Tümü";
+        countBadge.classList.add("hidden");
+        triggerBtn.className = "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-slate-900 dark:text-zinc-200 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shadow-2xs cursor-pointer";
+      } else if (state.countryCities.size === 1) {
+        const firstVal = Array.from(state.countryCities)[0];
+        activeText.textContent = firstVal;
+        countBadge.textContent = "1";
+        countBadge.classList.remove("hidden");
+        triggerBtn.className = "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#E8F3FF] dark:bg-[#0A66C2]/25 text-[#0A66C2] dark:text-[#70B5F9] border border-[#0A66C2]/40 transition-all shadow-2xs cursor-pointer";
+      } else {
+        activeText.textContent = "Ülke · Şehir";
+        countBadge.textContent = String(state.countryCities.size);
+        countBadge.classList.remove("hidden");
+        triggerBtn.className = "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#E8F3FF] dark:bg-[#0A66C2]/25 text-[#0A66C2] dark:text-[#70B5F9] border border-[#0A66C2]/40 transition-all shadow-2xs cursor-pointer";
+      }
+
+      document.querySelectorAll(".cc-quick-pill").forEach((pill) => {
+        const val = pill.getAttribute("data-country-city-pill");
+        if (state.countryCities.has(val)) {
+          pill.className = "cc-quick-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0A66C2] text-white border border-[#0A66C2] shadow-xs transition-all shrink-0 cursor-pointer";
+        } else {
+          pill.className = "cc-quick-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs";
+        }
+      });
+
+      document.querySelectorAll('input[data-filter-group="countryCity"]').forEach((box) => {
+        box.checked = state.countryCities.has(box.value);
+      });
+
+      if (optionsList) {
+        const q = state.countryCityQuery.toLocaleLowerCase("tr-TR").trim();
+        const filteredOpts = COUNTRY_CITY_OPTIONS.filter((o) =>
+          !q ||
+          o.id.toLocaleLowerCase("tr-TR").includes(q) ||
+          (o.districts && o.districts.toLocaleLowerCase("tr-TR").includes(q))
+        );
+        optionsList.innerHTML = filteredOpts.map((opt) => {
+          const checked = state.countryCities.has(opt.id);
+          return `
+            <label class="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg hover:bg-subtle-light dark:hover:bg-white/[0.04] cursor-pointer transition-colors">
+              <span class="flex items-center gap-2.5 min-w-0">
+                <input
+                  type="checkbox"
+                  data-cc-option="${opt.id}"
+                  ${checked ? "checked" : ""}
+                  class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2] focus:ring-0"
+                />
+                <span class="text-sm leading-none">${opt.flag}</span>
+                <span class="min-w-0">
+                  <span class="block text-xs font-semibold text-slate-900 dark:text-zinc-100 truncate">
+                    <span class="text-ink-secondary dark:text-zinc-400 font-normal">${opt.country}</span> · ${opt.city}
+                  </span>
+                </span>
+              </span>
+              <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-subtle-light dark:bg-white/5 text-ink-muted shrink-0">${opt.count}</span>
+            </label>
+          `;
+        }).join("");
+      }
+    }
+
+    function renderCardView(jobs) {
+      jobsGrid.className = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4.5";
+      jobsGrid.innerHTML = jobs.map((job) => {
+        const isHidden = state.hiddenIds.has(job.id);
+        const [parentCat, subCat] = job.categoryBreadcrumb.split(" → ");
+
+        return `
+          <article
+            data-job-id="${job.id}"
+            class="job-card group relative bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark hover:shadow-card-hover dark:hover:shadow-card-dark-hover p-5 flex flex-col justify-between overflow-hidden border border-black/[0.06] dark:border-white/[0.07] ${isHidden ? 'opacity-55 border-dashed border-amber-500/50' : ''}"
+          >
+            <!-- Blue left accent border indicator on card hover -->
+            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0A66C2] opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+            <div>
+              <!-- Top Row: Monogram, Company, Location & New Badge -->
+              <div class="flex items-start justify-between gap-3 mb-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-11 h-11 rounded-xl border ${job.brandHue} flex items-center justify-center font-display font-extrabold text-base shrink-0 shadow-xs">
+                    ${job.initial}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+                      ${job.company}
+                    </p>
+                    <p class="text-[11px] text-ink-muted truncate mt-0.5 flex items-center gap-1">
+                      <svg class="w-3 h-3 shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                      </svg>
+                      <span>${job.location.includes("Türkiye") ? job.location : `${job.country} · ${job.city} (${job.location})`}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 shrink-0">
+                  ${job.isNew ? `
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F4EA] dark:bg-[#057642]/30 text-[#057642] dark:text-emerald-300 border border-[#057642]/20">
+                      Yeni
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+
+              <!-- Job Title (Crisp, High-Legibility Editorial Display) -->
+              <h3
+                data-action="open-drawer"
+                data-id="${job.id}"
+                class="font-display font-bold text-[16px] leading-snug text-slate-900 dark:text-white group-hover:text-[#0A66C2] dark:group-hover:text-[#70B5F9] cursor-pointer line-clamp-2 mb-2.5 transition-colors"
+              >
+                ${job.title}
+              </h3>
+
+              <!-- Category Breadcrumb -->
+              <p class="text-[11px] font-medium text-ink-muted truncate mb-3" title="${job.categoryBreadcrumb}">
+                <span class="text-[#0A66C2] dark:text-[#70B5F9]">${parentCat}</span> <span class="text-black/30 dark:text-white/30">→</span> <span>${subCat || ""}</span>
+              </p>
+
+              <!-- Attribute Badges (Experience, Department, Seniority, Salary) -->
+              <div class="flex flex-wrap items-center gap-1.5 mb-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[#F3F4F6] dark:bg-white/[0.08] text-slate-800 dark:text-zinc-200">
+                  <svg class="w-3 h-3 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  ${job.experienceText}
+                </span>
+
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#E8F3FF] dark:bg-[#0A66C2]/20 text-[#0A66C2] dark:text-[#70B5F9]">
+                  ${job.departmentTag}
+                </span>
+
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-subtle-light dark:bg-white/[0.06] text-ink-secondary dark:text-zinc-300">
+                  ${job.seniority}
+                </span>
+
+                ${job.hasSalary ? `
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#E6F4EA] dark:bg-[#057642]/25 text-[#057642] dark:text-emerald-300">
+                    ${job.salaryRange}
+                  </span>
+                ` : ''}
+              </div>
+
+              <!-- Skills / Technical Tags -->
+              ${job.skills.length > 0 ? `
+                <div class="flex flex-wrap items-center gap-1.5 pt-0.5 mb-2">
+                  ${job.skills.map((skill) => `
+                    <button
+                      type="button"
+                      data-action="filter-skill"
+                      data-skill="${skill}"
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium text-ink-secondary dark:text-zinc-300 bg-subtle-light/75 dark:bg-white/[0.04] hover:bg-[#E8F3FF] hover:text-[#0A66C2] dark:hover:text-[#70B5F9] border border-black/[0.06] dark:border-white/[0.08] transition-colors cursor-pointer"
+                    >${skill}</button>
+                  `).join("")}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Card Footer: Live Timestamp & Clean Actions -->
+            <div class="pt-3.5 mt-2 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 text-xs">
+                ${job.isToday ? `
+                  <span class="w-2 h-2 rounded-full bg-[#057642]"></span>
+                  <span class="font-bold text-[#057642] dark:text-emerald-400">Bugün</span>
+                ` : `
+                  <span class="text-ink-muted text-[11px] font-medium">${job.postedLabel}</span>
+                `}
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  data-action="toggle-hide"
+                  data-id="${job.id}"
+                  class="px-3 py-1.5 rounded-lg text-xs font-semibold text-ink-secondary dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-subtle-light dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
+                >
+                  ${isHidden ? "Geri yükle" : "Gizle"}
+                </button>
+                <button
+                  type="button"
+                  data-action="open-drawer"
+                  data-id="${job.id}"
+                  class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white transition-all shadow-xs cursor-pointer"
+                >
+                  <span>İlana git</span>
+                  <span class="text-[11px]">↗</span>
+                </button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderListView(jobs) {
+      jobsGrid.className = "bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark divide-y divide-black/[0.06] dark:divide-white/[0.08] overflow-hidden border border-black/[0.06] dark:border-white/[0.08]";
+      jobsGrid.innerHTML = jobs.map((job) => {
+        const isHidden = state.hiddenIds.has(job.id);
+        return `
+          <div
+            data-job-id="${job.id}"
+            class="p-4 sm:px-5 hover:bg-subtle-light/40 dark:hover:bg-white/[0.02] transition-colors flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 ${isHidden ? 'opacity-55' : ''}"
+          >
+            <!-- Left: Avatar + Role + Company + Category -->
+            <div class="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+              <div class="w-11 h-11 rounded-xl border ${job.brandHue} flex items-center justify-center font-display font-extrabold text-sm shrink-0 shadow-xs">
+                ${job.initial}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3
+                    data-action="open-drawer"
+                    data-id="${job.id}"
+                    class="font-display font-bold text-sm sm:text-base text-slate-900 dark:text-white hover:text-[#0A66C2] dark:hover:text-[#70B5F9] cursor-pointer truncate"
+                  >
+                    ${job.title}
+                  </h3>
+                  ${job.isNew ? `
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F4EA] text-[#057642] dark:bg-[#057642]/25 dark:text-emerald-300">
+                      Yeni
+                    </span>
+                  ` : ''}
+                </div>
+                <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-secondary dark:text-zinc-400 mt-0.5">
+                  <span class="font-bold text-slate-900 dark:text-zinc-200">${job.company}</span>
+                  <span>·</span>
+                  <span>${job.location}</span>
+                  <span>·</span>
+                  <span>${job.experienceText}</span>
+                  <span class="hidden sm:inline">·</span>
+                  <span class="hidden sm:inline text-ink-muted">${job.categoryBreadcrumb}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Middle: Badges & Skills -->
+            <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+              <span class="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E8F3FF] dark:bg-[#0A66C2]/20 text-[#0A66C2] dark:text-[#70B5F9]">${job.departmentTag}</span>
+              <span class="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-subtle-light dark:bg-white/[0.06] text-ink-secondary dark:text-zinc-300">${job.seniority}</span>
+              ${job.skills.slice(0, 2).map((s) => `
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono text-ink-secondary dark:text-zinc-400 border border-black/[0.08] dark:border-white/[0.08]">${s}</span>
+              `).join("")}
+            </div>
+
+            <!-- Right: Timestamp & Buttons -->
+            <div class="flex items-center justify-between w-full lg:w-auto gap-3 shrink-0 border-t lg:border-t-0 pt-2.5 lg:pt-0 border-black/[0.05] dark:border-white/[0.05]">
+              <span class="text-xs font-mono ${job.isToday ? 'text-[#057642] dark:text-emerald-400 font-bold' : 'text-ink-muted'} w-20 lg:text-right">
+                ${job.isToday ? '• Bugün' : job.postedLabel}
+              </span>
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  data-action="toggle-hide"
+                  data-id="${job.id}"
+                  class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-ink-secondary dark:text-zinc-400 hover:bg-subtle-light dark:hover:bg-white/[0.06] cursor-pointer"
+                >
+                  ${isHidden ? "Geri yükle" : "Gizle"}
+                </button>
+                <button
+                  type="button"
+                  data-action="open-drawer"
+                  data-id="${job.id}"
+                  class="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors cursor-pointer"
+                >
+                  <span>İlana git</span>
+                  <span>↗</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function render() {
+      const filtered = getFilteredJobs();
+
+      const isDefaultUnfiltered =
+        filtered.length === JOBS_DATA.length &&
+        state.hiddenIds.size === 0 &&
+        !state.onlyNew &&
+        state.quickPills.size === 0 &&
+        state.countryCities.size === 0 &&
+        !state.keyword &&
+        !state.location;
+
+      if (isDefaultUnfiltered) {
+        totalJobsLabel.textContent = "1.164 ilan";
+        filteredSubtext.classList.add("hidden");
+      } else {
+        totalJobsLabel.textContent = `${filtered.length} ilan gösteriliyor`;
+        filteredSubtext.textContent = "(toplam 1.164 ilan içinden filtrelendi)";
+        filteredSubtext.classList.remove("hidden");
+      }
+
+      hiddenCountLabel.textContent = state.hiddenIds.size;
+      if (state.hiddenIds.size > 0) {
+        restoreHiddenBtn.classList.remove("hidden");
+      } else {
+        restoreHiddenBtn.classList.add("hidden");
+      }
+
+      renderActiveFilterChips();
+
+      if (filtered.length === 0) {
+        jobsGrid.classList.add("hidden");
+        emptyState.classList.remove("hidden");
+      } else {
+        jobsGrid.classList.remove("hidden");
+        emptyState.classList.add("hidden");
+        if (state.viewMode === "cards") {
+          renderCardView(filtered);
+        } else {
+          renderListView(filtered);
+        }
+      }
+    }
+
+    // Open Job Detail Drawer
+    function openJobDrawer(jobId) {
+      const job = JOBS_DATA.find((j) => j.id === Number(jobId));
+      if (!job) return;
+      const backdrop = document.getElementById("jobDrawerBackdrop");
+      const content = document.getElementById("jobDrawerContent");
+
+      content.innerHTML = `
+        <div class="flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.08] pb-4">
+          <div class="flex items-center gap-2 text-xs font-medium text-ink-muted">
+            <span>${job.categoryBreadcrumb}</span>
+          </div>
+          <button id="closeDrawerBtn" type="button" class="p-1.5 rounded-lg text-ink-muted hover:text-slate-900 dark:hover:text-white hover:bg-subtle-light dark:hover:bg-white/5 cursor-pointer">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="flex items-start gap-4">
+          <div class="w-14 h-14 rounded-2xl border ${job.brandHue} flex items-center justify-center font-display font-extrabold text-xl shrink-0 shadow-sm">
+            ${job.initial}
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              ${job.isNew ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F4EA] text-[#057642]">Yeni</span>` : ''}
+              <span class="text-xs font-medium text-ink-muted">${job.isToday ? 'Bugün yayınlandı' : job.postedLabel}</span>
+            </div>
+            <h2 class="font-display font-bold text-xl text-slate-900 dark:text-white leading-snug">${job.title}</h2>
+            <p class="text-sm font-bold text-[#0A66C2] dark:text-[#70B5F9] mt-0.5">${job.company}</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-subtle-light/70 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
+          <div>
+            <span class="block text-[11px] font-medium text-ink-muted">Konum & Biçim</span>
+            <span class="text-xs font-bold text-slate-900 dark:text-white mt-0.5 block">${job.location}</span>
+          </div>
+          <div>
+            <span class="block text-[11px] font-medium text-ink-muted">Deneyim & Kıdem</span>
+            <span class="text-xs font-bold text-slate-900 dark:text-white mt-0.5 block">${job.experienceText} · ${job.seniority}</span>
+          </div>
+          <div>
+            <span class="block text-[11px] font-medium text-ink-muted">Tahmini Maaş Bandı</span>
+            <span class="text-xs font-mono font-bold text-[#057642] dark:text-emerald-400 mt-0.5 block">${job.salaryRange}</span>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Pozisyon Özeti ve Sorumluluklar</h4>
+          <p class="text-sm leading-relaxed text-ink-secondary dark:text-zinc-300">
+            ${job.summary}
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Sınıflandırma ve Yetenek Etiketleri</h4>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-[#E8F3FF] dark:bg-[#0A66C2]/20 text-[#0A66C2] dark:text-[#70B5F9]">${job.departmentTag}</span>
+            <span class="px-2.5 py-1 rounded-md text-xs font-medium bg-subtle-light dark:bg-white/10 text-slate-900 dark:text-zinc-200">${job.seniority}</span>
+            ${job.skills.map((s) => `<span class="px-2.5 py-1 rounded-full text-xs font-mono bg-canvas-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-ink-secondary dark:text-zinc-300">${s}</span>`).join("")}
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between gap-3">
+          <button
+            id="drawerHideBtn"
+            type="button"
+            class="px-4 py-2.5 rounded-xl text-xs font-semibold border border-black/10 dark:border-white/10 text-ink-secondary dark:text-zinc-300 hover:bg-subtle-light dark:hover:bg-white/5 cursor-pointer"
+          >
+            Bu İlanı Gizle
+          </button>
+          <a
+            href="#ilan-${job.id}"
+            id="drawerExternalBtn"
+            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-sm cursor-pointer"
+          >
+            <span>Kaynak İlan Sayfasına Git</span>
+            <span>↗</span>
+          </a>
+        </div>
+      `;
+
+      backdrop.classList.remove("hidden");
+      requestAnimationFrame(() => {
+        backdrop.classList.remove("opacity-0");
+      });
+
+      document.getElementById("closeDrawerBtn").addEventListener("click", closeJobDrawer);
+      document.getElementById("drawerHideBtn").addEventListener("click", () => {
+        toggleHideJob(job.id);
+        closeJobDrawer();
+      });
+      document.getElementById("drawerExternalBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        showToast(`"${job.title}" kaynak sayfası yeni sekmede açılmak üzere işaretlendi.`, false);
+      });
+    }
+
+    function closeJobDrawer() {
+      const backdrop = document.getElementById("jobDrawerBackdrop");
+      backdrop.classList.add("opacity-0");
+      setTimeout(() => backdrop.classList.add("hidden"), 200);
+    }
+
+    function showToast(msg, allowUndo = true) {
+      toastMessage.textContent = msg;
+      if (allowUndo) {
+        toastUndoBtn.classList.remove("hidden");
+      } else {
+        toastUndoBtn.classList.add("hidden");
+      }
+      toastBar.classList.remove("hidden");
+      toastBar.classList.add("flex");
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toastBar.classList.add("hidden");
+        toastBar.classList.remove("flex");
+      }, 4000);
+    }
+
+    function toggleHideJob(jobId) {
+      const id = Number(jobId);
+      const job = JOBS_DATA.find((j) => j.id === id);
+      if (state.hiddenIds.has(id)) {
+        state.hiddenIds.delete(id);
+        showToast(`"${job ? job.title : 'İlan'}" tekrar görünür yapıldı.`, false);
+      } else {
+        state.hiddenIds.add(id);
+        state.lastHiddenId = id;
+        showToast(`"${job ? job.title : 'İlan'}" listeden gizlendi.`, true);
+      }
+      render();
+    }
+
+    function updateBannerBtnState() {
+      if (state.onlyNew) {
+        onlyNewBannerBtn.textContent = "Tüm ilanları göster";
+        onlyNewBannerBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs transition-all cursor-pointer";
+      } else {
+        onlyNewBannerBtn.textContent = "Sadece yenileri göster";
+        onlyNewBannerBtn.className = "px-4 py-1.5 rounded-full text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-all cursor-pointer";
+      }
+    }
+
+    function updateSkillChipStyles() {
+      document.querySelectorAll(".skill-chip").forEach((btn) => {
+        const s = btn.getAttribute("data-skill-filter");
+        if (state.selectedSkill === s) {
+          btn.className = "skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-[#0A66C2] text-white border border-[#0A66C2] cursor-pointer";
+        } else {
+          btn.className = "skill-chip px-2.5 py-1 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 hover:text-[#0A66C2] border border-transparent cursor-pointer";
+        }
+      });
+    }
+
+    // Event Listeners Setup
+    document.addEventListener("DOMContentLoaded", () => {
+      // Theme Switcher
+      const themeToggleBtn = document.getElementById("themeToggleBtn");
+      const themeLabel = document.getElementById("themeLabel");
+      themeToggleBtn.addEventListener("click", () => {
+        const html = document.documentElement;
+        const isDark = html.classList.toggle("dark");
+        themeLabel.textContent = isDark ? "Açık Tema" : "Koyu Tema";
+      });
+
+      // Search Inputs
+      keywordInput.addEventListener("input", (e) => {
+        state.keyword = e.target.value;
+        clearKeywordBtn.classList.toggle("hidden", !state.keyword);
+        render();
+      });
+      clearKeywordBtn.addEventListener("click", () => {
+        keywordInput.value = "";
+        state.keyword = "";
+        clearKeywordBtn.classList.add("hidden");
+        render();
+      });
+
+      locationInput.addEventListener("input", (e) => {
+        state.location = e.target.value;
+        clearLocationBtn.classList.toggle("hidden", !state.location);
+        render();
+      });
+      clearLocationBtn.addEventListener("click", () => {
+        locationInput.value = "";
+        state.location = "";
+        clearLocationBtn.classList.add("hidden");
+        render();
+      });
+
+      document.getElementById("heroSearchBtn").addEventListener("click", () => {
+        render();
+        showToast("Arama ve filtre kriterleri güncellendi.", false);
+      });
+
+      smartSearchToggle.addEventListener("change", (e) => {
+        state.smartSearch = e.target.checked;
+        render();
+      });
+
+      sortSelect.addEventListener("change", (e) => {
+        state.sortBy = e.target.value;
+        render();
+      });
+
+      // View Mode Switcher
+      viewCardsBtn.addEventListener("click", () => {
+        state.viewMode = "cards";
+        viewCardsBtn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-white dark:bg-zinc-800 text-[#0A66C2] dark:text-[#70B5F9] shadow-xs cursor-pointer";
+        viewListBtn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-ink-muted hover:text-slate-900 dark:hover:text-white cursor-pointer";
+        render();
+      });
+
+      viewListBtn.addEventListener("click", () => {
+        state.viewMode = "list";
+        viewListBtn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-white dark:bg-zinc-800 text-[#0A66C2] dark:text-[#70B5F9] shadow-xs cursor-pointer";
+        viewCardsBtn.className = "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-ink-muted hover:text-slate-900 dark:hover:text-white cursor-pointer";
+        render();
+      });
+
+      // Quick Filter Pills
+      document.querySelectorAll(".quick-pill").forEach((pill) => {
+        pill.addEventListener("click", () => {
+          const key = pill.getAttribute("data-quick");
+          if (state.quickPills.has(key)) {
+            state.quickPills.delete(key);
+            pill.className = "quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs";
+          } else {
+            state.quickPills.add(key);
+            pill.className = "quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#0A66C2] text-white border border-[#0A66C2] shadow-xs transition-all shrink-0 cursor-pointer";
+          }
+          render();
+        });
+      });
+
+      // Sidebar Accordion Triggers
+      document.querySelectorAll(".accordion-trigger").forEach((trigger) => {
+        trigger.addEventListener("click", () => {
+          const body = trigger.nextElementSibling;
+          const icon = trigger.querySelector(".accordion-icon");
+          body.classList.toggle("open");
+          icon.classList.toggle("rotate-180");
+        });
+      });
+
+      // Sidebar Checkbox Filters
+      document.querySelectorAll("input[data-filter-group]").forEach((box) => {
+        box.addEventListener("change", (e) => {
+          const group = e.target.getAttribute("data-filter-group");
+          const val = e.target.value;
+          const targetSet =
+            group === "countryCity" ? state.countryCities :
+            group === "category" ? state.categories :
+            group === "workMode" ? state.workModes :
+            group === "district" ? state.districts :
+            group === "company" ? state.companies :
+            group === "seniority" ? state.seniorities :
+            state.dates;
+
+          if (e.target.checked) {
+            targetSet.add(val);
+          } else {
+            targetSet.delete(val);
+          }
+          syncCountryCityUI();
+          render();
+        });
+      });
+
+      // Skill chips in sidebar
+      document.querySelectorAll(".skill-chip").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const s = btn.getAttribute("data-skill-filter");
+          state.selectedSkill = state.selectedSkill === s ? null : s;
+          updateSkillChipStyles();
+          render();
+        });
+      });
+
+      // Special sidebar controls
+      document.getElementById("excludeTextInput").addEventListener("input", (e) => {
+        state.excludeText = e.target.value;
+        render();
+      });
+      document.getElementById("sidebarSalaryCheckbox").addEventListener("change", (e) => {
+        state.onlySalary = e.target.checked;
+        render();
+      });
+      document.getElementById("onlyNewSidebarCheck").addEventListener("change", (e) => {
+        state.onlyNew = e.target.checked;
+        updateBannerBtnState();
+        render();
+      });
+      document.getElementById("hasSkillsCheck").addEventListener("change", (e) => {
+        state.onlyWithSkills = e.target.checked;
+        render();
+      });
+      document.getElementById("showHiddenCheck").addEventListener("change", (e) => {
+        state.showHidden = e.target.checked;
+        render();
+      });
+      restoreHiddenBtn.addEventListener("click", () => {
+        state.hiddenIds.clear();
+        render();
+      });
+
+      // Banner Buttons
+      onlyNewBannerBtn.addEventListener("click", () => {
+        state.onlyNew = !state.onlyNew;
+        document.getElementById("onlyNewSidebarCheck").checked = state.onlyNew;
+        updateBannerBtnState();
+        render();
+      });
+
+      markSeenBtn.addEventListener("click", () => {
+        newJobsBanner.classList.add("hidden");
+        JOBS_DATA.forEach((j) => { j.isNew = false; });
+        state.onlyNew = false;
+        document.getElementById("onlyNewSidebarCheck").checked = false;
+        showToast("51 yeni ilan görüldü olarak işaretlendi.", false);
+        render();
+      });
+
+      // Clear All Filters
+      function resetAllFilters() {
+        state.keyword = "";
+        state.location = "";
+        state.excludeText = "";
+        keywordInput.value = "";
+        locationInput.value = "";
+        document.getElementById("excludeTextInput").value = "";
+        clearKeywordBtn.classList.add("hidden");
+        clearLocationBtn.classList.add("hidden");
+        state.quickPills.clear();
+        state.countryCities.clear();
+        state.countryCityQuery = "";
+        const ccSearch = document.getElementById("countryCityQuickSearch");
+        if (ccSearch) ccSearch.value = "";
+        syncCountryCityUI();
+        state.categories.clear();
+        state.workModes.clear();
+        state.districts.clear();
+        state.companies.clear();
+        state.seniorities.clear();
+        state.dates.clear();
+        state.selectedSkill = null;
+        state.onlyNew = false;
+        state.onlySalary = false;
+        state.onlyWithSkills = false;
+
+        document.querySelectorAll("input[type='checkbox']").forEach((c) => {
+          if (c.id !== "smartSearchToggle" && c.id !== "showHiddenCheck") c.checked = false;
+        });
+        document.querySelectorAll(".quick-pill").forEach((pill) => {
+          pill.className = "quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs";
+        });
+        updateSkillChipStyles();
+        updateBannerBtnState();
+        render();
+      }
+
+      document.getElementById("clearAllFiltersBtn").addEventListener("click", resetAllFilters);
+      document.getElementById("emptyResetBtn").addEventListener("click", resetAllFilters);
+
+      // Mobile Filter Toggle
+      document.getElementById("mobileFilterBtn").addEventListener("click", () => {
+        const sb = document.getElementById("filterSidebar");
+        sb.classList.toggle("hidden");
+        sb.classList.toggle("fixed");
+        sb.classList.toggle("inset-y-0");
+        sb.classList.toggle("left-0");
+        sb.classList.toggle("z-40");
+        sb.classList.toggle("bg-surface-light");
+        sb.classList.toggle("dark:bg-surface-dark");
+        sb.classList.toggle("p-4");
+        sb.classList.toggle("w-80");
+        sb.classList.toggle("shadow-2xl");
+      });
+
+      // Delegated clicks inside jobsGrid
+      jobsGrid.addEventListener("click", (e) => {
+        const actionEl = e.target.closest("[data-action]");
+        if (!actionEl) return;
+        const action = actionEl.getAttribute("data-action");
+        if (action === "open-drawer") {
+          openJobDrawer(actionEl.getAttribute("data-id"));
+        } else if (action === "toggle-hide") {
+          toggleHideJob(actionEl.getAttribute("data-id"));
+        } else if (action === "filter-skill") {
+          const skill = actionEl.getAttribute("data-skill");
+          state.selectedSkill = state.selectedSkill === skill ? null : skill;
+          updateSkillChipStyles();
+          render();
+        }
+      });
+
+      // Close drawer on backdrop click
+      document.getElementById("jobDrawerBackdrop").addEventListener("click", (e) => {
+        if (e.target.id === "jobDrawerBackdrop") closeJobDrawer();
+      });
+
+      // Undo hide toast button
+      toastUndoBtn.addEventListener("click", () => {
+        if (state.lastHiddenId !== null) {
+          state.hiddenIds.delete(state.lastHiddenId);
+          state.lastHiddenId = null;
+          toastBar.classList.add("hidden");
+          toastBar.classList.remove("flex");
+          render();
+        }
+      });
+
+      // Per-page selector feedback
+      document.getElementById("perPageSelect").addEventListener("change", (e) => {
+        showToast(`Sayfa başına gösterim ${e.target.value} ilan olarak güncellendi.`, false);
+      });
+
+      // Country · City Popover & Pill Controls
+      const ccTriggerBtn = document.getElementById("countryCityTriggerBtn");
+      const ccPopover = document.getElementById("countryCityPopover");
+      const ccChevron = document.getElementById("countryCityChevron");
+      const ccWrapper = document.getElementById("countryCityDropdownWrapper");
+      const ccClearBtn = document.getElementById("clearCountryCityBtn");
+      const ccSearchInput = document.getElementById("countryCityQuickSearch");
+      const ccOptionsList = document.getElementById("countryCityOptionsList");
+
+      ccTriggerBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isHidden = ccPopover.classList.toggle("hidden");
+        ccChevron.classList.toggle("rotate-180", !isHidden);
+        if (!isHidden) {
+          syncCountryCityUI();
+          ccSearchInput.focus();
+        }
+      });
+
+      ccSearchInput.addEventListener("input", (e) => {
+        state.countryCityQuery = e.target.value;
+        syncCountryCityUI();
+      });
+
+      ccOptionsList.addEventListener("change", (e) => {
+        const optId = e.target.getAttribute("data-cc-option");
+        if (!optId) return;
+        if (e.target.checked) {
+          state.countryCities.add(optId);
+        } else {
+          state.countryCities.delete(optId);
+        }
+        syncCountryCityUI();
+        render();
+      });
+
+      ccClearBtn.addEventListener("click", () => {
+        state.countryCities.clear();
+        state.countryCityQuery = "";
+        ccSearchInput.value = "";
+        syncCountryCityUI();
+        render();
+      });
+
+      document.querySelectorAll(".cc-quick-pill").forEach((pill) => {
+        pill.addEventListener("click", () => {
+          const val = pill.getAttribute("data-country-city-pill");
+          if (state.countryCities.has(val)) {
+            state.countryCities.delete(val);
+          } else {
+            state.countryCities.add(val);
+          }
+          syncCountryCityUI();
+          render();
+        });
+      });
+
+      document.addEventListener("click", (e) => {
+        if (ccWrapper && !ccWrapper.contains(e.target)) {
+          ccPopover.classList.add("hidden");
+          ccChevron.classList.remove("rotate-180");
+        }
+      });
+
+      // Initial render
+      syncCountryCityUI();
+      render();
+    });
+  </script>
+</body>
+</html>

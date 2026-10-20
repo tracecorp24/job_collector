@@ -1,94 +1,1200 @@
-<!doctype html>
-<html lang="tr">
+<!DOCTYPE html>
+<html lang="tr" class="light">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light">
-  <title>İlan Merkezi · Linko Scrapper Light</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox=%220%200%2040%2040%22%20width=%2240%22%20height=%2240%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22f%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%23187c78%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%232a918a%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width=%2240%22%20height=%2240%22%20rx=%2211%22%20fill=%22url%28%23f%29%22/%3E%3Cpath%20d=%22M12%2010.5v15.5a3%203%200%200%200%203%203h12%22%20fill=%22none%22%20stroke=%22%23fff%22%20stroke-width=%223.2%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22/%3E%3Ccircle%20cx=%2224.5%22%20cy=%2216.5%22%20r=%225.2%22%20fill=%22none%22%20stroke=%22%23fff%22%20stroke-width=%222.6%22/%3E%3Cpath%20d=%22m28.3%2020.3%203.2%203.2%22%20stroke=%22%23fff%22%20stroke-width=%222.6%22%20stroke-linecap=%22round%22/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20261019.location.1') }}">
-  <script src="{{ url_for('static', filename='js/dashboard.js', v='20261018.1') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/app.js', v='20261019.location.1') }}" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>ilanlar. — Profesyonel İş İlanları Keşif Platformu</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox=%220%200%2040%2040%22%20width=%2240%22%20height=%2240%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22f%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%23004182%22/%3E%3Cstop%20offset=%220.5%22%20stop-color=%22%230A66C2%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%232557A7%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width=%2240%22%20height=%2240%22%20rx=%2211%22%20fill=%22url%28%23f%29%22/%3E%3Ccircle%20cx=%2220%22%20cy=%2211%22%20r=%223%22%20fill=%22%23fff%22/%3E%3Crect%20x=%2214%22%20y=%2217%22%20width=%2212%22%20height=%2214%22%20rx=%223%22%20fill=%22none%22%20stroke=%22%23fff%22%20stroke-width=%223%22/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    // FOUC önleyici anlık tema aktivasyonu
+    try {
+      const savedTheme = localStorage.getItem('linko.theme.v1');
+      const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.add('light');
+        document.documentElement.classList.remove('dark');
+      }
+    } catch(e) {}
+
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            canvas: {
+              light: '#F3F4F6',
+              dark: '#0F1318'
+            },
+            surface: {
+              light: '#FFFFFF',
+              dark: '#161B22'
+            },
+            card: {
+              light: '#FFFFFF',
+              dark: '#181D24'
+            },
+            subtle: {
+              light: '#EBF0F5',
+              dark: '#21262D'
+            },
+            brand: {
+              primary: '#0A66C2',
+              primaryHover: '#004182',
+              indeed: '#2557A7',
+              tint: '#E8F3FF',
+              success: '#057642',
+              successTint: '#E6F4EA'
+            },
+            ink: {
+              primary: '#111827',
+              secondary: '#4B5563',
+              muted: '#6B7280'
+            }
+          },
+          boxShadow: {
+            'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.06)',
+            'card-hover': '0 10px 25px -5px rgba(10, 102, 194, 0.12), 0 0 0 1px #0A66C2',
+            'card-dark': '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+            'card-dark-hover': '0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 0 1px #70B5F9',
+            'command': '0 4px 16px -2px rgba(10, 102, 194, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.08)',
+            'command-dark': '0 4px 16px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.12)',
+            'popover': '0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08)'
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20261020.theme.1') }}">
+  <script src="{{ url_for('static', filename='js/dashboard.js', v='20261020.1') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js', v='20261020.theme.1') }}" defer></script>
 </head>
-<body>
-  <a class="skip" href="#main">İlanlara geç</a>
-  <header class="header"><a class="brand" href="/" aria-label="İlan Merkezi ana sayfa"><span class="brand-icon"><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><defs><linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#187c78"/><stop offset="1" stop-color="#2a918a"/></linearGradient></defs><rect width="40" height="40" rx="11" fill="url(#logo-g)"/><path d="M12 10.5v15.5a3 3 0 0 0 3 3h12" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24.5" cy="16.5" r="5.2" fill="none" stroke="#fff" stroke-width="2.6"/><path d="m28.3 20.3 3.2 3.2" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg></span><span>İlan Merkezi<small>Linko Scrapper Light</small></span></a><button id="sys-pill" class="sys-pill" type="button" data-action="queue" hidden aria-live="polite" title="Tarama kuyruğunu aç"></button><nav aria-label="Ana menü"><button data-action="jobs-home" data-tab="jobs"><svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg>İlanlar</button><button data-action="dashboard" data-tab="dashboard"><svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Panel</button><button data-action="watches" data-tab="watches"><svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>İş alarmları</button><button data-action="queue" data-tab="queue"><svg class="nav-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>Kuyruk<span id="nav-queue-badge" class="nav-badge" hidden></span></button><button class="primary" data-action="new-search">+ Yeni arama</button><div class="nav-more"><button id="nav-more-toggle" class="nav-system" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-menu" title="Tarama, kayıtlar ve ayarlar">Sistem <span aria-hidden="true">▾</span></button><div id="nav-more-menu" class="nav-more-menu" role="menu" hidden><p class="menu-label">Aramalar</p><button role="menuitem" data-action="history">Geçmiş aramalar</button><button role="menuitem" data-action="daily-summary">Günlük rapor</button><p class="menu-label">Kayıtlar</p><button role="menuitem" data-action="trash-home">Çöp kutusu</button><button role="menuitem" data-action="logs-home">İşlem kayıtları</button><p class="menu-label">Ayarlar</p><button role="menuitem" data-action="service-home">Servis / API</button><button role="menuitem" data-action="maintenance-home">Bakım / analiz</button><button role="menuitem" data-action="dev-menu">Geliştirici modu</button></div></div></nav></header>
-  <section id="wait-banner" class="wait-banner" hidden aria-label="Bekleme durumu"><div><strong id="wait-title">Otomatik bekleme</strong><p id="wait-explanation"></p><small id="wait-next"></small><p id="effective-interval" class="help"></p></div><div class="wait-clock"><span id="wait-countdown" role="timer" aria-live="off">00:00</span><small>Kalan süre</small></div></section>
-  <section id="status-bar" class="status-bar" hidden aria-label="İşlem durumu"><div class="status-top"><strong id="status-text">Hazırlanıyor…</strong><button data-action="queue">Kuyruğu aç</button></div><p id="status-detail"></p><progress id="status-progress" aria-label="Tamamlanan görevler"></progress></section>
-  <main id="main">
-  <section id="view-jobs" class="view">
-    <div class="page-title"><h1>İlanlar</h1><span id="connection" class="connection" role="status"></span></div>
-    <div class="search-toolbar"><label class="search-field"><span class="sr-only">İlanlarda ara</span><svg class="field-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg><input id="search" type="search" placeholder="Unvan, şirket veya yetenek ara… (örn. makine mühendisi)"></label><div class="location-filters" role="group" aria-label="Ülke ve şehir filtresi"><label class="sr-only" for="location-country">Ülke</label><select id="location-country"><option value="">Tüm ülkeler</option></select><label class="sr-only" for="location-city">Şehir</label><select id="location-city" hidden disabled><option value="">Önce ülke seçin</option></select></div><label class="check smart-toggle" title="Yazdığın kelimelerin anlamına yakın ilanları da getirir (eşleştirme verisi gerekir)."><input id="semantic-toggle" type="checkbox">Akıllı arama</label><button id="filter-toggle" aria-expanded="false" aria-controls="filter-panel">Filtreler</button><label class="sort-field"><span class="sort-label">Sırala</span><select id="sort"><option value="recent">Son taranan</option><option value="posted">En yeni ilan</option><option value="posted_oldest">En eski ilan</option><option value="created">Son eklenen</option><option value="created_oldest">İlk eklenen</option><option value="title">Unvan (A–Z)</option><option value="salary_high">En yüksek maaş</option><option value="salary_low">En düşük maaş</option></select></label><div class="segmented" role="group" aria-label="Görünüm"><button id="view-cards" aria-pressed="true">Kartlar</button><button id="view-list" aria-pressed="false">Liste</button></div></div>
-    <div class="quick-filters" role="group" aria-label="Hızlı filtreler"><button type="button" class="quick" data-quick="posted:1" aria-pressed="false">Son 24 saat</button><button type="button" class="quick" data-quick="posted:7" aria-pressed="false">Son 7 gün</button><button type="button" class="quick" data-quick="workplace:Remote" aria-pressed="false">Uzaktan</button><button type="button" class="quick" data-quick="workplace:Hybrid" aria-pressed="false">Hibrit</button><button type="button" class="quick" data-quick="has_salary:1" aria-pressed="false">Maaşı belirtilen</button></div>
-    <div id="active-filters" class="active-filters" aria-label="Aktif filtreler"></div>
-    <div class="workspace"><aside id="filter-panel" class="filter-panel" aria-label="İlan filtreleri">
-      <div class="panel-heading"><h2>Filtrele</h2><button id="reset-filters" class="text-button">Temizle</button></div><p class="help">Farklı başlıklar birlikte uygulanır; aynı başlıkta birden çok seçim “veya” demektir.</p><details class="filter-group profession-filter" id="facet-professions"><summary>Ana meslek grubu ve alt uzmanlık</summary><p class="help">Ana grubu açıp ilanları alt meslek alanlarına göre daraltın.</p><label class="profession-search">Meslek ara<input id="profession-filter-search" type="search" placeholder="Örn. yazılım, muhasebe, hemşirelik"></label><div id="profession-tree"></div></details><div id="facet-filters"></div>
-      <details class="filter-group"><summary>Metin ayrıntıları</summary><div class="fields"><label>Yalnızca unvanda<input data-filter="title" type="search"></label><label>Yalnızca açıklamada<input data-filter="description" type="search"></label><label>Şirket adında<input data-filter="company_text" type="search"></label><label>Tam ifade<input data-filter="phrase" type="search" placeholder="Örn. machine learning"></label><label>Hariç tutulacak kelimeler<input data-filter="exclude" placeholder="Örn. satış, staj"><small>Virgülle ayırın.</small></label></div></details>
-      <details class="filter-group"><summary>Yetenek eşleştirmesi</summary><div class="fields"><label>Seçilen yetenekler<select data-filter="skill_mode"><option value="any">Herhangi biri bulunsun</option><option value="all">Tümü bulunsun</option></select></label><label>Hariç tutulacak yetenekler<input id="exclude-skills" placeholder="Örn. Java, SAP"><small>Virgülle ayırın.</small></label></div></details>
-      <details class="filter-group"><summary>Maaş</summary><div class="fields"><label>Para birimi<select data-filter="currency"><option value="">Tümü</option><option>TRY</option><option>USD</option><option>EUR</option><option>GBP</option></select></label><label>Dönem<select data-filter="period"><option value="">Tümü</option><option value="month">Aylık</option><option value="year">Yıllık</option><option value="hour">Saatlik</option></select></label><div class="field-pair"><label>En az<input data-filter="salary_min" type="number" min="0"></label><label>En çok<input data-filter="salary_max" type="number" min="0"></label></div><label>Maaş bilgisi<select data-filter="has_salary"><option value="">Tümü</option><option value="1">Belirtilmiş</option><option value="0">Belirtilmemiş</option></select></label><p class="help">Tutar filtresi ve maaş sıralaması için para birimi ve dönem seçin.</p></div></details>
-      <details class="filter-group"><summary>Deneyim</summary><div class="fields"><div class="field-pair"><label>En az yıl<input data-filter="experience_min" type="number" min="0" max="50"></label><label>En çok yıl<input data-filter="experience_max" type="number" min="0" max="50"></label></div><label class="check"><input data-filter="experience_missing" type="checkbox">Deneyimi belirtilmemiş</label><p class="help">Deneyim yılı metinden çıkarılır; kıdemden tahmin edilen değerler de olabilir.</p></div></details>
-      <details class="filter-group"><summary>Tarihler</summary><div class="fields"><label>Hızlı yayın tarihi<select id="date-preset"><option value="">Özel / tüm tarihler</option><option value="1">Son 24 saat</option><option value="7">Son 7 gün</option><option value="30">Son 30 gün</option></select></label><div id="date-filters"></div></div></details>
-      <details class="filter-group"><summary>Tarama ilişkisi</summary><div class="fields"><label>Çalışma<select id="run-filter"><option value="">Tüm çalışmalar</option></select></label><label>Bulunma türü<select data-filter="discovery"><option value="">Bu aramalarda bulunanların tümü</option><option value="new">Bu aramalarda ilk kez eklenenler</option></select></label><p id="search-scope" class="help"></p></div></details>
-      <details class="filter-group"><summary>İçerik ve analiz</summary><div class="fields" id="content-filters"></div></details>
-      <details class="filter-group"><summary>Görünürlük ve yönetim</summary><div class="fields"><label>Kayıtlar<select data-filter="visibility"><option value="active">Aktif ilanlar</option><option value="trash">Çöp kutusu</option><option value="all">Aktif ve silinenler</option></select></label><label>Ayrıştırma kalitesi<select data-filter="quality"><option value="valid">Geçerli ilanlar</option><option value="invalid">Eksik ayrıştırılanlar</option><option value="all">Tümü</option></select></label><button class="danger" id="trash-filtered">Filtredeki ilanları çöp kutusuna taşı</button><p class="help">Arama geçmişini silmek ortak ilanları silmez. İlanların görünürlüğü tüm havuzlarda birlikte güncellenir.</p></div></details>
-    </aside>
-    <section class="results" aria-label="İlan sonuçları" aria-busy="false"><div class="results-header"><p id="count" role="status">İlanlar yükleniyor…</p><label>Sayfa başına<select id="per-page"><option>24</option><option>48</option><option>100</option></select></label></div><div id="new-strip" class="new-strip" hidden><span id="new-strip-text"></span><div class="actions"><button type="button" id="new-only" class="small"></button><button type="button" id="new-mark" class="ghost small" title="Şu ana kadar eklenen ilanları görülmüş say">Görüldü say</button></div></div><div id="list-error" class="notice error" hidden role="alert"><p id="list-error-text"></p><button id="retry-jobs">Tekrar dene</button></div><div id="grid" class="job-grid"></div><div id="empty" class="empty" hidden></div><nav class="pager" id="pager" hidden aria-label="Sonuç sayfaları"><button id="prev">← Önceki</button><span id="page-info"></span><button id="next">Sonraki →</button></nav></section></div>
-  </section>
-  <section id="view-dashboard" class="view" hidden aria-labelledby="dash-title">
-    <div class="page-title"><div><p class="eyebrow">ÖZET VE ETKİNLİK</p><h1 id="dash-title">Panel</h1><p class="queue-sub">İlan havuzunun ve toplayıcının durumu tek bakışta. Satırlara ve sayı kartlarına tıklayınca ilgili ilanlar açılır.</p></div><div class="actions"><span id="dash-updated" class="help" role="status"></span><button id="dash-refresh" type="button">Yenile</button></div></div>
-    <div id="dash-error" class="notice error" hidden role="alert"><p id="dash-error-text"></p><button id="dash-retry" type="button">Tekrar dene</button></div>
-    <div id="dash-body" class="dash" aria-busy="false"></div>
-  </section>
-  <section id="view-queue" class="view" hidden aria-labelledby="queue-view-title">
-    <div class="page-title"><div><p class="eyebrow">CANLI SÜREÇ</p><h1 id="queue-view-title">Tarama kuyruğu</h1><p class="queue-sub">Aramaların sırayla taranır; kaynağı korumak için istekler arasında bekleme yapılır.</p></div><div class="actions"><button id="cancel-all" class="danger" title="Tüm taramaları beklemeye alır, iş alarmlarını kapatır; hiçbiri kendiliğinden başlamaz.">Tüm kuyruğu iptal et</button><button class="primary" data-action="new-search">+ Yeni arama</button></div></div>
-    <div id="queue-empty" class="empty queue-empty"><svg class="illus" viewBox="0 0 160 120" fill="none" aria-hidden="true"><defs><linearGradient id="qe-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7f8cff"/><stop offset="1" stop-color="#b47cff"/></linearGradient></defs><rect x="34" y="18" width="92" height="22" rx="7" fill="#1b1f2e" stroke="#2c3250"/><rect x="46" y="27" width="40" height="4" rx="2" fill="#2c3250"/><rect x="26" y="46" width="108" height="26" rx="8" fill="#1f2439" stroke="#363d6a"/><rect x="38" y="55" width="50" height="5" rx="2.5" fill="#3a4170"/><rect x="38" y="63" width="30" height="3.5" rx="1.75" fill="#2e3459"/><rect x="18" y="78" width="124" height="30" rx="9" fill="url(#qe-g)"/><circle cx="36" cy="93" r="7" fill="#fff" opacity=".92"/><path d="M36 89v4l2.5 1.6" stroke="#6f7dff" stroke-width="1.8" stroke-linecap="round"/><rect x="50" y="88" width="56" height="5" rx="2.5" fill="#fff" opacity=".85"/><rect x="50" y="97" width="34" height="4" rx="2" fill="#fff" opacity=".55"/><circle cx="134" cy="22" r="3" fill="#a67bff" opacity=".7"/><circle cx="20" cy="40" r="2" fill="#7f8cff" opacity=".6"/><path d="m143 48 2 4 4 2-4 2-2 4-2-4-4-2 4-2z" fill="#9aa6ff" opacity=".75"/></svg><h2>Kuyruk şu an boş</h2><p>Yeni bir arama ekleyebilir ya da iş alarmlarının sırasını bekleyebilirsin.</p><ol class="how-steps"><li><span class="step-icon"><svg class="" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M11 8v6M8 11h6"/></svg></span><strong>Aramanı ekle</strong><span>Unvan ve konum yaz</span></li><li><span class="step-icon"><svg class="" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><strong>Sırayla taranır</strong><span>Kaynağı yormamak için aralıklarla</span></li><li><span class="step-icon"><svg class="" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg></span><strong>İlanlar düşer</strong><span>İlanlar sayfasında “yeni” olarak</span></li></ol><button class="primary" data-action="new-search">+ Yeni arama</button></div>
-    <article id="completion-queue" class="run-card" aria-live="polite"></article>
-    <div id="queue-host"></div>
-    <section id="waiting-runs" class="waiting-runs" hidden aria-live="polite"><h3 id="waiting-title">Sırada bekleyenler</h3><p id="waiting-help" class="help"></p><div id="waiting-list"></div></section>
-  </section>
-  <section id="view-watches" class="view" hidden aria-labelledby="watches-title">
-    <div class="page-title"><div><p class="eyebrow">7/24 OTOMATİK</p><h1 id="watches-title">İş alarmları</h1></div></div>
-    <p class="notice watch-intro">Aradığın unvanları ve konumları bir kez kaydet; yeni ilanlar seçtiğin sıklıkta kendiliğinden toplanır ve İlanlar sayfasında “yeni” olarak görünür. Kaynağı yormamak için her tur yalnızca yakın zamanda yayınlanan ilanları en yeniden eskiye ister, zaten kayıtlı ilanların detayını yeniden indirmez ve bilinen ilanlara ulaşınca o kombinasyonu bitirir. İstekler arasına rastgele bekleme eklenir; hız sınırı uyarısında servis kendiliğinden bekler. Bu takip bütün geçmiş ilanları tarama garantisi vermez; eski ilanlar için “Yeni arama”yı kullan.</p>
-    <section class="routine-city-panel" aria-labelledby="routine-cities-title">
-      <div class="routine-city-heading"><div><p class="eyebrow">ŞEHİR × MESLEK RUTİNİ</p><h2 id="routine-cities-title">Rutin şehir havuzu</h2></div><div class="actions"><span id="routine-city-count" class="state-pill">Şehirler yükleniyor</span><button id="routine-city-toggle" data-action="routine-city-pause" type="button">Rutin taramaları duraklat</button></div></div>
-      <p class="help">Her şehir için 15 meslek günde bir taranır; son 7 gündeki ilanlar aranır. İstanbul ilk sırada ve kritik önceliktedir, her meslek için 150 ilan hedefi vardır. Diğer şehirlerin varsayılan hedefi meslek başına 50 ilandır. Boş kuyrukta 60 saniye yeni istek gelmezse rutin arama başlar. İstekler ortak kaynak hız sınırına uyar; duraklatma sırasında çalışan şehir turu tamamlanır.</p>
-      <div class="routine-profession-heading"><h3>Rutin meslekler <span id="routine-profession-count" class="muted">{{ routine_professions|length }} meslek</span></h3><div id="routine-profession-list" class="routine-professions" aria-label="Rutin aranacak meslekler">{% for profession in routine_professions %}<span class="tag">{{ profession }}</span>{% endfor %}</div></div>
-      <div id="routine-city-list" class="routine-city-table-wrap" aria-live="polite"><p class="help">Rutin şehirler yükleniyor…</p></div>
-    </section>
-    <div class="watch-layout">
-      <form id="watch-form" class="watch-form" novalidate><h2 id="watch-form-title">Yeni iş alarmı</h2>
-        <label>Ad<input id="watch-name" maxlength="200" placeholder="Örn. Elektrik stajları"></label>
-        <label>Unvanlar<textarea id="watch-keywords" rows="4" placeholder="Her satıra bir unvan veya virgülle ayırın."></textarea></label>
-        <label>Konumlar<textarea id="watch-locations" rows="2" placeholder="Örn. Istanbul, Turkey">Istanbul, Turkey</textarea><small>Her satıra bir konum.</small></label>
-        <div class="field-pair"><label>Sıklık<select id="watch-interval"><option value="3600">Saatte bir</option><option value="10800">3 saatte bir</option><option value="21600" selected>6 saatte bir</option><option value="43200">12 saatte bir</option><option value="86400">Günde bir</option><option value="259200">3 günde bir</option><option value="604800">Haftada bir</option></select></label>
-        <label>Kombinasyon başına hedef<input id="watch-limit" type="number" min="1" max="200" value="50"></label></div>
-        <label>Yayın tarihi<select id="watch-posted"><option value="86400" selected>Son 24 saatte yayınlananlar</option><option value="604800">Son 7 günde yayınlananlar</option><option value="2592000">Son 30 günde yayınlananlar</option><option value="0">Tümü (daha fazla istek)</option></select></label>
-        <p id="watch-combos" class="help" role="status"></p><p id="watch-error" class="field-error" role="alert"></p>
-        <div class="actions"><button id="watch-save" class="primary" type="submit">Alarmı kaydet</button><button id="watch-cancel" type="button" hidden>Vazgeç</button></div>
-      </form>
-      <div><div id="watch-list" class="watch-list" aria-live="polite"></div></div>
+<body class="bg-canvas-light dark:bg-canvas-dark text-ink-primary dark:text-zinc-100 min-h-screen flex flex-col selection:bg-[#0A66C2]/15 selection:text-[#0A66C2] transition-colors duration-200">
+  <a class="skip sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:p-3 focus:bg-[#0A66C2] focus:text-white focus:rounded-lg" href="#main">İlanlara geç</a>
+
+  <!-- TOP HEADER (Bespoke Brand Identity & Status Navigation) -->
+  <header class="header sticky top-0 z-30 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md border-b border-black/[0.08] dark:border-white/[0.08]">
+    <div class="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="h-16 flex items-center justify-between gap-4">
+        
+        <!-- Logo & Wordmark + Canlı Akış Durumu -->
+        <div class="flex items-center gap-5 shrink-0">
+          <a class="brand flex items-center gap-3 group focus:outline-none select-none" href="/" aria-label="ilanlar. ana sayfa">
+            <div class="brand-icon w-10 h-10 rounded-xl bg-gradient-to-tr from-[#004182] via-[#0A66C2] to-[#2557A7] text-white flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+                <rect x="8" y="9" width="8" height="11" rx="2" />
+                <path d="M10 9V7a2 2 0 0 1 4 0v2" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-baseline gap-1">
+                <span class="font-display font-black text-xl tracking-tight text-slate-900 dark:text-white">ilanlar</span>
+                <span class="w-2 h-2 rounded-full bg-[#0A66C2]"></span>
+              </div>
+              <p class="text-[10px] font-medium text-ink-muted uppercase tracking-widest hidden sm:block">Kariyer & İlan Platformu</p>
+            </div>
+          </a>
+
+          <!-- Canlı Akış Rozeti -->
+          <div class="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-subtle-light dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] text-xs font-medium text-ink-secondary dark:text-zinc-300">
+            <span class="relative flex h-2 w-2 live-dot">
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-[#057642]"></span>
+            </span>
+            <span>Canlı Akış</span>
+            <span class="text-ink-muted">·</span>
+            <span id="live-feed-count" class="font-mono font-semibold text-slate-900 dark:text-white">Aktif İlanlar</span>
+          </div>
+
+          <button id="sys-pill" class="sys-pill" type="button" data-action="queue" hidden aria-live="polite" title="Tarama kuyruğunu aç"></button>
+        </div>
+
+        <!-- Ana Menü Navigasyon Sekmeleri -->
+        <nav class="hidden md:flex items-center gap-1.5 flex-1 justify-center max-w-2xl" aria-label="Ana menü">
+          <button data-action="jobs-home" data-tab="jobs" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-800 dark:text-zinc-200 hover:bg-subtle-light dark:hover:bg-white/[0.06] transition-colors cursor-pointer" aria-current="page">
+            <svg class="w-4 h-4 text-ink-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg>
+            <span>İlanlar</span>
+          </button>
+          <button data-action="dashboard" data-tab="dashboard" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-ink-secondary dark:text-zinc-300 hover:bg-subtle-light dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
+            <svg class="w-4 h-4 text-ink-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+            <span>Panel</span>
+          </button>
+          <button data-action="watches" data-tab="watches" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-ink-secondary dark:text-zinc-300 hover:bg-subtle-light dark:hover:bg-white/[0.06] transition-colors cursor-pointer">
+            <svg class="w-4 h-4 text-ink-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span>İş Alarmları</span>
+          </button>
+          <button data-action="queue" data-tab="queue" class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-ink-secondary dark:text-zinc-300 hover:bg-subtle-light dark:hover:bg-white/[0.06] transition-colors cursor-pointer relative">
+            <svg class="w-4 h-4 text-ink-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>
+            <span>Kuyruk</span>
+            <span id="nav-queue-badge" class="nav-badge px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#0A66C2] text-white" hidden></span>
+          </button>
+          
+          <div class="nav-more relative">
+            <button id="nav-more-toggle" class="nav-system inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-ink-secondary dark:text-zinc-300 hover:bg-subtle-light dark:hover:bg-white/[0.06] transition-colors cursor-pointer" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-menu" title="Tarama, kayıtlar ve ayarlar">
+              <span>Sistem</span>
+              <svg class="w-3.5 h-3.5 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="nav-more-menu" class="nav-more-menu hidden absolute right-0 mt-2 w-56 rounded-xl bg-surface-light dark:bg-[#1E242C] shadow-popover border border-black/10 dark:border-white/10 p-2 z-50 text-xs divide-y divide-black/[0.05] dark:divide-white/[0.05]" role="menu">
+              <div class="py-1">
+                <p class="menu-label px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">Aramalar</p>
+                <button role="menuitem" data-action="history" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-subtle-light dark:hover:bg-white/5 transition-colors">Geçmiş aramalar</button>
+                <button role="menuitem" data-action="daily-summary" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-subtle-light dark:hover:bg-white/5 transition-colors">Günlük rapor</button>
+              </div>
+              <div class="py-1">
+                <p class="menu-label px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">Kayıtlar</p>
+                <button role="menuitem" data-action="trash-home" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-subtle-light dark:hover:bg-white/5 transition-colors">Çöp kutusu</button>
+                <button role="menuitem" data-action="logs-home" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-subtle-light dark:hover:bg-white/5 transition-colors">İşlem kayıtları</button>
+              </div>
+              <div class="py-1">
+                <p class="menu-label px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">Ayarlar & Bakım</p>
+                <button role="menuitem" data-action="service-home" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-subtle-light dark:hover:bg-white/5 transition-colors">Servis / API</button>
+                <button role="menuitem" data-action="maintenance-home" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-subtle-light dark:hover:bg-white/5 transition-colors">Bakım / analiz</button>
+                <button role="menuitem" data-action="dev-menu" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-subtle-light dark:hover:bg-white/5 transition-colors">Geliştirici modu</button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Sağ Aksiyonlar: Yeni Arama, Mobil Filtre & Tema Değiştirici -->
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button class="primary inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-colors cursor-pointer" data-action="new-search">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            <span class="hidden sm:inline">Yeni Arama</span>
+            <span class="sm:hidden">Ara</span>
+          </button>
+
+          <!-- Mobil Filtre Butonu -->
+          <button id="mobileFilterBtn" type="button" class="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#1B1F23] border border-black/10 dark:border-white/10 shadow-xs cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-[#0A66C2] dark:text-[#70B5F9]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+            </svg>
+            <span>Filtre</span>
+            <span id="mobileFilterCount" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#0A66C2] text-white">0</span>
+          </button>
+
+          <!-- Tema Butonu (Sun/Moon) -->
+          <button id="themeToggleBtn" type="button" title="Görünüm Modunu Değiştir" class="theme-toggle inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-light dark:bg-surface-dark hover:bg-subtle-light dark:hover:bg-subtle-dark border border-black/[0.08] dark:border-white/[0.08] text-xs font-medium text-ink-secondary dark:text-zinc-300 transition-colors cursor-pointer">
+            <svg id="themeIconSun" class="w-4 h-4 hidden dark:block text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <svg id="themeIconMoon" class="w-4 h-4 block dark:hidden text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <span id="themeLabel" class="hidden sm:inline">Koyu Tema</span>
+          </button>
+        </div>
+
+      </div>
     </div>
-  </section>
+  </header>
+
+  <!-- BEKLEME VE İŞLEM DURUMU ŞERİTLERİ -->
+  <div class="max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-2 pt-3">
+    <section id="wait-banner" class="wait-banner rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 p-4 flex items-center justify-between gap-4 text-amber-900 dark:text-amber-200" hidden aria-label="Bekleme durumu">
+      <div>
+        <strong id="wait-title" class="font-display font-bold text-sm">Otomatik bekleme</strong>
+        <p id="wait-explanation" class="text-xs mt-0.5 opacity-90"></p>
+        <small id="wait-next" class="text-[11px] opacity-75"></small>
+        <p id="effective-interval" class="help text-[11px] opacity-75 mt-1"></p>
+      </div>
+      <div class="wait-clock flex flex-col items-center shrink-0 bg-white/40 dark:bg-black/30 px-3.5 py-1.5 rounded-xl border border-amber-500/20">
+        <span id="wait-countdown" class="font-mono font-bold text-xl" role="timer" aria-live="off">00:00</span>
+        <small class="text-[10px] uppercase font-bold tracking-wider opacity-75">Kalan süre</small>
+      </div>
+    </section>
+
+    <section id="status-bar" class="status-bar rounded-2xl bg-[#E8F3FF] dark:bg-[#1C2633] border border-[#0A66C2]/30 p-3.5 space-y-2" hidden aria-label="İşlem durumu">
+      <div class="status-top flex items-center justify-between gap-3">
+        <strong id="status-text" class="text-xs font-bold text-[#0A66C2] dark:text-[#70B5F9]">Hazırlanıyor…</strong>
+        <button data-action="queue" class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer">Kuyruğu aç</button>
+      </div>
+      <p id="status-detail" class="text-xs text-ink-secondary dark:text-zinc-300"></p>
+      <progress id="status-progress" class="w-full h-1.5 rounded-full accent-[#0A66C2] overflow-hidden bg-black/10 dark:bg-white/10" aria-label="Tamamlanan görevler"></progress>
+    </section>
+  </div>
+
+  <main id="main" class="flex-1 flex flex-col">
+
+    <!-- SEKME 1: İLANLAR (ANA ARAMA VE KEŞİF PLATFORMU) -->
+    <section id="view-jobs" class="view flex-1 flex flex-col">
+      
+      <!-- HERO SEARCH SECTION (Unified Command Bar) -->
+      <section class="bg-surface-light dark:bg-surface-dark border-b border-black/[0.07] dark:border-white/[0.08] py-4 shadow-xs">
+        <div class="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 space-y-3.5">
+          
+          <!-- Unified Command Search Bar -->
+          <div class="bg-canvas-light dark:bg-canvas-dark p-1.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.1] shadow-command dark:shadow-command-dark">
+            <div class="flex flex-col md:flex-row items-stretch md:items-center bg-surface-light dark:bg-[#1A2028] rounded-xl divide-y md:divide-y-0 md:divide-x divide-black/[0.08] dark:divide-white/[0.08]">
+              
+              <!-- Ne: Ana Arama Alanı -->
+              <div class="flex-1 flex items-center gap-3 px-4 py-3 min-w-0">
+                <svg class="w-5 h-5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <div class="flex-1 min-w-0">
+                  <label for="search" class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">Ne / Pozisyon, Şirket veya Yetenek</label>
+                  <input
+                    id="search"
+                    type="search"
+                    placeholder="Unvan, şirket veya yetenek ara... (örn. makine mühendisi)"
+                    class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-ink-muted focus:outline-none truncate pt-0.5 border-0 p-0 shadow-none ring-0"
+                  />
+                </div>
+                <button id="clearKeywordBtn" type="button" class="hidden text-ink-muted hover:text-ink-primary dark:hover:text-white p-1 rounded-md cursor-pointer">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Nerede: Konum Alanı -->
+              <div class="md:w-80 lg:w-96 flex items-center gap-3 px-4 py-3 min-w-0 relative">
+                <svg class="w-5 h-5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                <div class="flex-1 min-w-0">
+                  <label for="locationInput" class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">Nerede / Şehir veya İlçe</label>
+                  <input
+                    id="locationInput"
+                    type="text"
+                    placeholder="Konum ara... (örn. İstanbul)"
+                    class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-ink-muted focus:outline-none truncate pt-0.5 border-0 p-0 shadow-none ring-0"
+                  />
+                  <!-- Gizli ama API için aktif select'ler -->
+                  <select id="location-country" class="sr-only" aria-label="Ülke"><option value="">Tüm ülkeler</option></select>
+                  <select id="location-city" class="sr-only" aria-label="Şehir" hidden disabled><option value="">Önce ülke seçin</option></select>
+                </div>
+                <button id="clearLocationBtn" type="button" class="hidden text-ink-muted hover:text-ink-primary dark:hover:text-white p-1 rounded-md cursor-pointer">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Akıllı Arama & Arama Butonu -->
+              <div class="px-3 py-2.5 flex items-center justify-between md:justify-end gap-3 shrink-0">
+                <label for="semantic-toggle" class="inline-flex items-center gap-2 cursor-pointer select-none group pr-1" title="Yazdığın kelimelerin anlamına yakın ilanları da getirir (vektörel eşleştirme).">
+                  <input id="semantic-toggle" type="checkbox" class="sr-only peer" />
+                  <div class="w-8 h-[18px] bg-black/15 dark:bg-white/15 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3.5 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all after:shadow-xs relative peer-checked:bg-[#0A66C2] dark:peer-checked:bg-[#70B5F9]"></div>
+                  <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                    Akıllı arama
+                  </span>
+                </label>
+
+                <button
+                  id="heroSearchBtn"
+                  type="button"
+                  class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-colors cursor-pointer"
+                >
+                  <span>İlan Bul</span>
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                  </svg>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- FILTER & VIEW TOOLBAR RIBBON -->
+          <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 pt-1">
+            
+            <!-- Sol Hızlı Filtre Hapları -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                data-quick="posted:1"
+                class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+                aria-pressed="false"
+              >
+                <span class="w-2 h-2 rounded-full bg-[#057642]"></span>
+                <span>Son 24 saat</span>
+              </button>
+
+              <button
+                type="button"
+                data-quick="posted:7"
+                class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+                aria-pressed="false"
+              >
+                <span>Son 7 gün</span>
+              </button>
+
+              <span class="h-4 w-[1px] bg-black/15 dark:bg-white/15 mx-0.5 hidden sm:inline-block"></span>
+
+              <!-- Ülke · Şehir Seçici Popover -->
+              <div class="relative shrink-0" id="countryCityDropdownWrapper">
+                <button
+                  id="countryCityTriggerBtn"
+                  type="button"
+                  class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-slate-900 dark:text-zinc-200 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shadow-2xs cursor-pointer"
+                >
+                  <svg class="w-3.5 h-3.5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  </svg>
+                  <span id="countryCityActiveText">Ülke · Şehir: Tümü</span>
+                  <span id="countryCityCountBadge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-mono font-semibold bg-[#0A66C2] text-white">0</span>
+                  <svg id="countryCityChevron" class="w-3.5 h-3.5 text-ink-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <!-- Popover Panel -->
+                <div
+                  id="countryCityPopover"
+                  class="hidden absolute left-0 mt-2 w-80 rounded-2xl bg-surface-light dark:bg-[#1E242C] shadow-popover border border-black/10 dark:border-white/10 z-50 p-3.5 space-y-2.5"
+                >
+                  <div class="flex items-center justify-between px-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Ülke ve Şehir Seçimi</span>
+                    <button id="clearCountryCityBtn" type="button" class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer">
+                      Sıfırla
+                    </button>
+                  </div>
+                  <div class="relative">
+                    <input
+                      id="countryCityQuickSearch"
+                      type="text"
+                      placeholder="Ülke veya şehir ara... (örn. İstanbul)"
+                      class="w-full px-3 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-slate-900 dark:text-zinc-100 placeholder-ink-muted focus:outline-none focus:border-[#0A66C2]"
+                    />
+                  </div>
+                  <div id="countryCityOptionsList" class="max-h-56 overflow-y-auto divide-y divide-black/[0.04] dark:divide-white/[0.04] pr-0.5"></div>
+                </div>
+              </div>
+
+              <!-- Hızlı Konum Kısayolu -->
+              <button
+                type="button"
+                data-country-city-pill="Türkiye · İstanbul"
+                class="cc-quick-pill inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+              >
+                <span>🇹🇷 Türkiye · İstanbul</span>
+              </button>
+
+              <span class="h-4 w-[1px] bg-black/15 dark:bg-white/15 mx-0.5 hidden sm:inline-block"></span>
+
+              <button
+                type="button"
+                data-quick="workplace:Remote"
+                class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+                aria-pressed="false"
+              >
+                <span>Uzaktan</span>
+              </button>
+
+              <button
+                type="button"
+                data-quick="workplace:Hybrid"
+                class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+                aria-pressed="false"
+              >
+                <span>Hibrit</span>
+              </button>
+
+              <button
+                type="button"
+                data-quick="has_salary:1"
+                class="quick-pill group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-ink-secondary dark:text-zinc-300 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shrink-0 cursor-pointer shadow-2xs"
+                aria-pressed="false"
+              >
+                <span>Maaşı belirtilen</span>
+              </button>
+
+              <!-- Aktif Filtre Rozetleri -->
+              <div id="active-filters" class="active-filters flex items-center gap-1.5 pl-2 border-l border-black/10 dark:border-white/10 empty:hidden"></div>
+            </div>
+
+            <!-- Sağ Kontroller: Sıralama & Kart/Liste Görünümü -->
+            <div class="flex items-center gap-3 self-end lg:self-auto shrink-0">
+              <div class="flex items-center gap-2 bg-surface-light dark:bg-surface-dark px-3 py-1.5 rounded-lg border border-black/[0.08] dark:border-white/[0.08] shadow-2xs">
+                <label for="sort" class="text-xs font-medium text-ink-muted shrink-0">Sırala:</label>
+                <select id="sort" class="bg-transparent text-xs font-semibold text-slate-900 dark:text-zinc-100 focus:outline-none cursor-pointer pr-1">
+                  <option value="recent">Son taranan</option>
+                  <option value="posted">En yeni ilan</option>
+                  <option value="posted_oldest">En eski ilan</option>
+                  <option value="created">Son eklenen</option>
+                  <option value="created_oldest">İlk eklenen</option>
+                  <option value="title">Unvan (A–Z)</option>
+                  <option value="salary_high">En yüksek maaş</option>
+                  <option value="salary_low">En düşük maaş</option>
+                </select>
+              </div>
+
+              <!-- Görünüm Değiştirici -->
+              <div class="segmented inline-flex p-0.5 rounded-lg bg-subtle-light dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08]" role="group" aria-label="Görünüm">
+                <button
+                  id="view-cards"
+                  type="button"
+                  aria-pressed="true"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all bg-white dark:bg-zinc-800 text-[#0A66C2] dark:text-[#70B5F9] shadow-xs cursor-pointer"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                  </svg>
+                  <span>Kartlar</span>
+                </button>
+                <button
+                  id="view-list"
+                  type="button"
+                  aria-pressed="false"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all text-ink-muted hover:text-slate-900 dark:hover:text-white cursor-pointer"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                  <span>Liste</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- MAIN WORKSPACE LAYOUT (Sticky Sidebar + High Density Job Feed) -->
+      <div class="workspace max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex items-start gap-6">
+
+        <!-- SOL KENAR ÇUBUĞU (12 Akordiyon Filtre) -->
+        <aside id="filter-panel" class="filter-panel w-72 shrink-0 hidden lg:block sticky top-[80px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1" aria-label="İlan filtreleri">
+          <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-card dark:shadow-card-dark overflow-hidden border border-black/[0.06] dark:border-white/[0.08]">
+            
+            <div class="p-4 border-b border-black/[0.06] dark:border-white/[0.06] bg-canvas-light/35 dark:bg-white/[0.01]">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                  <h2 class="font-display font-bold text-sm text-slate-900 dark:text-white">Filtrele</h2>
+                  <span id="sidebarActiveBadge" class="hidden px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-[#E8F3FF] text-[#0A66C2] dark:bg-[#0A66C2]/30 dark:text-[#70B5F9]">0</span>
+                </div>
+                <button id="reset-filters" type="button" class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline px-1 py-0.5 transition-colors cursor-pointer">
+                  Temizle
+                </button>
+              </div>
+              <p class="text-[11px] leading-relaxed text-ink-muted">
+                Farklı başlıklar birlikte uygulanır; aynı başlıkta birden çok seçim “veya” demektir.
+              </p>
+            </div>
+
+            <!-- 12 Akordiyon Grubu -->
+            <div id="accordionContainer" class="divide-y divide-black/[0.05] dark:divide-white/[0.05]">
+
+              <!-- 1. Ana meslek grubu ve alt uzmanlık -->
+              <details class="filter-group profession-filter" id="facet-professions" open>
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Ana meslek grubu ve alt uzmanlık</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2">
+                  <input id="profession-filter-search" type="search" placeholder="Örn. yazılım, muhasebe..." class="w-full px-3 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-slate-900 dark:text-zinc-100 placeholder-ink-muted focus:outline-none focus:border-[#0A66C2]">
+                  <div id="profession-tree" class="max-h-60 overflow-y-auto pr-0.5"></div>
+                </div>
+              </details>
+
+              <!-- Dinamik fasetler (Çalışma biçimi, Şirket, Kıdem, Kaynak vb.) -->
+              <div id="facet-filters" class="divide-y divide-black/[0.05] dark:divide-white/[0.05]"></div>
+
+              <!-- Metin ayrıntıları / Gelişmiş metin araması -->
+              <details class="filter-group">
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Gelişmiş metin araması</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs">
+                  <label class="block space-y-1"><span class="text-ink-muted">Yalnızca unvanda</span><input data-filter="title" type="search" class="w-full px-2.5 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                  <label class="block space-y-1"><span class="text-ink-muted">Yalnızca açıklamada</span><input data-filter="description" type="search" class="w-full px-2.5 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                  <label class="block space-y-1"><span class="text-ink-muted">Şirket adında</span><input data-filter="company_text" type="search" class="w-full px-2.5 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                  <label class="block space-y-1"><span class="text-ink-muted">Tam ifade</span><input data-filter="phrase" type="search" placeholder="Örn. machine learning" class="w-full px-2.5 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                  <label class="block space-y-1"><span class="text-ink-muted">Hariç tutulacak kelimeler</span><input data-filter="exclude" placeholder="Örn. satış, staj" class="w-full px-2.5 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"><small class="text-[10px] text-ink-muted">Virgülle ayırın.</small></label>
+                </div>
+              </details>
+
+              <!-- Yetenek eşleştirmesi -->
+              <details class="filter-group">
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Yetenek eşleştirmesi</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs">
+                  <label class="block space-y-1"><span class="text-ink-muted">Seçilen yetenekler</span>
+                    <select data-filter="skill_mode" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+                      <option value="any">Herhangi biri bulunsun</option>
+                      <option value="all">Tümü bulunsun</option>
+                    </select>
+                  </label>
+                  <label class="block space-y-1"><span class="text-ink-muted">Hariç tutulacak yetenekler</span><input id="exclude-skills" placeholder="Örn. Java, SAP" class="w-full px-2.5 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"><small class="text-[10px] text-ink-muted">Virgülle ayırın.</small></label>
+                </div>
+              </details>
+
+              <!-- Maaş -->
+              <details class="filter-group">
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Maaş</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs">
+                  <label class="flex items-center gap-2 cursor-pointer py-1 text-ink-secondary dark:text-zinc-300">
+                    <input data-filter="has_salary" type="checkbox" value="1" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2]">
+                    <span>Sadece maaşı belirtilenler</span>
+                  </label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="block space-y-1"><span class="text-ink-muted">Para birimi</span>
+                      <select data-filter="currency" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10"><option value="">Tümü</option><option>TRY</option><option>USD</option><option>EUR</option><option>GBP</option></select>
+                    </label>
+                    <label class="block space-y-1"><span class="text-ink-muted">Dönem</span>
+                      <select data-filter="period" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10"><option value="">Tümü</option><option value="month">Aylık</option><option value="year">Yıllık</option><option value="hour">Saatlik</option></select>
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="block space-y-1"><span class="text-ink-muted">En az</span><input data-filter="salary_min" type="number" min="0" class="w-full px-2.5 py-1 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                    <label class="block space-y-1"><span class="text-ink-muted">En çok</span><input data-filter="salary_max" type="number" min="0" class="w-full px-2.5 py-1 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                  </div>
+                </div>
+              </details>
+
+              <!-- Kıdem ve deneyim -->
+              <details class="filter-group" open>
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Kıdem ve deneyim</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs">
+                  <div class="grid grid-cols-2 gap-2">
+                    <label class="block space-y-1"><span class="text-ink-muted">En az yıl</span><input data-filter="experience_min" type="number" min="0" max="50" class="w-full px-2 py-1 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                    <label class="block space-y-1"><span class="text-ink-muted">En çok yıl</span><input data-filter="experience_max" type="number" min="0" max="50" class="w-full px-2 py-1 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+                  </div>
+                  <label class="flex items-center gap-2 cursor-pointer py-0.5 text-ink-secondary dark:text-zinc-300">
+                    <input data-filter="experience_missing" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2]">
+                    <span>Deneyimi belirtilmemiş</span>
+                  </label>
+                </div>
+              </details>
+
+              <!-- Tarihler -->
+              <details class="filter-group">
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Tarihler</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs">
+                  <label class="block space-y-1"><span class="text-ink-muted">Hızlı yayın tarihi</span>
+                    <select id="date-preset" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+                      <option value="">Özel / tüm tarihler</option>
+                      <option value="1">Son 24 saat</option>
+                      <option value="7">Son 7 gün</option>
+                      <option value="30">Son 30 gün</option>
+                    </select>
+                  </label>
+                  <div id="date-filters" class="space-y-2 pt-1"></div>
+                </div>
+              </details>
+
+              <!-- Arama ve tarama geçmişi -->
+              <details class="filter-group">
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Arama ve tarama geçmişi</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs">
+                  <label class="block space-y-1"><span class="text-ink-muted">Çalışma</span>
+                    <select id="run-filter" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10"><option value="">Tüm çalışmalar</option></select>
+                  </label>
+                  <label class="block space-y-1"><span class="text-ink-muted">Bulunma türü</span>
+                    <select data-filter="discovery" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+                      <option value="">Bu aramalarda bulunanların tümü</option>
+                      <option value="new">Bu aramalarda ilk kez eklenenler</option>
+                    </select>
+                  </label>
+                  <p id="search-scope" class="text-[11px] text-ink-muted"></p>
+                </div>
+              </details>
+
+              <!-- İçerik ve analiz -->
+              <details class="filter-group">
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>İçerik ve analiz</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs" id="content-filters"></div>
+              </details>
+
+              <!-- Görünürlük ve yönetim -->
+              <details class="filter-group">
+                <summary class="accordion-trigger w-full px-4 py-3 flex items-center justify-between text-left group hover:bg-subtle-light/60 dark:hover:bg-white/[0.02] transition-colors cursor-pointer text-xs font-semibold text-slate-900 dark:text-zinc-200">
+                  <span>Görünürlük ve yönetim</span>
+                  <svg class="accordion-icon w-3.5 h-3.5 text-ink-muted transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </summary>
+                <div class="filter-body-inner px-4 pb-3.5 space-y-2 text-xs">
+                  <label class="block space-y-1"><span class="text-ink-muted">Kayıtlar</span>
+                    <select data-filter="visibility" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+                      <option value="active">Aktif ilanlar</option>
+                      <option value="trash">Çöp kutusu</option>
+                      <option value="all">Aktif ve silinenler</option>
+                    </select>
+                  </label>
+                  <label class="block space-y-1"><span class="text-ink-muted">Ayrıştırma kalitesi</span>
+                    <select data-filter="quality" class="w-full px-2 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+                      <option value="valid">Geçerli ilanlar</option>
+                      <option value="invalid">Eksik ayrıştırılanlar</option>
+                      <option value="all">Tümü</option>
+                    </select>
+                  </label>
+                  <button class="w-full px-3 py-1.5 mt-2 rounded-lg text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-colors cursor-pointer" id="trash-filtered">
+                    Filtredeki ilanları çöp kutusuna taşı
+                  </button>
+                </div>
+              </details>
+
+            </div>
+
+          </div>
+        </aside>
+
+        <!-- SAĞ İLAN AKIŞI ALANI -->
+        <main class="results flex-1 min-w-0" aria-label="İlan sonuçları" aria-busy="false">
+          
+          <!-- Sonuç Meta Bar: "1.164 ilan" & "Sayfa başına [24]" -->
+          <div class="results-header flex flex-wrap items-center justify-between gap-3 mb-3.5">
+            <div class="flex items-baseline gap-2">
+              <span id="count" role="status" class="font-mono font-bold text-sm text-slate-900 dark:text-white">İlanlar yükleniyor…</span>
+              <span id="connection" class="connection text-xs text-ink-muted ml-2" role="status"></span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <label for="per-page" class="text-xs font-medium text-ink-secondary dark:text-zinc-400">Sayfa başına</label>
+              <select
+                id="per-page"
+                class="bg-surface-light dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08] rounded-lg px-2.5 py-1 text-xs font-mono font-medium text-slate-900 dark:text-zinc-200 focus:outline-none shadow-2xs cursor-pointer"
+              >
+                <option value="12">12</option>
+                <option value="24" selected>24</option>
+                <option value="48">48</option>
+                <option value="96">96</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Yeni İlanlar Bildirim Şeridi -->
+          <div id="new-strip" class="new-strip mb-4 rounded-xl bg-[#E8F3FF] dark:bg-[#1C2532] border border-[#0A66C2]/25 dark:border-[#70B5F9]/30 shadow-xs p-3.5 sm:px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 relative overflow-hidden" hidden>
+            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0A66C2] dark:bg-[#70B5F9]"></div>
+            <div class="flex items-center gap-3 pl-1">
+              <div class="w-8 h-8 rounded-full bg-[#0A66C2] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              </div>
+              <p id="new-strip-text" class="text-xs sm:text-sm text-slate-900 dark:text-zinc-200"></p>
+            </div>
+
+            <div class="actions flex items-center gap-2 self-end sm:self-auto">
+              <button
+                type="button"
+                id="new-only"
+                class="px-4 py-1.5 rounded-full text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-all cursor-pointer"
+              ></button>
+              <button
+                type="button"
+                id="new-mark"
+                class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface-light dark:bg-white/[0.08] hover:bg-zinc-100 dark:hover:bg-white/15 text-ink-secondary dark:text-zinc-300 border border-black/10 dark:border-white/10 transition-colors cursor-pointer"
+                title="Şu ana kadar eklenen ilanları görülmüş say"
+              >
+                Görüldü say
+              </button>
+            </div>
+          </div>
+
+          <!-- Hata Uyarısı -->
+          <div id="list-error" class="notice error rounded-xl bg-rose-500/10 border border-rose-500/30 p-4 text-rose-800 dark:text-rose-200 flex items-center justify-between gap-4 mb-4" hidden role="alert">
+            <p id="list-error-text" class="text-xs"></p>
+            <button id="retry-jobs" class="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white cursor-pointer">Tekrar dene</button>
+          </div>
+
+          <!-- İLAN KARTLARI / LİSTE KONTEYNERİ -->
+          <div id="grid" class="job-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4.5"></div>
+
+          <!-- Boş Durum (Empty State) -->
+          <div id="empty" class="empty hidden bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark p-12 text-center my-4 border border-black/[0.06] dark:border-white/[0.08]">
+            <div class="w-12 h-12 rounded-2xl bg-subtle-light dark:bg-white/5 mx-auto flex items-center justify-center text-ink-muted mb-3">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </div>
+            <h3 class="font-display font-bold text-base text-slate-900 dark:text-white mb-1">Eşleşen ilan bulunamadı</h3>
+            <p class="text-xs text-ink-secondary dark:text-zinc-400 max-w-md mx-auto mb-4">
+              Seçtiğiniz arama kriterlerine veya filtrelere uygun aktif bir ilan kalmadı. Filtreleri sıfırlayarak tüm ilanları tekrar görüntüleyebilirsiniz.
+            </p>
+            <button data-action="reset" type="button" class="px-5 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors cursor-pointer">
+              Filtreleri Temizle
+            </button>
+          </div>
+
+          <!-- Sayfalama (Pager) -->
+          <nav class="pager flex justify-center items-center gap-3 mt-8 mb-6" id="pager" hidden aria-label="Sonuç sayfaları">
+            <button id="prev" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] transition-colors cursor-pointer">← Önceki</button>
+            <span id="page-info" class="text-xs font-mono font-medium text-ink-secondary dark:text-zinc-300"></span>
+            <button id="next" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] transition-colors cursor-pointer">Sonraki →</button>
+          </nav>
+
+        </main>
+      </div>
+
+    </section>
+
+    <!-- SEKME 2: PANEL (DASHBOARD METRİKLERİ VE GRAFİKLER) -->
+    <section id="view-dashboard" class="view max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1" hidden aria-labelledby="dash-title">
+      <div class="page-title flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <div>
+          <p class="eyebrow text-[11px] font-bold text-[#0A66C2] dark:text-[#70B5F9] uppercase tracking-wider mb-1">ÖZET VE ETKİNLİK</p>
+          <h1 id="dash-title" class="font-display font-extrabold text-2xl text-slate-900 dark:text-white">Panel</h1>
+          <p class="queue-sub text-xs text-ink-secondary dark:text-zinc-400 mt-1">İlan havuzunun ve toplayıcının durumu tek bakışta. Satırlara ve sayı kartlarına tıklayınca ilgili ilanlar açılır.</p>
+        </div>
+        <div class="actions flex items-center gap-3">
+          <span id="dash-updated" class="help text-xs font-mono text-ink-muted" role="status"></span>
+          <button id="dash-refresh" type="button" class="px-4 py-2 rounded-xl text-xs font-semibold bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] text-slate-900 dark:text-white transition-colors cursor-pointer">
+            Yenile
+          </button>
+        </div>
+      </div>
+      <div id="dash-error" class="notice error rounded-xl bg-rose-500/10 border border-rose-500/30 p-4 text-rose-800 dark:text-rose-200 mb-4" hidden role="alert">
+        <p id="dash-error-text" class="text-xs"></p>
+        <button id="dash-retry" type="button" class="px-3 py-1 mt-2 rounded-lg text-xs font-bold bg-rose-600 text-white cursor-pointer">Tekrar dene</button>
+      </div>
+      <div id="dash-body" class="dash" aria-busy="false"></div>
+    </section>
+
+    <!-- SEKME 3: TARAMA KUYRUĞU (QUEUE) -->
+    <section id="view-queue" class="view max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1" hidden aria-labelledby="queue-view-title">
+      <div class="page-title flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <div>
+          <p class="eyebrow text-[11px] font-bold text-[#0A66C2] dark:text-[#70B5F9] uppercase tracking-wider mb-1">CANLI SÜREÇ</p>
+          <h1 id="queue-view-title" class="font-display font-extrabold text-2xl text-slate-900 dark:text-white">Tarama kuyruğu</h1>
+          <p class="queue-sub text-xs text-ink-secondary dark:text-zinc-400 mt-1">Aramaların sırayla taranır; kaynağı korumak için istekler arasında bekleme yapılır.</p>
+        </div>
+        <div class="actions flex items-center gap-2.5">
+          <button id="cancel-all" class="danger px-4 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-colors cursor-pointer" title="Tüm taramaları beklemeye alır, iş alarmlarını kapatır; hiçbiri kendiliğinden başlamaz.">Tüm kuyruğu iptal et</button>
+          <button class="primary px-4 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-colors cursor-pointer" data-action="new-search">+ Yeni arama</button>
+        </div>
+      </div>
+      <div id="queue-empty" class="empty queue-empty bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark p-12 text-center my-4 border border-black/[0.06] dark:border-white/[0.08]">
+        <svg class="illus w-32 h-24 mx-auto mb-4" viewBox="0 0 160 120" fill="none" aria-hidden="true"><defs><linearGradient id="qe-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#004182"/><stop offset="1" stop-color="#0A66C2"/></linearGradient></defs><rect x="34" y="18" width="92" height="22" rx="7" fill="#1b1f2e" stroke="#2c3250"/><rect x="46" y="27" width="40" height="4" rx="2" fill="#2c3250"/><rect x="26" y="46" width="108" height="26" rx="8" fill="#1f2439" stroke="#363d6a"/><rect x="38" y="55" width="50" height="5" rx="2.5" fill="#3a4170"/><rect x="38" y="63" width="30" height="3.5" rx="1.75" fill="#2e3459"/><rect x="18" y="78" width="124" height="30" rx="9" fill="url(#qe-g)"/><circle cx="36" cy="93" r="7" fill="#fff" opacity=".92"/><path d="M36 89v4l2.5 1.6" stroke="#0A66C2" stroke-width="1.8" stroke-linecap="round"/><rect x="50" y="88" width="56" height="5" rx="2.5" fill="#fff" opacity=".85"/><rect x="50" y="97" width="34" height="4" rx="2" fill="#fff" opacity=".55"/></svg>
+        <h2 class="font-display font-bold text-lg text-slate-900 dark:text-white mb-1">Kuyruk şu an boş</h2>
+        <p class="text-xs text-ink-secondary dark:text-zinc-400 mb-6">Yeni bir arama ekleyebilir ya da iş alarmlarının sırasını bekleyebilirsin.</p>
+        <button class="primary px-5 py-2.5 rounded-xl text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs cursor-pointer" data-action="new-search">+ Yeni arama</button>
+      </div>
+      <article id="completion-queue" class="run-card" aria-live="polite"></article>
+      <div id="queue-host"></div>
+      <section id="waiting-runs" class="waiting-runs" hidden aria-live="polite">
+        <h3 id="waiting-title" class="font-display font-bold text-base text-slate-900 dark:text-white mb-1">Sırada bekleyenler</h3>
+        <p id="waiting-help" class="help text-xs text-ink-muted mb-3"></p>
+        <div id="waiting-list" class="space-y-3"></div>
+      </section>
+    </section>
+
+    <!-- SEKME 4: İŞ ALARMLARI (WATCHES) -->
+    <section id="view-watches" class="view max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1" hidden aria-labelledby="watches-title">
+      <div class="page-title mb-6 pb-4 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <p class="eyebrow text-[11px] font-bold text-[#0A66C2] dark:text-[#70B5F9] uppercase tracking-wider mb-1">7/24 OTOMATİK</p>
+        <h1 id="watches-title" class="font-display font-extrabold text-2xl text-slate-900 dark:text-white">İş alarmları</h1>
+      </div>
+      
+      <p class="watch-intro text-xs leading-relaxed text-ink-secondary dark:text-zinc-400 p-4 rounded-xl bg-subtle-light dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06] mb-6">
+        Aradığın unvanları ve konumları bir kez kaydet; yeni ilanlar seçtiğin sıklıkta kendiliğinden toplanır ve İlanlar sayfasında “yeni” olarak görünür. Kaynağı yormamak için her tur yalnızca yakın zamanda yayınlanan ilanları en yeniden eskiye ister, zaten kayıtlı ilanların detayını yeniden indirmez.
+      </p>
+
+      <!-- Rutin Şehir Havuzu -->
+      <section class="routine-city-panel mb-8 p-5 rounded-2xl bg-surface-light dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08] shadow-card dark:shadow-card-dark" aria-labelledby="routine-cities-title">
+        <div class="routine-city-heading flex flex-wrap items-center justify-between gap-4 mb-3">
+          <div>
+            <p class="eyebrow text-[10px] font-bold text-[#0A66C2] dark:text-[#70B5F9] uppercase tracking-wider">ŞEHİR × MESLEK RUTİNİ</p>
+            <h2 id="routine-cities-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Rutin şehir havuzu</h2>
+          </div>
+          <div class="actions flex items-center gap-3">
+            <span id="routine-city-count" class="state-pill px-3 py-1 rounded-full text-xs font-mono font-semibold bg-[#E8F3FF] dark:bg-[#0A66C2]/20 text-[#0A66C2] dark:text-[#70B5F9]">Şehirler yükleniyor</span>
+            <button id="routine-city-toggle" data-action="routine-city-pause" type="button" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] cursor-pointer">
+              Rutin taramaları duraklat
+            </button>
+          </div>
+        </div>
+        <p class="text-xs text-ink-muted leading-relaxed mb-4">
+          Her şehir için 15 meslek günde bir taranır; son 7 gündeki ilanlar aranır. İstanbul ilk sırada ve kritik önceliktedir, her meslek için 150 ilan hedefi vardır.
+        </p>
+        <div class="routine-profession-heading mb-4">
+          <h3 class="text-xs font-bold text-slate-900 dark:text-zinc-200 mb-2">Rutin meslekler <span id="routine-profession-count" class="text-ink-muted font-normal">({{ routine_professions|length }} meslek)</span></h3>
+          <div id="routine-profession-list" class="routine-professions flex flex-wrap gap-1.5" aria-label="Rutin aranacak meslekler">
+            {% for profession in routine_professions %}<span class="tag px-2.5 py-0.5 rounded-md text-[11px] font-mono bg-subtle-light dark:bg-white/5 text-ink-secondary dark:text-zinc-300 border border-black/5 dark:border-white/5">{{ profession }}</span>{% endfor %}
+          </div>
+        </div>
+        <div id="routine-city-list" class="routine-city-table-wrap overflow-x-auto rounded-xl border border-black/10 dark:border-white/10" aria-live="polite">
+          <p class="p-4 text-xs text-ink-muted">Rutin şehirler yükleniyor…</p>
+        </div>
+      </section>
+
+      <!-- Alarm Formu ve Listesi Düzeni -->
+      <div class="watch-layout grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <form id="watch-form" class="watch-form lg:col-span-5 bg-surface-light dark:bg-surface-dark border border-black/[0.08] dark:border-white/[0.08] rounded-2xl shadow-card dark:shadow-card-dark p-5 space-y-3.5" novalidate>
+          <h2 id="watch-form-title" class="font-display font-bold text-sm text-slate-900 dark:text-white pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">Yeni iş alarmı</h2>
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300">Alarm Adı</span>
+            <input id="watch-name" maxlength="200" placeholder="Örn. Elektrik stajları" class="w-full px-3 py-2 text-xs rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:border-[#0A66C2]">
+          </label>
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300">Unvanlar</span>
+            <textarea id="watch-keywords" rows="3" placeholder="Her satıra bir unvan veya virgülle ayırın." class="w-full px-3 py-2 text-xs rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:border-[#0A66C2]"></textarea>
+          </label>
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300">Konumlar</span>
+            <textarea id="watch-locations" rows="2" placeholder="Örn. Istanbul, Turkey" class="w-full px-3 py-2 text-xs rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:border-[#0A66C2]">Istanbul, Turkey</textarea>
+            <small class="text-[10px] text-ink-muted">Her satıra bir konum.</small>
+          </label>
+          <div class="field-pair grid grid-cols-2 gap-3">
+            <label class="block space-y-1">
+              <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300">Sıklık</span>
+              <select id="watch-interval" class="w-full px-2.5 py-2 text-xs rounded-xl bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+                <option value="3600">Saatte bir</option>
+                <option value="10800">3 saatte bir</option>
+                <option value="21600" selected>6 saatte bir</option>
+                <option value="43200">12 saatte bir</option>
+                <option value="86400">Günde bir</option>
+                <option value="259200">3 günde bir</option>
+                <option value="604800">Haftada bir</option>
+              </select>
+            </label>
+            <label class="block space-y-1">
+              <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300">Hedef (İlan/komb.)</span>
+              <input id="watch-limit" type="number" min="1" max="200" value="50" class="w-full px-3 py-2 text-xs rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10">
+            </label>
+          </div>
+          <label class="block space-y-1">
+            <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300">Yayın tarihi</span>
+            <select id="watch-posted" class="w-full px-2.5 py-2 text-xs rounded-xl bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+              <option value="86400" selected>Son 24 saatte yayınlananlar</option>
+              <option value="604800">Son 7 günde yayınlananlar</option>
+              <option value="2592000">Son 30 günde yayınlananlar</option>
+              <option value="0">Tümü (daha fazla istek)</option>
+            </select>
+          </label>
+          <p id="watch-combos" class="help text-[11px] text-ink-muted" role="status"></p>
+          <p id="watch-error" class="field-error text-xs text-rose-500" role="alert"></p>
+          <div class="actions flex items-center gap-2 pt-2">
+            <button id="watch-save" class="primary px-5 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs cursor-pointer" type="submit">Alarmı kaydet</button>
+            <button id="watch-cancel" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-ink-muted hover:text-ink-primary" hidden>Vazgeç</button>
+          </div>
+        </form>
+        <div class="lg:col-span-7">
+          <div id="watch-list" class="watch-list space-y-4" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
   </main>
-  <dialog id="service-dialog" class="wide-dialog" aria-labelledby="service-title"><div class="dialog-heading"><h2 id="service-title">Servis ve API</h2><button data-close="service-dialog" aria-label="Servis panelini kapat">✕</button></div><div id="service-content"></div><h3>Programlar için veri erişimi</h3><p>Bearer anahtarıyla <code>GET /api/v1/jobs</code> üzerinden ilanları okuyun. Yeni, güncellenen ve silinen kayıtlar için <code>GET /api/v1/jobs/changes?after=0</code> kullanın; yanıtın <code>next_cursor</code> değerini sonraki istek için saklayın.</p><p>Toplama oluşturma: <code>POST /api/v1/collections</code>. Yönetim anahtarı ve <code>Idempotency-Key</code> gerekir. Tekrarlı toplama için <code>repeat_seconds</code> belirtin (en az 900). Ayrıntılar: SERVICE.md.</p><button data-action="service-home">Durumu yenile</button></dialog>
-  <dialog id="drawer" class="drawer" aria-labelledby="drawer-title"><div class="dialog-heading"><h2 id="drawer-title">Yeni arama</h2><button data-close="drawer" aria-label="Tarama panelini kapat">✕</button></div>
-    <div id="source-status" class="notice" role="status" hidden></div><button id="acknowledge-source" type="button" hidden>Kaynak erişimini kontrol ettim, duraklatmayı kaldır</button>
-    <section id="new-search-form"><p class="muted">Bir unvan yaz; yapay zekâ onu ilgili alanın farklı (ortogonal) 5 unvanıyla çoğaltsın. İstemediklerinin işaretini kaldır, kalanlar tek paket olarak kuyruğa eklensin.</p><label>Unvan<textarea id="kw-input" rows="2" placeholder="Örn. agentic ai. Birden fazla unvanı satır satır veya virgülle yazabilirsin."></textarea></label><div class="field-pair"><label>Konum<input id="loc-input" value="Istanbul, Turkey"></label><label>Unvan başına ilan hedefi<input id="limit-input" type="number" min="1" step="1" value="50"></label></div><label class="check"><input id="unlimited" type="checkbox">Limitsiz — erişilebilir tüm ilanlar</label><div class="actions"><button id="suggest-titles" type="button" class="primary">Yapay zekâ ile 5 ortogonal unvana çoğalt</button><button id="add-tasks" type="button">Çoğaltmadan doğrudan ekle</button></div><fieldset id="suggest-box" class="suggest-box" hidden><legend id="suggest-legend">Önerilen unvanlar</legend><p class="help">Hepsi işaretli gelir. İstemediklerinin işaretini kaldır.</p><div class="actions"><button id="suggest-all" type="button">Tümünü seç</button><button id="suggest-none" type="button">Tümünü kaldır</button></div><div id="suggest-list" class="suggest-list"></div><p id="suggest-summary" class="notice" aria-live="polite"></p><div class="actions"><button id="add-suggested" type="button" class="primary">Paketi kuyruğa ekle</button><button id="cancel-suggested" type="button">Vazgeç</button></div></fieldset><p class="field-error" id="task-error" role="alert"></p><div id="draft-tasks" class="task-list"></div>
-      <details class="advanced"><summary>Gelişmiş tarama ayarları</summary><div class="fields"><label>Tarama yöntemi<select id="scrape-mode"><option value="incremental">Yeni ve değişen ilanları işle</option><option value="full">Tüm bulunan ilanları yeniden analiz et</option></select></label><label class="check"><input id="refresh-details" type="checkbox">Geçerli önbelleği de yenile (daha fazla istek gönderir)</label><p class="help">Detaylar {{ detail_cache_hours }} saat saklanır. Yeni ve değişen ilanlar işlenir; değişmeyenlerin mevcut analizi korunur.</p><label>İlan analizi<select id="classify-backend"><option value="rules">Hızlı analiz — ücretsiz, çevrimdışı</option><option value="local">Yerel yapay zekâ — Ollama</option><option value="claude">Bulut yapay zekâ — Claude API</option><option value="groq">Bulut yapay zekâ — Groq (ücretsiz, önerilen)</option></select></label><label class="check"><input id="use-embeddings" type="checkbox">Benzer ilan ve anlamsal arama eşleştirmesini hazırla</label><p class="help">Groq; özet, kıdem, beceri, maaş ve şüpheli ilan tespitini ücretsiz yapar. Kota dolarsa ilan hızlı analizle kaydedilir, sonra “Groq ile analiz et” ile tamamlanır. Yerel yapay zekâ ve eşleştirme için Ollama çalışmalı.</p></div></details><p class="help">Bu tarama seçtiğiniz hedefe kadar ilerler. Yalnızca yeni ilanları izlemek için “İş alarmları”ı kullanın. Duraklayan işte “Aynı çalışmaya devam et” ilerlemeyi korur.</p><p class="help">Her görevin konumu ve limiti ayrıdır. İstek aralıkları ve hız sınırı beklemeleri otomatik uygulanır.</p><button id="start-scrape" class="primary wide">Kuyruğu başlat</button></section>
-    <section id="live-run" hidden><div id="run-summary" class="queue-overview" aria-live="polite"></div><div class="actions queue-actions"><button id="pause-run">Kuyruğu duraklat</button><button id="resume-run" class="primary">Aynı çalışmaya devam et</button><button id="stop-run" class="danger">Kuyruğu durdur</button><button id="cancel-run" hidden>Başlamadan iptal et</button><button id="live-logs">İşlem kayıtları</button></div><div class="q-section-head"><h3>Sorgular</h3><p class="help">Sırayla taranır; duraklatılan sorgu kaldığı yerden devam eder.</p></div><div id="live-tasks" class="task-list"></div><details id="live-details" class="queue-more"><summary id="live-details-summary">Süreç ayrıntıları ve rapor</summary><div id="run-details"></div><p class="help">Geçen süre duraklamaları da içerir. Durdurulan sorgu sona erer, ilanları korunur; iptal yalnızca başlamamış sorgular içindir.</p></details></section>
-    <details class="advanced maintenance"><summary>Kayıtlı ilanları yeniden işle</summary><div class="fields"><p class="help">Yeni tarama yapmadan mevcut ilanları işler.</p><label>Yerel analiz modeli<select id="classify-model"><option value="">Varsayılan model</option></select></label><label class="check"><input id="force-recompute" type="checkbox">Daha önce işlenenleri de yeniden işle</label><label class="check"><input id="maintenance-during-wait" type="checkbox">Kaynak beklerken küçük gruplar halinde işle</label><p class="help">Bu seçenek analizi sıraya alır; kaynak beklerken kayıtlı ilanlar işlenir. Toplama devamı için yeni analiz başlatılmaz; başlamış tek analiz tamamlanır.</p><button id="embed-jobs">Eksik eşleştirme verilerini hazırla</button><span id="hint-embed" class="help"></span><button id="classify-jobs">Yerel yapay zekâyla analiz et</button><span id="hint-classify" class="help"></span><button id="classify-groq">Groq ile analiz et</button><span id="hint-groq" class="help"></span><button id="stop-maintenance" hidden>İşlemi durdur</button><div id="maintenance-status" role="status"></div></div></details>
+
+  <!-- SLIDE-OVER DRAWER FOR JOB DETAILS ("İlana git ↗" / Detay Paneli) -->
+  <div id="jobDrawerBackdrop" class="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px] hidden opacity-0 transition-opacity duration-200">
+    <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+      <div id="jobDrawerPanel" class="w-screen max-w-2xl bg-surface-light dark:bg-surface-dark shadow-2xl border-l border-black/10 dark:border-white/10 flex flex-col justify-between overflow-y-auto">
+        <div class="p-6 sm:p-8 space-y-6">
+          <div class="flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.08] pb-4">
+            <div id="job-dialog-header" class="flex items-center gap-2 text-xs font-medium text-ink-muted">
+              <span id="job-category-path">İlan detayı</span>
+            </div>
+            <button id="closeJobDrawerBtn" data-close="job-dialog" type="button" class="p-1.5 rounded-lg text-ink-muted hover:text-slate-900 dark:hover:text-white hover:bg-subtle-light dark:hover:bg-white/5 cursor-pointer" aria-label="İlan detayını kapat">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div id="job-content" class="space-y-6"></div>
+        </div>
+        <div class="job-navigation sticky bottom-0 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md p-4 sm:px-8 border-t border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between gap-3">
+          <button id="previous-job" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-black/10 dark:border-white/10 hover:border-[#0A66C2] cursor-pointer">← Önceki ilan</button>
+          <span id="job-position" class="text-xs font-mono font-medium text-ink-muted"></span>
+          <button id="next-job" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-black/10 dark:border-white/10 hover:border-[#0A66C2] cursor-pointer">Sonraki ilan →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UYUMLULUK DİYALOĞU: Eski job-dialog referansını korumak için gizli proxy -->
+  <dialog id="job-dialog" class="sr-only" aria-hidden="true"></dialog>
+
+  <!-- DİĞER MODALLAR VE DİYALOGLAR -->
+  <dialog id="service-dialog" class="wide-dialog bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-2xl" aria-labelledby="service-title">
+    <div class="dialog-heading flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.08] mb-4">
+      <h2 id="service-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Servis ve API</h2>
+      <button data-close="service-dialog" aria-label="Kapat" class="text-ink-muted hover:text-slate-900 dark:hover:text-white p-1">✕</button>
+    </div>
+    <div id="service-content" class="text-xs space-y-4"></div>
+    <div class="mt-4 pt-3 border-t border-black/[0.06] dark:border-white/[0.06] flex justify-end">
+      <button data-action="service-home" class="px-4 py-2 rounded-xl text-xs font-semibold bg-subtle-light dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10">Durumu yenile</button>
+    </div>
   </dialog>
-  <dialog id="job-dialog" class="job-dialog" aria-labelledby="job-title"><div class="dialog-heading"><h2 id="job-title">İlan detayı</h2><button data-close="job-dialog" aria-label="İlan detayını kapat">✕</button></div><div id="job-content"></div><div class="job-navigation"><button id="previous-job">← Önceki ilan</button><span id="job-position"></span><button id="next-job">Sonraki ilan →</button></div></dialog>
-  <dialog id="history-dialog" class="wide-dialog" aria-labelledby="history-title"><div class="dialog-heading"><h2 id="history-title">Geçmiş aramalar</h2><button data-close="history-dialog" aria-label="Geçmiş aramaları kapat">✕</button></div><div class="actions"><input id="history-search" type="search" placeholder="Unvan, konum veya arama kimliği ara" aria-label="Geçmiş aramalarda ara"><label>Durum<select id="history-status"><option value="">Tüm süreçler</option><option value="running">Çalışanlar</option><option value="queued">Başlamayı bekleyenler</option><option value="paused">Duraklatılanlar</option><option value="error">Hatalı olanlar</option><option value="stopped">Durdurulanlar</option><option value="cancelled">İptal edilenler</option><option value="finished">Tamamlananlar</option></select></label><label class="check"><input id="history-trash" type="checkbox">Çöp kutusu</label></div><p class="help">“İlanları gör” ve “Çalışmanın ilanları” ilgili aramada bulunan tüm ilanları açar. Yalnızca ilk kez sisteme eklenenleri görmek için “İlk kez eklenenler” seçeneğini kullanın. Eski kayıtlarda ilk ekleyen arama kesin olarak bilinmeyebilir.</p><div class="actions"><button id="history-select-all">Tümünü seç</button><button id="queue-selected">Seçilenleri kuyruğa ekle</button><button id="restart-selected">Seçilenleri yeniden tara</button><button id="restart-all">Tümünü yeniden tara</button><button id="delete-selected" class="danger">Seçilenleri çöp kutusuna taşı</button></div><p id="history-selected-count" class="help"></p><div id="history-list"></div></dialog>
-  <dialog id="log-dialog" class="wide-dialog" aria-labelledby="log-title"><div class="dialog-heading"><h2 id="log-title">Arama işlem kayıtları</h2><button data-close="log-dialog" aria-label="İşlem kayıtlarını kapat">✕</button></div><div class="actions"><label>Katman<select id="log-kind"><option value="">Tüm kayıtlar</option><option value="request_started">Gönderilen istekler</option><option value="request_finished">İstek yanıtları</option><option value="page_result">Sayfa sonuçları</option><option value="job">Kaydedilen ilanlar</option><option value="log">İşlem mesajları</option><option value="error">Hatalar</option></select></label><label>Seviye<select id="log-level"><option value="">Tümü</option><option value="info">Bilgi</option><option value="warning">Uyarı</option><option value="error">Hata</option></select></label><button id="refresh-logs">Yenile</button><a id="download-logs" class="button" download>JSONL indir</a></div><p id="log-totals" class="notice"></p><div id="log-list" class="log-list"></div><button id="older-logs" hidden>Önceki kayıtları yükle</button></dialog>
-  <dialog id="task-dialog" aria-labelledby="task-title"><div class="dialog-heading"><h2 id="task-title">Görevi düzenle</h2><button data-close="task-dialog" aria-label="Görev düzenlemeyi kapat">✕</button></div><div class="fields"><label>Unvan<input id="edit-keyword"></label><label>Konum<input id="edit-location"></label><label>İlan hedefi<input id="edit-limit" type="number" min="1" step="1" placeholder="Boş bırakırsanız limitsiz"></label><p class="help" id="edit-task-help"></p><p id="edit-task-error" class="field-error" role="alert"></p><button id="save-task" class="primary">Değişiklikleri kaydet</button></div></dialog>
-  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">İşlemi onayla</h2><p id="confirm-text"></p><div class="actions"><button id="confirm-no">Vazgeç</button><button id="confirm-yes" class="danger">Onayla</button></div></dialog>
-  <dialog id="dev-dialog" aria-labelledby="dev-title"><div class="dialog-heading"><h2 id="dev-title">Geliştirici modu</h2><button data-close="dev-dialog" aria-label="Geliştirici modunu kapat">✕</button></div><div id="dev-content"></div></dialog>
-  <dialog id="daily-summary-dialog" class="wide-dialog" aria-labelledby="daily-summary-title"><div class="dialog-heading"><h2 id="daily-summary-title">Günlük arama özeti</h2><button data-close="daily-summary-dialog" aria-label="Raporu kapat">✕</button></div><div id="daily-summary-content"><p class="notice">Günlük rapor hazırlanıyor…</p></div></dialog><div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
-  <nav id="bottom-nav" class="bottom-nav" aria-label="Alt menü">
-    <button class="bottom-tab" data-bottom-tab="jobs" data-action="jobs-home"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg><span>İlanlar</span></button>
-    <button class="bottom-tab" data-bottom-tab="watches" data-action="watches"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Alarmlar</span></button>
-    <button class="bottom-tab bottom-main" data-bottom-tab="scan" data-bottom-group="scan" aria-haspopup="true" aria-expanded="false"><span class="bottom-main-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><i class="bottom-dot" hidden></i></span><span>Tarama</span></button>
-    <button class="bottom-tab" data-bottom-tab="records" data-bottom-group="records" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>Kayıtlar</span></button>
-    <button class="bottom-tab" data-bottom-tab="more" data-bottom-group="more" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>Diğer</span></button>
+
+  <!-- YENİ ARAMA / TARAMA DRAWER'I -->
+  <dialog id="drawer" class="drawer bg-surface-light dark:bg-surface-dark border-l border-black/10 dark:border-white/10 p-6 overflow-y-auto" aria-labelledby="drawer-title">
+    <div class="dialog-heading flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.08] mb-4">
+      <h2 id="drawer-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Yeni arama</h2>
+      <button data-close="drawer" aria-label="Tarama panelini kapat" class="text-ink-muted hover:text-slate-900 dark:hover:text-white p-1">✕</button>
+    </div>
+    <div id="source-status" class="notice" role="status" hidden></div>
+    <button id="acknowledge-source" type="button" class="px-3 py-1.5 rounded-lg text-xs bg-amber-500/10 text-amber-600 mb-3" hidden>Kaynak erişimini kontrol ettim, duraklatmayı kaldır</button>
+    
+    <section id="new-search-form" class="space-y-4 text-xs">
+      <p class="text-ink-muted leading-relaxed">Bir unvan yaz; yapay zekâ onu ilgili alanın farklı (ortogonal) 5 unvanıyla çoğaltsın. İstemediklerinin işaretini kaldır, kalanlar tek paket olarak kuyruğa eklensin.</p>
+      <label class="block space-y-1">
+        <span class="font-semibold text-slate-900 dark:text-zinc-200">Unvan</span>
+        <textarea id="kw-input" rows="2" placeholder="Örn. agentic ai. Birden fazla unvanı satır satır veya virgülle yazabilirsin." class="w-full px-3 py-2 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:border-[#0A66C2]"></textarea>
+      </label>
+      <div class="field-pair grid grid-cols-2 gap-3">
+        <label class="block space-y-1">
+          <span class="font-semibold text-slate-900 dark:text-zinc-200">Konum</span>
+          <input id="loc-input" value="Istanbul, Turkey" class="w-full px-3 py-1.5 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10">
+        </label>
+        <label class="block space-y-1">
+          <span class="font-semibold text-slate-900 dark:text-zinc-200">İlan hedefi</span>
+          <input id="limit-input" type="number" min="1" step="1" value="50" class="w-full px-3 py-1.5 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10">
+        </label>
+      </div>
+      <label class="check flex items-center gap-2 cursor-pointer">
+        <input id="unlimited" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2]">
+        <span>Limitsiz — erişilebilir tüm ilanlar</span>
+      </label>
+      <div class="actions flex items-center gap-2 pt-1">
+        <button id="suggest-titles" type="button" class="primary px-4 py-2 rounded-xl font-bold bg-[#0A66C2] hover:bg-[#004182] text-white">Yapay zekâ ile 5 unvana çoğalt</button>
+        <button id="add-tasks" type="button" class="px-3.5 py-2 rounded-xl font-semibold bg-subtle-light dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10">Doğrudan ekle</button>
+      </div>
+      
+      <fieldset id="suggest-box" class="suggest-box p-3.5 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 space-y-2.5" hidden>
+        <legend id="suggest-legend" class="text-xs font-bold uppercase tracking-wider text-ink-muted">Önerilen unvanlar</legend>
+        <p class="help text-[11px] text-ink-muted">Hepsi işaretli gelir. İstemediklerinin işaretini kaldır.</p>
+        <div class="actions flex items-center gap-2 text-xs">
+          <button id="suggest-all" type="button" class="text-[#0A66C2] dark:text-[#70B5F9] hover:underline">Tümünü seç</button>
+          <span>·</span>
+          <button id="suggest-none" type="button" class="text-ink-muted hover:underline">Tümünü kaldır</button>
+        </div>
+        <div id="suggest-list" class="suggest-list space-y-1"></div>
+        <p id="suggest-summary" class="notice text-xs" aria-live="polite"></p>
+        <div class="actions flex items-center gap-2 pt-1">
+          <button id="add-suggested" type="button" class="primary px-4 py-1.5 rounded-xl font-bold bg-[#0A66C2] text-white">Paketi kuyruğa ekle</button>
+          <button id="cancel-suggested" type="button" class="px-3 py-1.5 rounded-xl font-medium text-ink-muted">Vazgeç</button>
+        </div>
+      </fieldset>
+
+      <p class="field-error text-rose-500" id="task-error" role="alert"></p>
+      <div id="draft-tasks" class="task-list space-y-2"></div>
+
+      <details class="advanced p-3.5 rounded-xl bg-subtle-light/60 dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-3">
+        <summary class="font-semibold text-slate-900 dark:text-zinc-200 cursor-pointer">Gelişmiş tarama ayarları</summary>
+        <div class="fields space-y-2 pt-2">
+          <label class="block space-y-1">
+            <span class="text-ink-muted">Tarama yöntemi</span>
+            <select id="scrape-mode" class="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+              <option value="incremental">Yeni ve değişen ilanları işle</option>
+              <option value="full">Tüm bulunan ilanları yeniden analiz et</option>
+            </select>
+          </label>
+          <label class="check flex items-center gap-2 cursor-pointer">
+            <input id="refresh-details" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2]">
+            <span>Geçerli önbelleği de yenile</span>
+          </label>
+          <label class="block space-y-1">
+            <span class="text-ink-muted">İlan analizi</span>
+            <select id="classify-backend" class="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+              <option value="rules">Hızlı analiz — ücretsiz, çevrimdışı</option>
+              <option value="local">Yerel yapay zekâ — Ollama</option>
+              <option value="claude">Bulut yapay zekâ — Claude API</option>
+              <option value="groq">Bulut yapay zekâ — Groq (ücretsiz, önerilen)</option>
+            </select>
+          </label>
+          <label class="check flex items-center gap-2 cursor-pointer">
+            <input id="use-embeddings" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2]">
+            <span>Benzer ilan ve anlamsal arama eşleştirmesini hazırla</span>
+          </label>
+        </div>
+      </details>
+
+      <button id="start-scrape" class="primary wide w-full py-2.5 rounded-xl text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs cursor-pointer">Kuyruğu başlat</button>
+    </section>
+
+    <section id="live-run" class="space-y-4 text-xs" hidden>
+      <div id="run-summary" class="queue-overview p-4 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10" aria-live="polite"></div>
+      <div class="actions queue-actions flex flex-wrap gap-2">
+        <button id="pause-run" class="px-3.5 py-1.5 rounded-lg font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">Kuyruğu duraklat</button>
+        <button id="resume-run" class="primary px-3.5 py-1.5 rounded-lg font-bold bg-[#0A66C2] text-white">Devam et</button>
+        <button id="stop-run" class="danger px-3.5 py-1.5 rounded-lg font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">Durdur</button>
+        <button id="cancel-run" class="px-3 py-1.5 rounded-lg text-ink-muted" hidden>Başlamadan iptal</button>
+        <button id="live-logs" class="px-3.5 py-1.5 rounded-lg border border-black/10 dark:border-white/10">İşlem kayıtları</button>
+      </div>
+      <div class="q-section-head pt-2"><h3 class="font-bold text-slate-900 dark:text-zinc-200">Sorgular</h3></div>
+      <div id="live-tasks" class="task-list space-y-2"></div>
+      <details id="live-details" class="queue-more pt-2"><summary id="live-details-summary" class="cursor-pointer font-semibold text-ink-secondary">Süreç ayrıntıları ve rapor</summary><div id="run-details" class="pt-2"></div></details>
+    </section>
+
+    <!-- Kayıtlı İlanları Yeniden İşle (Maintenance) -->
+    <details class="advanced maintenance mt-6 p-4 rounded-xl bg-subtle-light/40 dark:bg-white/[0.02] border border-black/5 dark:border-white/5 space-y-3 text-xs">
+      <summary class="font-semibold text-slate-900 dark:text-zinc-200 cursor-pointer">Kayıtlı ilanları yeniden işle</summary>
+      <div class="fields space-y-2 pt-2">
+        <p class="help text-[11px] text-ink-muted">Yeni tarama yapmadan mevcut ilanları işler.</p>
+        <label class="block space-y-1">
+          <span class="text-ink-muted">Yerel analiz modeli</span>
+          <select id="classify-model" class="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-[#1A2028] border border-black/10 dark:border-white/10"><option value="">Varsayılan model</option></select>
+        </label>
+        <label class="check flex items-center gap-2 cursor-pointer">
+          <input id="force-recompute" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2]">
+          <span>Daha önce işlenenleri de yeniden işle</span>
+        </label>
+        <label class="check flex items-center gap-2 cursor-pointer">
+          <input id="maintenance-during-wait" type="checkbox" class="rounded border-zinc-300 dark:border-zinc-700 text-[#0A66C2]">
+          <span>Kaynak beklerken küçük gruplar halinde işle</span>
+        </label>
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button id="embed-jobs" class="px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:border-[#0A66C2]">Eşleştirme verilerini hazırla</button>
+          <button id="classify-jobs" class="px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:border-[#0A66C2]">Yerel YZ ile analiz et</button>
+          <button id="classify-groq" class="px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:border-[#0A66C2]">Groq ile analiz et</button>
+          <button id="stop-maintenance" class="px-3 py-1.5 rounded-lg text-rose-500 border border-rose-500/20" hidden>İşlemi durdur</button>
+        </div>
+        <div id="maintenance-status" class="pt-2 text-[11px] text-ink-muted" role="status"></div>
+      </div>
+    </details>
+  </dialog>
+
+  <!-- GEÇMİŞ ARAMALAR MODALI -->
+  <dialog id="history-dialog" class="wide-dialog bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-2xl" aria-labelledby="history-title">
+    <div class="dialog-heading flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.08] mb-4">
+      <h2 id="history-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Geçmiş aramalar</h2>
+      <button data-close="history-dialog" aria-label="Kapat" class="text-ink-muted hover:text-slate-900 dark:hover:text-white p-1">✕</button>
+    </div>
+    <div class="actions flex flex-wrap items-center gap-2 mb-3">
+      <input id="history-search" type="search" placeholder="Unvan, konum veya kimlik ara..." class="flex-1 min-w-[200px] px-3 py-1.5 text-xs rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10">
+      <select id="history-status" class="px-2 py-1.5 text-xs rounded-xl bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10">
+        <option value="">Tüm süreçler</option>
+        <option value="running">Çalışanlar</option>
+        <option value="queued">Bekleyenler</option>
+        <option value="paused">Duraklatılanlar</option>
+        <option value="finished">Tamamlananlar</option>
+      </select>
+      <label class="check text-xs flex items-center gap-1.5"><input id="history-trash" type="checkbox"> Çöp kutusu</label>
+    </div>
+    <div class="actions flex flex-wrap items-center gap-2 mb-3 text-xs">
+      <button id="history-select-all" class="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10">Tümünü seç</button>
+      <button id="queue-selected" class="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10">Seçilenleri kuyruğa ekle</button>
+      <button id="restart-selected" class="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10">Seçilenleri yeniden tara</button>
+      <button id="delete-selected" class="px-2.5 py-1 rounded-lg text-rose-500 border border-rose-500/20">Çöpe taşı</button>
+    </div>
+    <p id="history-selected-count" class="text-[11px] text-ink-muted mb-3"></p>
+    <div id="history-list" class="space-y-4 max-h-[60vh] overflow-y-auto pr-1"></div>
+  </dialog>
+
+  <!-- İŞLEM KAYITLARI (LOGS) MODALI -->
+  <dialog id="log-dialog" class="wide-dialog bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-2xl" aria-labelledby="log-title">
+    <div class="dialog-heading flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.08] mb-4">
+      <h2 id="log-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Arama işlem kayıtları</h2>
+      <button data-close="log-dialog" aria-label="Kapat" class="text-ink-muted hover:text-slate-900 dark:hover:text-white p-1">✕</button>
+    </div>
+    <div class="actions flex flex-wrap items-center gap-2 mb-3 text-xs">
+      <select id="log-kind" class="px-2.5 py-1.5 rounded-xl bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10"><option value="">Tüm kayıtlar</option></select>
+      <select id="log-level" class="px-2.5 py-1.5 rounded-xl bg-subtle-light dark:bg-[#1A2028] border border-black/10 dark:border-white/10"><option value="">Tümü</option><option value="info">Bilgi</option><option value="warning">Uyarı</option><option value="error">Hata</option></select>
+      <button id="refresh-logs" class="px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10">Yenile</button>
+      <a id="download-logs" class="button px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10" download>JSONL indir</a>
+    </div>
+    <p id="log-totals" class="text-[11px] text-ink-muted mb-2"></p>
+    <div id="log-list" class="log-list space-y-2 max-h-[60vh] overflow-y-auto pr-1 text-xs"></div>
+    <button id="older-logs" class="w-full mt-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10 text-xs" hidden>Önceki kayıtları yükle</button>
+  </dialog>
+
+  <!-- GÖREVİ DÜZENLE MODALI -->
+  <dialog id="task-dialog" class="bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-2xl" aria-labelledby="task-title">
+    <div class="dialog-heading flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.08] mb-4">
+      <h2 id="task-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Görevi düzenle</h2>
+      <button data-close="task-dialog" aria-label="Kapat" class="text-ink-muted hover:text-slate-900 dark:hover:text-white p-1">✕</button>
+    </div>
+    <div class="fields space-y-3 text-xs">
+      <label class="block space-y-1"><span class="font-semibold text-slate-900 dark:text-zinc-200">Unvan</span><input id="edit-keyword" class="w-full px-3 py-2 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+      <label class="block space-y-1"><span class="font-semibold text-slate-900 dark:text-zinc-200">Konum</span><input id="edit-location" class="w-full px-3 py-2 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+      <label class="block space-y-1"><span class="font-semibold text-slate-900 dark:text-zinc-200">İlan hedefi</span><input id="edit-limit" type="number" min="1" step="1" placeholder="Boş bırakırsanız limitsiz" class="w-full px-3 py-2 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10"></label>
+      <p class="help text-[11px] text-ink-muted" id="edit-task-help"></p>
+      <p id="edit-task-error" class="field-error text-rose-500" role="alert"></p>
+      <button id="save-task" class="primary w-full py-2.5 rounded-xl text-xs font-bold bg-[#0A66C2] text-white">Değişiklikleri kaydet</button>
+    </div>
+  </dialog>
+
+  <!-- ONAY MODALI -->
+  <dialog id="confirm-dialog" class="bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-2xl max-w-md" aria-labelledby="confirm-title">
+    <h2 id="confirm-title" class="font-display font-bold text-base text-slate-900 dark:text-white mb-2">İşlemi onayla</h2>
+    <p id="confirm-text" class="text-xs text-ink-secondary dark:text-zinc-300 leading-relaxed mb-5"></p>
+    <div class="actions flex justify-end gap-2.5">
+      <button id="confirm-no" class="px-4 py-2 rounded-xl text-xs font-semibold border border-black/10 dark:border-white/10 hover:bg-subtle-light dark:hover:bg-white/5">Vazgeç</button>
+      <button id="confirm-yes" class="danger px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white">Onayla</button>
+    </div>
+  </dialog>
+
+  <!-- GELİŞTİRİCİ MODU MODALI -->
+  <dialog id="dev-dialog" class="bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-2xl" aria-labelledby="dev-title">
+    <div class="dialog-heading flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.08] mb-4">
+      <h2 id="dev-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Geliştirici modu</h2>
+      <button data-close="dev-dialog" aria-label="Kapat" class="text-ink-muted hover:text-slate-900 dark:hover:text-white p-1">✕</button>
+    </div>
+    <div id="dev-content" class="text-xs space-y-3"></div>
+  </dialog>
+
+  <!-- GÜNLÜK ÖZET RAPORU MODALI -->
+  <dialog id="daily-summary-dialog" class="wide-dialog bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 rounded-2xl p-6 shadow-2xl" aria-labelledby="daily-summary-title">
+    <div class="dialog-heading flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.08] mb-4">
+      <h2 id="daily-summary-title" class="font-display font-bold text-base text-slate-900 dark:text-white">Günlük arama özeti</h2>
+      <button data-close="daily-summary-dialog" aria-label="Kapat" class="text-ink-muted hover:text-slate-900 dark:hover:text-white p-1">✕</button>
+    </div>
+    <div id="daily-summary-content" class="text-xs space-y-4 max-h-[65vh] overflow-y-auto pr-1"></div>
+  </dialog>
+
+  <!-- TOAST BİLDİRİMLERİ (Geri al destekli) -->
+  <div id="toasts" class="toasts fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none" aria-live="polite"></div>
+
+  <!-- MOBİL ALT MENÜ BAR -->
+  <nav id="bottom-nav" class="bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md border-t border-black/10 dark:border-white/10 grid grid-cols-5 py-1.5" aria-label="Alt menü">
+    <button class="bottom-tab flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-[#0A66C2]" data-bottom-tab="jobs" data-action="jobs-home">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg>
+      <span>İlanlar</span>
+    </button>
+    <button class="bottom-tab flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-[#0A66C2]" data-bottom-tab="watches" data-action="watches">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>Alarmlar</span>
+    </button>
+    <button class="bottom-tab bottom-main flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[#0A66C2] relative" data-bottom-tab="scan" data-bottom-group="scan" aria-haspopup="true" aria-expanded="false">
+      <span class="w-10 h-10 -mt-5 rounded-full bg-[#0A66C2] text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-[#161B22]">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      </span>
+      <span>Tarama</span>
+    </button>
+    <button class="bottom-tab flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-[#0A66C2]" data-bottom-tab="records" data-bottom-group="records" aria-haspopup="true" aria-expanded="false">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+      <span>Kayıtlar</span>
+    </button>
+    <button class="bottom-tab flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-[#0A66C2]" data-bottom-tab="more" data-bottom-group="more" aria-haspopup="true" aria-expanded="false">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+      <span>Diğer</span>
+    </button>
   </nav>
-  <div id="bottom-sheet" class="bottom-sheet" hidden><div class="sheet-backdrop" data-sheet-close></div><section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-handle" data-sheet-close></div><h2 id="sheet-title"></h2><div id="sheet-items" class="sheet-items"></div></section></div>
-</body></html>
+
+  <div id="bottom-sheet" class="bottom-sheet fixed inset-0 z-50 bg-black/50 backdrop-blur-xs hidden" hidden>
+    <div class="sheet-backdrop absolute inset-0" data-sheet-close></div>
+    <section class="sheet-panel absolute bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark rounded-t-2xl p-5 border-t border-black/10 dark:border-white/10 max-h-[75vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet-handle w-10 h-1 rounded-full bg-black/20 dark:bg-white/20 mx-auto mb-4" data-sheet-close></div>
+      <h2 id="sheet-title" class="font-display font-bold text-sm text-slate-900 dark:text-white mb-3"></h2>
+      <div id="sheet-items" class="sheet-items space-y-2"></div>
+    </section>
+  </div>
+
+</body>
+</html>
