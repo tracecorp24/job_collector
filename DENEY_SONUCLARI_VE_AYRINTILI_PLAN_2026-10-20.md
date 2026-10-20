@@ -3,8 +3,9 @@
 Tarih: 20 Ekim 2026. İncelenen üretim sürümü: `f3d6819`.
 Saatler ayrıca belirtilmedikçe UTC+3. Bu belge, önceki analizlerin uygulama sırasını
 deney sonuçlarıyla günceller. Planın yerel kod değişiklikleri improve/reliable-collection-plan
-dalında uygulanıyor. Canlı uygulama birleştirilmedi ve deploy edilmedi; üretim
-24–72 saat doğal iş yükü ölçümü henüz yapılmadı.
+dalında uygulandı. Arayüzle birleşik `d1df247`, 20 Ekim kullanıcı onayıyla canlıya
+alındı; test/deploy başarılı ve `/healthz` yeni sürümle HTTP 200 verdi. Üretimde
+24–72 saat doğal iş yükü performans ölçümü henüz tamamlanmadı.
 
 ## Amaç ve başarı tanımı
 
@@ -514,7 +515,7 @@ olarak kullanılmıyor.
 | 0 — doğru kayıt | Her HTTP isteğine run/task/attempt/request/session kimliği; kuyruk katmanı ve istek nedeni; kaynak politikası öncesi/sonrası; HTTP, parse ve gate süreleri; ham HTTP ile anlamsal sonuç; Retry-After kökeni eklendi. Audit raporu 200 içeriksiz yanıtı ve eşleşmeyen başlangıç olaylarını sayıyor. | Kod tamam; canlı log hacmi ve kayıp oranı üretimde ölçülmeli. |
 | 1 — HTTP sahibi | İş başına scraper aynı süreç sahibindeki seri HTTPTransport nesnesini ödünç alıyor; iş callback’leri taşınmıyor; 429 sonrası session değiştirme yok; kapanışta güvenli kapatma eklendi. | Kod ve hedefli testler tamam; gerçek kaynak etkisi gözlenmedi. |
 | 1B — lease | Owner-token ile lease yenileme, istek başı heartbeat, servis kapanırken iptal ve worker bitmeden session kapatmama eklendi. | Kod/test tamam; çok süreçli canlı çakışma ölçülmedi. |
-| 2 — üretim ölçümü | — | Bekliyor: deploy/yedek ve başlangıç ölçümü onaylandıktan sonra 24–72 saat doğal iş yükü. Bu dalda deploy yapılmadı. |
+| 2 — üretim ölçümü | İlk entegre sürüm d1df247 kullanıcı onayıyla yayımlandı; CI test/deploy ve canlı sağlık doğrulandı. | 24–72 saat doğal iş yükü ölçümü bekleniyor; 429 oranının azaldığı henüz kanıtlanmadı. |
 | 3 — cache/revizyon | Eşleşen geçerli cache’in detail_pending nedeniyle zorla atlanması kaldırıldı; kart fingerprint’i ayrı tutuluyor; değişmiş kartın eski açıklaması tamamlanmış sayılmıyor; aynı karttaki done + detail_pending yerelde uzlaştırılıyor, değişmiş kart için görev yeniden açılıyor; ağ denemesi/ret sayaçları kalıcı. | Hedefli cache ve görev testleri var. Üretimde #1212 benzeri kayıtlar için yedek üzerinde salt-okunur doğrulama yapılmalı. |
 | 4 — kuyruk adaleti | Detay kuyruğu ve rutin iş arasında kaynak isteği sayısı, backlog yaşı ve hacme göre sınırlı dönüş bütçesi eklendi; scheduler her turda tüm backlog zamanlarını ORM’ye çekmiyor; mevcut kart-önce/detay-sonra akışı korundu. | Hedefli service testi geçti. Şehirler arasında ilk sayfa round-robin’i ve gerçek kapasiteye göre bütçe ayarı sonraki aşama. |
 | 5 — kaynak/AI aşamaları | Repair’den process_raw çağrısına olay callback’i veriliyor; işlem aşaması ve sonuç zamanları kaydediliyor. | Kısmi: model token/kota metrikleri, içerik hash’i ile analiz tekrar kullanımı ve ayrı AI kuyruğu henüz yok. |

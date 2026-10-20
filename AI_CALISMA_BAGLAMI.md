@@ -2,8 +2,10 @@
 
 Güncelleme: 20 Ekim 2026. İlk inceleme üretim `f3d6819` sürümünü kapsıyordu.
 Toplama uygulamasının kaynak dalı `improve/reliable-collection-plan`.
-Arayüzle birleşik çalışma `integrate/ui-and-reliable-collection-20261020` dalında;
-canlıya alınmadı. Eşzamanlı başka Codex çalışıyor: önce
+Arayüzle birleşik çalışma `integrate/ui-and-reliable-collection-20261020` dalında.
+İlk birleşik sürüm `d1df247`, 20 Ekim kullanıcı onayıyla canlıya alındı; GitHub test
+ve deploy işleri başarılı, `/healthz` HTTP 200 ve aynı sürümü bildirdi.
+Eşzamanlı başka Codex çalışıyor: önce
 `ENTEGRASYON_NOTLARI_2026-10-20.md` dosyasındaki dal ve klasör sahipliğini oku.
 Sonra aşağıdaki uygulama durumu ve tarihsel kanıtlarla devam et.
 
@@ -45,8 +47,14 @@ Sonra aşağıdaki uygulama durumu ve tarihsel kanıtlarla devam et.
   Python paketi 248/248 geçti (604,524 saniye); `test_light.py` artık 11/11.
   Eski marka/CSS sınıfı beklentileri gerçek kontrol kimlikleriyle güncellendi.
   Kaynak çalışma klasöründeki arayüz dosyalarını entegrasyon kopyasıyla ezme.
-- Canlı üretimde gözlem, merge veya deploy yapılmadı. Aşama 2 için doğal iş yükünde
-  24–72 saatlik, aynı endpoint ve başlangıç koşullarıyla ölçüm hâlâ gerekli.
+- İlk yayın doğrulandı; Aşama 2 için doğal iş yükünde 24–72 saatlik, aynı endpoint
+  ve başlangıç koşullarıyla performans ölçümü hâlâ gerekli. 429/Retry-After
+  politikası ve önceden kayıtlı beklemeler bu yayında değiştirilmedi.
+- Son kullanıcı arayüz isteği: metinli ilan araması otomatik `semantic=1` gönderir;
+  kutucuk kaldırıldı, eski URL/tercihler aramayı kapatamaz. Bu yalnız mevcut
+  anlamsal aramayı otomatikleştirir; yeni model servisi kurulmadı. Kullanılamazsa
+  mevcut metin araması fallback'i sürer. Mobil Kayıtlar yerine doğrudan Kuyruk;
+  geçmiş, loglar ve çöp kutusu Diğer menüsünde.
 
 ## Son deneylerin kısa sonucu
 
@@ -75,7 +83,7 @@ Sonra aşağıdaki uygulama durumu ve tarihsel kanıtlarla devam et.
   Offline: transport11/11, policy18/18, lease3/3, cache7/7. Mevcut239 testin ilk
   koşusunda bir portable alt süreç timeout'u; tekil tekrar geçti. Temiz239/239 deme.
 
-## Kanıtlanmış durum
+## İlk incelemenin tarihsel kanıtları
 
 - Üretim sürümü `f3d6819`; deploy başarılı. Tek collector/supervisor var.
 - 20 Ekim 09:45 İstanbul canlı sorgusunda beş uç HTTP 200: health, incidents,

@@ -80,7 +80,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20261020.merge.1') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css', v='20261020.merge.1') }}">
   <script src="{{ url_for('static', filename='js/dashboard.js', v='20261020.1') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/app.js', v='20261020.merge.1') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js', v='20261020.search-nav.1') }}" defer></script>
 </head>
 <body class="bg-canvas-light dark:bg-canvas-dark text-ink-primary dark:text-zinc-100 min-h-screen flex flex-col selection:bg-[#0A66C2]/15 selection:text-[#0A66C2] transition-colors duration-200">
   <a class="skip sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:p-3 focus:bg-[#0A66C2] focus:text-white focus:rounded-lg" href="#main">İlanlara geç</a>
@@ -286,15 +286,7 @@
               </div>
 
               <!-- Akıllı Arama & Arama Butonu -->
-              <div class="px-3 py-2.5 flex items-center justify-between md:justify-end gap-3 shrink-0">
-                <label for="semantic-toggle" class="inline-flex items-center gap-2 cursor-pointer select-none group pr-1" title="Yazdığın kelimelerin anlamına yakın ilanları da getirir (vektörel eşleştirme).">
-                  <input id="semantic-toggle" type="checkbox" class="sr-only peer" />
-                  <div class="w-8 h-[18px] bg-black/15 dark:bg-white/15 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-3.5 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all after:shadow-xs relative peer-checked:bg-[#0A66C2] dark:peer-checked:bg-[#70B5F9]"></div>
-                  <span class="text-xs font-semibold text-ink-secondary dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                    Akıllı arama
-                  </span>
-                </label>
-
+              <div class="px-3 py-2.5 flex items-center justify-end shrink-0">
                 <button
                   id="heroSearchBtn"
                   type="button"
@@ -1187,9 +1179,9 @@
       </span>
       <span>Tarama</span>
     </button>
-    <button class="bottom-tab flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-[#0A66C2]" data-bottom-tab="records" data-bottom-group="records" aria-haspopup="true" aria-expanded="false">
-      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
-      <span>Kayıtlar</span>
+    <button class="bottom-tab flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-[#0A66C2]" data-bottom-tab="queue" data-action="queue">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Kuyruk</span>
     </button>
     <button class="bottom-tab flex flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink-muted hover:text-[#0A66C2]" data-bottom-tab="more" data-bottom-group="more" aria-haspopup="true" aria-expanded="false">
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>

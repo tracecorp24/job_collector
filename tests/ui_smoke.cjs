@@ -21,6 +21,24 @@ async function openDetails(locator){if(!await locator.evaluate(node=>node.open))
     await page.waitForFunction(()=>document.querySelectorAll('.job-card').length===24);
     assert.match(await page.locator('#count').textContent(),/60 ilan/);
     assert.equal(await page.locator('#list-error').isVisible(),false,'A hidden error must not be displayed by flex styling');
+    assert.equal(await page.locator('#semantic-toggle').count(),0,'Smart search is automatic');
+    const automaticSearch=page.waitForRequest(request=>{
+      const url=new URL(request.url());
+      return url.pathname==='/api/jobs'&&url.searchParams.get('search')==='Python'&&url.searchParams.get('semantic')==='1';
+    });
+    await page.locator('#search').fill('Python');
+    await automaticSearch;
+    await page.waitForFunction(()=>document.querySelector('#count').textContent.startsWith('20 ilan'));
+    // Older links cannot disable automatic smart search.
+    const oldLinkSearch=page.waitForRequest(request=>{
+      const url=new URL(request.url());
+      return url.pathname==='/api/jobs'&&url.searchParams.get('search')==='Python'&&url.searchParams.get('semantic')==='1';
+    });
+    await page.goto(baseURL+'/?search=Python&semantic=0');
+    await oldLinkSearch;
+    await page.waitForFunction(()=>document.querySelector('#count').textContent.startsWith('20 ilan'));
+    await page.locator('#clearKeywordBtn').click();
+    await page.waitForFunction(()=>document.querySelector('#count').textContent.startsWith('60 ilan'));
     await page.screenshot({path:path.join(root,'.qa','desktop.png'),fullPage:true});
     assert.equal(await page.locator('#location-city').isHidden(),true,'City is hidden until a country is selected');
     await page.locator('#location-country').selectOption('Türkiye');
@@ -177,7 +195,7 @@ async function openDetails(locator){if(!await locator.evaluate(node=>node.open))
     assert.equal(await page.locator('#bottom-nav .bottom-tab').count(),5);
     assert.equal(await page.locator('#bottom-nav [data-bottom-tab="jobs"]').getAttribute('aria-current'),'page');
     await page.locator('#bottom-nav [data-bottom-group="more"]').click();
-    assert.deepEqual(await page.locator('#sheet-items .sheet-item strong').allTextContents(),['Panel','Servis / API','Günlük rapor','Bakım / analiz','Geliştirici modu']);
+    assert.deepEqual(await page.locator('#sheet-items .sheet-item strong').allTextContents(),['Panel','Geçmiş aramalar','İşlem kayıtları','Çöp kutusu','Servis / API','Günlük rapor','Bakım / analiz','Geliştirici modu']);
     await page.screenshot({path:path.join(root,'.qa','sheet-mobile.png')});
     await page.locator('#sheet-items [data-action="dashboard"]').click();
     await page.waitForSelector('#dash-body .d-card');
@@ -185,9 +203,10 @@ async function openDetails(locator){if(!await locator.evaluate(node=>node.open))
     assert.equal(await page.locator('#bottom-nav [data-bottom-tab="more"]').getAttribute('aria-current'),'page');
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Panel overflows on mobile');
     await page.screenshot({path:path.join(root,'.qa','dashboard-mobile.png'),fullPage:true});
-    await page.locator('#bottom-nav [data-bottom-group="records"]').click();
-    assert.deepEqual(await page.locator('#sheet-items .sheet-item strong').allTextContents(),['Geçmiş aramalar','İşlem kayıtları','Çöp kutusu']);
-    await page.locator('#bottom-nav [data-bottom-group="records"]').click();
+    assert.equal(await page.locator('#bottom-nav [data-bottom-group="records"]').count(),0);
+    await page.locator('#bottom-nav [data-bottom-group="more"]').click();
+    assert.equal(await page.locator('#sheet-items [data-action="history"]').isVisible(),true);
+    await page.locator('#bottom-nav [data-bottom-group="more"]').click();
     assert.equal(await page.locator('#bottom-sheet').isVisible(),false,'Second tap should close the sheet');
     await page.locator('#bottom-nav [data-bottom-group="scan"]').click();
     await page.locator('#sheet-items [data-action="new-search"]').click();
@@ -195,9 +214,9 @@ async function openDetails(locator){if(!await locator.evaluate(node=>node.open))
     await page.screenshot({path:path.join(root,'.qa','drawer-mobile.png')});
     assert.equal(await page.locator('#drawer').evaluate(e=>e.scrollWidth<=e.clientWidth),true,'Drawer overflows');
     await page.keyboard.press('Escape');
-    await page.locator('#bottom-nav [data-bottom-group="scan"]').click();
-    await page.locator('#sheet-items [data-action="queue"]').click();
-    assert.equal(await page.locator('#bottom-nav [data-bottom-tab="scan"]').getAttribute('aria-current'),'page');
+    await page.locator('#bottom-nav [data-bottom-tab="queue"]').click();
+    assert.equal(await page.locator('#bottom-sheet').isVisible(),false);
+    assert.equal(await page.locator('#bottom-nav [data-bottom-tab="queue"]').getAttribute('aria-current'),'page');
     assert.match(await page.locator('#run-summary .queue-line').textContent(),/sorgu bitti.*çekilen.*yeni.*güncellenen/s);
     assert.equal(await page.locator('#cancel-run').isVisible(),false);
     assert.equal(await page.locator('#resume-run').isVisible(),true);

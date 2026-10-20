@@ -39,9 +39,15 @@ function readLocation(){
   const query=new URLSearchParams(location.search); filters={};
   if(query.size){for(const [key,value] of query){if(key==='view'){view=value==='list'?'list':'cards';continue;}if(names[key]||['sort','page','per_page'].includes(key)){if(multiKeys.has(key)) (filters[key]??=[]).push(value);else filters[key]=value;}}}
   else filters={...(prefs.filters||{})};
+  delete filters.semantic;
   if(!filters.country)delete filters.city;
 }
-function params(){const p=new URLSearchParams();for(const [key,value] of Object.entries(filters)){for(const v of Array.isArray(value)?value:[value]){if(v!==''&&v!=null&&v!==false)p.append(key,String(v));}}return p;}
+function params(){
+  const p=new URLSearchParams();
+  for(const [key,value] of Object.entries(filters)){for(const v of Array.isArray(value)?value:[value]){if(v!==''&&v!=null&&v!==false)p.append(key,String(v));}}
+  if((filters.search||'').trim())p.set('semantic','1');
+  return p;
+}
 function persist(push=false){
   form={'kw-input':$('kw-input').value,'loc-input':$('loc-input').value,'limit-input':$('limit-input').value,'unlimited':$('unlimited').checked,'classify-backend':$('classify-backend').value,'use-embeddings':$('use-embeddings').checked,'scrape-mode':$('scrape-mode').value,'refresh-details':$('refresh-details').checked};
   prefs={filters,view,draft,form,draftRunId};try{localStorage.setItem('linko.ui.v2',JSON.stringify(prefs));}catch{}
@@ -99,7 +105,7 @@ function syncControls(){
     $('clearLocationBtn')?.classList.toggle('hidden', !$('locationInput').value);
   }
   $('clearKeywordBtn')?.classList.toggle('hidden', !$('search').value);
-  $('location-country').value=filters.country||'';$('location-city').value=filters.city||'';$('location-city').hidden=!filters.country;$('location-city').disabled=!filters.country||cityOptionsCountry!==filters.country;$('semantic-toggle').checked=filters.semantic==='1';$('sort').value=filters.sort||'recent';$('per-page').value=filters.per_page||'24';
+  $('location-country').value=filters.country||'';$('location-city').value=filters.city||'';$('location-city').hidden=!filters.country;$('location-city').disabled=!filters.country||cityOptionsCountry!==filters.country;$('sort').value=filters.sort||'recent';$('per-page').value=filters.per_page||'24';
   document.querySelectorAll('[data-filter]').forEach(el=>{const v=filters[el.dataset.filter];if(el.type==='checkbox')el.checked=v==='1';else el.value=el.type==='date'&&v?String(v).slice(0,10):v??(el.dataset.filter==='visibility'?'active':el.dataset.filter==='quality'?'valid':el.dataset.filter==='skill_mode'?'any':'');});
   $('exclude-skills').value=(filters.exclude_skills||[]).join(', ');$('run-filter').value=(filters.run_id||[])[0]||'';
   document.querySelectorAll('[data-facet]').forEach(el=>{el.checked=(filters[el.dataset.facet]||[]).includes(el.value);});
@@ -918,19 +924,18 @@ function showTab(name){
   if(name==='watches')loadWatches();
   syncBottomNav(name);
 }
-const VIEW_GROUP={jobs:'jobs',dashboard:'more',watches:'watches',queue:'scan'};
+const VIEW_GROUP={jobs:'jobs',dashboard:'more',watches:'watches',queue:'queue'};
 const ICON=d=>`<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 // Mobil alt menü grupları; her grupta en sık kullanılan/önemli seçenek en üstte.
 const BOTTOM_GROUPS={
   scan:{title:'Tarama',items:[
     ['new-search','Yeni arama','Unvan yaz, yapay zekâ benzerleriyle çoğaltsın','<path d="M12 5v14M5 12h14"/>'],
     ['queue','Tarama kuyruğu','Canlı süreci izle, duraklat veya durdur','<path d="M4 6h16M4 12h16M4 18h10"/>']]},
-  records:{title:'Kayıtlar',items:[
-    ['history','Geçmiş aramalar','Önceki taramaları gör, yeniden başlat','<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>'],
-    ['logs-home','İşlem kayıtları','İstekler, yanıtlar ve hatalar','<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>'],
-    ['trash-home','Çöp kutusu','Silinen ilanları gör ve geri al','<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>']]},
   more:{title:'Diğer',items:[
     ['dashboard','Panel','İlan havuzunun ve toplayıcının özet metrikleri','<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'],
+    ['history','Geçmiş aramalar','Önceki taramaları gör, yeniden başlat','<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>'],
+    ['logs-home','İşlem kayıtları','İstekler, yanıtlar ve hatalar','<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>'],
+    ['trash-home','Çöp kutusu','Silinen ilanları gör ve geri al','<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>'],
     ['service-home','Servis / API','Toplayıcı durumu ve API erişimi','<rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01"/>'],
     ['daily-summary','Günlük rapor','Son aramaları ve verimlilik karşılaştırmalarını gör','<path d="M4 4h16v16H4z"/><path d="M8 10h8M8 14h5"/>'],
     ['maintenance-home','Bakım / analiz','Kayıtlı ilanları yeniden işle','<path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 6.5-6.5a4 4 0 0 1-5-5L9 9 3 3"/>'],
@@ -1269,7 +1274,7 @@ function initialize(){
   $('acknowledge-source').onclick=acknowledgeSource;
   for(const [id,value] of Object.entries(form)){if($(id)){if($(id).type==='checkbox')$(id).checked=!!value;else $(id).value=value;}}
   $('limit-input').disabled=$('unlimited').checked;$('task-error').after($('start-scrape'));readLocation();syncControls();renderChips();renderDraft();
-  wire('search','input',debounce(e=>setFilter('search',e.target.value.trim())));wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('semantic-toggle','change',e=>setFilter('semantic',e.target.checked?'1':''));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
+  wire('search','input',debounce(e=>setFilter('search',e.target.value.trim())));wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
   wire('exclude-skills','input',debounce(e=>setFilter('exclude_skills',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))));
   wire('run-filter','change',e=>{delete filters.task_id;setFilter('run_id',e.target.value?[e.target.value]:[]);});
   wire('date-preset','change',e=>setPostedPreset(Number(e.target.value)));

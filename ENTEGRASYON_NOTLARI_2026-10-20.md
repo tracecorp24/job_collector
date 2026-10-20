@@ -6,7 +6,9 @@ Kullanıcı başka bir Codex'in de entegrasyon yaptığını bildirdi. Bu çalı
 `integrate/ui-and-reliable-collection-20261020` dalında,
 `.qa/ui-collection-integration` worktree'sinde sürdürülür. Ana çalışma klasöründeki
 arayüz dosyaları, index ve mevcut dal değiştirilmez; diğer Codex'in devam eden
-değişiklikleri bu worktree'den kopyalanarak ezilmez. Main'e merge veya push yapılmadı.
+değişiklikleri bu worktree'den kopyalanarak ezilmez. Kullanıcı onayıyla `d1df247`
+20 Ekim'de uzak main'e gönderildi ve canlıya alındı. Test/deploy başarılı;
+`/healthz` HTTP 200, sürüm `d1df247`. Ana klasörün dalı ve index'i korundu.
 
 ## Korunan kayıtlar
 
@@ -65,4 +67,13 @@ Ekran görüntüleri aynı `.qa/` klasöründedir.
 Codex'in sonradan kaydettiği arayüz commit'lerini temiz, ayrı bir worktree'de
 normal Git merge ile al; eski anlık kopyayı ana klasöre geri yükleme. Bu dalın
 toplama ve arayüz uyum düzeltmelerini birlikte koru. Testler geçtikten sonra
-üretime geçiş ve 24–72 saat doğal iş yükü gözlemi ayrı aşamadır.
+24–72 saat doğal iş yükü gözlemini sürdür; sağlık kontrolü 429 azalması kanıtı değildir.
+
+## Son arayüz talebi
+
+Arama kutucuğu kaldırıldı; metinli her ilan araması `semantic=1` gönderir. Eski
+URL veya kaydedilmiş tercihteki kapalı seçim etkisizdir. Sunucu tarafındaki mevcut
+anlamsal servis ve metin araması fallback'i korundu; yeni AI servisi kurulmadı.
+Mobil alt çubuk: İlanlar, Alarmlar, Tarama, Kuyruk, Diğer. Geçmiş aramalar, işlem
+kayıtları ve çöp kutusu Diğer'e taşındı. İki ilgili arayüz sözleşmesi testi ve
+güncellenen tam tarayıcı koşusu geçti; kaynak bekleme kuralları değiştirilmedi.
