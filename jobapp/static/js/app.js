@@ -17,7 +17,7 @@ let prefs={}; try {prefs=JSON.parse(localStorage.getItem('linko.ui.v2')||'{}');}
 let filters={}, view=prefs.view||'cards', draft=Array.isArray(prefs.draft)?prefs.draft:[], form=prefs.form||{};
 const newId=()=>crypto.randomUUID();
 draft=draft.map(t=>({...t,id:t.id||newId()}));
-let groqAvailable=false,professionFacets={},cityOptionsCountry='';
+let groqAvailable=false,professionFacets={},cityOptionsCountry='',locationFacetData={country:[],city:[]};
 let draftRunId=prefs.draftRunId||null, draftSaveChain=Promise.resolve(), draftSaveTimer, queueStarting=false;
 let lastJobs=[], total=0, activeTotal=0, pages=0, currentRun=null, historyRuns=[], selectedHistory=new Set(), busy=false;
 let listController, facetController, detailController, requestSerial=0, facetSerial=0;
@@ -381,14 +381,31 @@ async function loadFacets(){
 }
 function renderLocationFilters(data){
   const country=$('location-country'),city=$('location-city');if(!country||!city)return;
+  const actualLocations=items=>(items||[]).filter(item=>item.value&&String(item.value).trim());
+  locationFacetData={country:actualLocations(data.country),city:actualLocations(data.city)};
   const selectedCountry=filters.country||'',selectedCity=filters.city||'';
   cityOptionsCountry=selectedCountry;
-  const countryItems=[...(data.country||[])];if(selectedCountry&&!countryItems.some(item=>item.value===selectedCountry))countryItems.push({value:selectedCountry,count:0});
+  const countryItems=[...locationFacetData.country];
   country.innerHTML='<option value="">Tüm ülkeler</option>'+countryItems.map(item=>`<option value="${esc(item.value)}">${esc(item.value)} (${Number(item.count).toLocaleString('tr-TR')})</option>`).join('');
   country.value=selectedCountry;
-  const cityItems=selectedCountry?[...(data.city||[])]:[];if(selectedCity&&selectedCountry&&!cityItems.some(item=>item.value===selectedCity))cityItems.push({value:selectedCity,count:0});
+  const cityItems=selectedCountry?[...locationFacetData.city]:[];
   city.innerHTML='<option value="">Tüm şehirler</option>'+cityItems.map(item=>`<option value="${esc(item.value)}">${esc(item.value)} (${Number(item.count).toLocaleString('tr-TR')})</option>`).join('');
   city.hidden=!selectedCountry;city.disabled=!selectedCountry;city.value=selectedCountry?selectedCity:'';
+  renderCountryCityOptions();
+}
+function renderCountryCityOptions(){
+  const list=$('countryCityOptionsList');if(!list)return;
+  const country=filters.country||'',city=filters.city||'',query=($('countryCityQuickSearch')?.value||'').trim().toLocaleLowerCase('tr');
+  const matches=item=>!query||String(item.value).toLocaleLowerCase('tr').includes(query);
+  if(!country){
+    const items=locationFacetData.country.filter(matches);
+    list.innerHTML=items.map(item=>`<button type="button" data-country-option="${esc(item.value)}" class="flex w-full items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-black/5 dark:hover:bg-white/5"><span>${esc(item.value)}</span><span class="text-[10px] text-ink-muted">${Number(item.count).toLocaleString('tr-TR')}</span></button>`).join('')||'<p class="px-2.5 py-3 text-xs text-ink-muted">Eşleşen ülke bulunamadı.</p>';
+    return;
+  }
+  const cities=locationFacetData.city.filter(matches);
+  list.innerHTML=`<div class="flex items-center justify-between px-2.5 py-2"><span class="text-xs font-semibold">${esc(country)}</span><button type="button" data-country-change class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9]">Ülkeyi değiştir</button></div>`+
+    `<button type="button" data-city-option="" class="flex w-full items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-black/5 dark:hover:bg-white/5 ${!city?'font-semibold text-[#0A66C2] dark:text-[#70B5F9]':''}"><span>Tüm şehirler</span></button>`+
+    (cities.map(item=>`<button type="button" data-city-option="${esc(item.value)}" class="flex w-full items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-black/5 dark:hover:bg-white/5 ${city===item.value?'font-semibold text-[#0A66C2] dark:text-[#70B5F9]':''}"><span>${esc(item.value)}</span><span class="text-[10px] text-ink-muted">${Number(item.count).toLocaleString('tr-TR')}</span></button>`).join('')||'<p class="px-2.5 py-3 text-xs text-ink-muted">Bu ülkeye ait şehir bulunamadı.</p>');
 }
 function renderProfessionFacets(){
   const host=$('profession-tree');if(!host)return;
@@ -1186,6 +1203,14 @@ function initHeroSearchAndPopovers(){
   const ccTrigger = $('countryCityTriggerBtn');
   const ccPopover = $('countryCityPopover');
   const ccChevron = $('countryCityChevron');
+  $('countryCityOptionsList')?.addEventListener('click', e => {
+    const countryOption=e.target.closest('[data-country-option]');
+    const cityOption=e.target.closest('[data-city-option]');
+    if(countryOption){$('countryCityQuickSearch').value='';setFilter('country',countryOption.dataset.countryOption);}
+    else if(cityOption){setFilter('city',cityOption.dataset.cityOption);}
+    else if(e.target.closest('[data-country-change]')){delete filters.country;delete filters.city;cityOptionsCountry='';syncControls();persist(true);renderChips();loadAll();}
+  });
+  wire('countryCityQuickSearch','input',renderCountryCityOptions);
   if (ccTrigger && ccPopover) {
     ccTrigger.addEventListener('click', e => {
       e.stopPropagation();
