@@ -2,7 +2,7 @@
 
 **Sonuç:** Önerilerin **büyük çoğunluğu uygulanmayacak**. Üç şey yüzünden:
 (1) önerilerin ana hedefi bekleme süresini kısaltıp kaynağa saatte 5–8 kat fazla istek atmak —
-bu `CLAUDE.md` ve `SERVICE_PLAN.md` kurallarına doğrudan aykırı; (2) birçoğu LinkedIn'in
+bu `../CLAUDE.md` ve `../SERVICE_PLAN.md` kurallarına doğrudan aykırı; (2) birçoğu LinkedIn'in
 bot tespitini atlatmaya yönelik (TLS taklidi, IP döndürme, kova değiştirme, Google
 yedek kanalı); (3) iyi görünen kalan kısmın çoğu **kodda zaten var**. Gerçekten işe yarayan
 yalnızca iki küçük, düşük riskli değişiklik çıktı (bkz. "Güncelleme planı").
@@ -73,7 +73,7 @@ Başlıklardaki § numaraları önerinin kendi numaralarıdır.
 | § 9 | Guest `Set-Cookie` değerlerini elle sakla | `requests.Session` bunu zaten yapıyor. |
 | § 15 | 4 haftalık "kademeli açma planı" | Planın tamamı yukarıdaki reddedilen adımlara dayanıyor. Kabul edilen iki parçası aşağıda. |
 | § 13 | "Ne yapma" listesi | Bilgilendirme; zaten doğru taraftayız (hesapsız, çerezsiz, sıralı). Ancak listede paralel/proxy/raw-requests iddiaları kendi içinde çelişkili ve kaynaksız. |
-| § 0 | "Mimarin avantajlı" | Doğru ve `CLAUDE.md` ile uyumlu: hesapsız, yalnızca kamuya açık sayfalar. Eylem gerektirmez. |
+| § 0 | "Mimarin avantajlı" | Doğru ve `../CLAUDE.md` ile uyumlu: hesapsız, yalnızca kamuya açık sayfalar. Eylem gerektirmez. |
 
 ## 4. Gerçek darboğaz nedir?
 

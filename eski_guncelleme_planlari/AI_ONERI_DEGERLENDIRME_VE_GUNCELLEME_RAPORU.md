@@ -77,7 +77,7 @@ AI metni, dışarıdan bakıldığında "curl_cffi", "AIMD", "HTTP/2", "TLS impe
   - 1. **IPv6:** Akamai ve Cloudflare gibi kurumsal güvenlik sistemleri, abuse tespitinde IPv6 adreslerini tekil `/128` olarak değil, RFC standartlarına uygun olarak bütün `/64` bloğu olarak bloklar. Dolayısıyla blok içindeki rotasyon hiçbir işe yaramaz, tüm subnet banlanır.
   - 2. **Cloudflare WARP:** WARP çıkış IP'leri genel VPN havuzundadır (AS13335). Scraper'lar ve botlar tarafından aşırı tüketildiği için LinkedIn WARP IP'lerine derhal Cloudflare challenge veya HTTP 999 dayatır.
   - 3. **PPPoE:** Canlı üretim sistemimiz Linux bulut VPS üzerindedir; ev modemi resetleme önerisi kurumsal sunucu ortamı için anlamsızdır.
-  - 4. **Proje İlkesi:** `SERVICE_PLAN.md` gereğince "Güvenlik doğrulaması aşılmaz; kaynak engellerinden kaçmak için oturum veya IP hileleri yapılmaz."
+  - 4. **Proje İlkesi:** `../SERVICE_PLAN.md` gereğince "Güvenlik doğrulaması aşılmaz; kaynak engellerinden kaçmak için oturum veya IP hileleri yapılmaz."
 - **Karar:** **REDDEDİLDİ.**
 - **Reddetme Sebebi:** Bulut sunucuya uygun değildir, hızla subnet blokajı getirir ve projenin etik/güvenli kazıma ilkelerine aykırıdır.
 
@@ -164,7 +164,7 @@ AI metni, dışarıdan bakıldığında "curl_cffi", "AIMD", "HTTP/2", "TLS impe
 - **Gerçeklik:**
   - Eğer işçiler 1.5 sn arayla istek atarsa, tek IP'den giden istek aralığı 1.5 saniyeye düşer ve 429 kaçınılmaz olur.
   - Eğer 6 saniyelik `Coordinator` kilidine uyarlarsa, birden fazla worker açmak hiçbir hız kazandırmaz; çünkü hepsi aynı SQLite kuyruğunda sıraya girer.
-  - Ayrıca `CLAUDE.md` kuralı: "Tek collector süreci varsayımını bozma."
+  - Ayrıca `../CLAUDE.md` kuralı: "Tek collector süreci varsayımını bozma."
 - **Karar:** **REDDEDİLDİ.**
 
 ### § 21. Gece / Gündüz Profili (Gece 3 sn aralık, 8 saatte 9.000 istek)
@@ -203,7 +203,7 @@ AI metni, dışarıdan bakıldığında "curl_cffi", "AIMD", "HTTP/2", "TLS impe
 |---|---|---|---|
 | **1** | `curl_cffi` kütüphanesine geçiş (§1, §8) | **REDDEDİLDİ** | Sorun TLS değil istek sıklığıdır (`requests` zaten 200 alıyor). C ikili bağımlılığı VPS dağıtımında kırılganlık yaratır. |
 | **2** | Kova Ayrımı (Kart/Detay paralel 3 kanal) (§2, §17) | **REDDEDİLDİ** | Rate limit uç noktaya değil IP'ye uygulanır. Aynı IP'den paralel kanal açmak toplam yükü 3x artırarak kalıcı IP banına yol açar. |
-| **3** | Taban aralığı 3.5 sn'ye indirmek (§3, §14) | **REDDEDİLDİ** | Canlı sistemde 6 sn'de bile 429 alınmaktadır. 3.5 sn aralık doğrudan kilitlenme üretir. `SERVICE_PLAN.md` kuralına aykırıdır. |
+| **3** | Taban aralığı 3.5 sn'ye indirmek (§3, §14) | **REDDEDİLDİ** | Canlı sistemde 6 sn'de bile 429 alınmaktadır. 3.5 sn aralık doğrudan kilitlenme üretir. `../SERVICE_PLAN.md` kuralına aykırıdır. |
 | **4** | IPv6 / WARP IP Rotasyonu (§4, §10) | **REDDEDİLDİ** | IPv6 `/64` blokları WAF tarafından toptan banlanır; Cloudflare WARP IP'leri önceden işaretlidir. Güvenlik atlatma yasağına aykırıdır. |
 | **5** | JSON-LD Ayrıştırma (§18, §19-D) | **MEVCUT ÖRNEKLEMDE DOĞRULANMADI** | Kaydedilen sekiz 200 yanıtta JSON-LD yoktu; farklı yanıt türleri için genel sonuç çıkarılamaz. |
 | **6** | Google X-Ray Fallback (§12, §23) | **REDDEDİLDİ** | Google botları hızla reCAPTCHA'ya düşürür. LinkedIn detayına gitme zorunluluğunu ortadan kaldırmaz. |
@@ -235,7 +235,7 @@ Bu plan yalnızca onaylanan, sıfır riskli ve sistemi koruyan 2 adımı kapsar:
 1. 14:22–15:38 arasındaki koşu kayıtlarında yaklaşık %65 kaynak beklemesi raporlanmıştır. Bu gözlem daha düşük istek sıklığını denemeyi gerekçelendirir; tek başına yeni aralığın sonucunu göstermez.
 2. `scripts/test_endpoint_isolation.py` canlı kotayı ölçmez. 6.9 sn ortalama aralık, her 5 istekte bir 429 ve 65 sn bekleme varsayımlarını kullanır. 10.75 sn ortalama senaryoda 429 eşiği 999999 olarak ayarlanıp devre dışı bırakılmıştır. Bu nedenle 182 ve 334 istek/saat, 36 ve 0 adet 429 ile %65 ve %0 bekleme oranları yalnızca model çıktılarıdır; gerçek sistem performansının kanıtı değildir.
 3. `JOBAPP_REQUEST_INTERVAL=10.0`, `JOBAPP_MIN_REQUEST_INTERVAL=10.0` ve `JOBAPP_REQUEST_JITTER=0.15` yerel varsayılan olarak seçildi. Canlı etkisi, benzer arama koşullarındaki sonraki koşuların `rate_429` ve `frozen_ratio` metrikleriyle ölçülmelidir. Bu ayarın 429'u sıfırladığı veya verimi artırdığı henüz söylenemez.
-4. `CLAUDE.md`, `SERVICE_PLAN.md`, `.env.example` ve `jobapp/config.py` bu deneme ayarları doğrultusunda güncellenmiştir.
+4. `../CLAUDE.md`, `../SERVICE_PLAN.md`, `../.env.example` ve `../jobapp/config.py` bu deneme ayarları doğrultusunda güncellenmiştir.
 
 ---
 

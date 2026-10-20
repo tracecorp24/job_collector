@@ -30,7 +30,7 @@ Rapor, yerel SQLite veritabanı (`jobs.db`), işlem kayıtları (`search_events`
 ---
 
 ### [TEST 1] Gerçek İlan ve Honeypot Doğrulama Testi
-* **Araç / Betik:** [`scripts/data_quality_probe.py`](scripts/data_quality_probe.py)
+* **Araç / Betik:** [`scripts/data_quality_probe.py`](../scripts/data_quality_probe.py)
 * **Amaç:** Yerel ilan örnekleminde ID biçimini, şirket alanının doluluğunu ve açıklama uzunluğunu kontrol etmek.
 * **Girdi / Örneklem:** Veritabanındaki en güncel 20 ilan; toplam kayıt sayısı bu kontrollerle doğrulanmaz.
 * **Bulgular:**
@@ -42,7 +42,7 @@ Rapor, yerel SQLite veritabanı (`jobs.db`), işlem kayıtları (`search_events`
 ---
 
 ### [TEST 2] Sayfalama, Kart Dağılımı ve ID Tekrarlama Testi
-* **Araç / Betik:** [`scripts/data_quality_probe.py`](scripts/data_quality_probe.py)
+* **Araç / Betik:** [`scripts/data_quality_probe.py`](../scripts/data_quality_probe.py)
 * **Amaç:** Sayfa başına kart düşüşü veya ID döngüsü olup olmadığını ölçmek.
 * **Girdi:** 48 arama sayfası olayı ve 453 dönen kart slotu (bu yerel kayıt anlık görüntüsü).
 * **Bulgular:**
@@ -65,7 +65,7 @@ Rapor, yerel SQLite veritabanı (`jobs.db`), işlem kayıtları (`search_events`
 ---
 
 ### [TEST 4] Chrome 131 UA ile Kaydedilmiş DOM ve JSON-LD Probe'u
-* **Araç / Betik:** [`scripts/test_live_chrome_ua.py`](scripts/test_live_chrome_ua.py)
+* **Araç / Betik:** [`scripts/test_live_chrome_ua.py`](../scripts/test_live_chrome_ua.py)
 * **Amaç:** Kaydedilen tek yanıttaki DOM ve JSON-LD alanlarını incelemek.
 * **Girdi:** Raporda kaydedildiği belirtilen LinkedIn ilanı (`/jobs/view/4468150126`) ve Chrome 131 başlıkları.
 * **Bulgular:**
@@ -77,7 +77,7 @@ Rapor, yerel SQLite veritabanı (`jobs.db`), işlem kayıtları (`search_events`
 ---
 
 ### [TEST 5] Endpoint İzolasyonu ve Çapraz Uç Nokta Etkilenme Testi
-* **Araç / Betik:** [`scripts/test_endpoint_isolation.py`](scripts/test_endpoint_isolation.py)
+* **Araç / Betik:** [`scripts/test_endpoint_isolation.py`](../scripts/test_endpoint_isolation.py)
 * **Amaç:** Arama uç noktası ile Detay uç noktasının bağımsız kotalara sahip olup olmadığını denetlemek.
 * **Girdi:** `run_id` ve `task_id` ile gruplanmış istek olayları.
 * **Bulgular:**
@@ -87,7 +87,7 @@ Rapor, yerel SQLite veritabanı (`jobs.db`), işlem kayıtları (`search_events`
 ---
 
 ### [TEST 6] Pacing (İstek Ritmi) 1 Saatlik Verim Simülasyon Testi
-* **Araç / Betik:** [`scripts/test_endpoint_isolation.py`](scripts/test_endpoint_isolation.py)
+* **Araç / Betik:** [`scripts/test_endpoint_isolation.py`](../scripts/test_endpoint_isolation.py)
 * **Amaç:** 6s aralık + 429 beklemesi ile 10s sabit ritim arasındaki net saatlik verimi kıyaslamak.
 * **Bulgular:**
   - **Mevcut 6s Ritim:** Saatte 182 başarılı istek, 36 kez 429 hatası, **39 dakika donma (%65 boş bekleme)**.

@@ -7,7 +7,7 @@ Saatler aksi belirtilmedikçe İstanbul, UTC+3. Üretim verisi değiştirilmeden
 Aynı detay uç noktasında eski tamamlayıcı %4,75, son sürüm %13,33 429 almış.
 Oturumun her işte yenilenmesi artık birinci inceleme/düzeltme önceliği.
 Kanıtlar, belirsizlikler ve aşamalı doğrulama:
-`429_ARTISI_ANALIZI_VE_PLAN_2026-10-20.md`.
+`../429_ARTISI_ANALIZI_VE_PLAN_2026-10-20.md`.
 Sonraki deneyler ve uygulama için esas alınacak ayrıntılı plan:
 `DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`.
 
@@ -344,4 +344,4 @@ ağ isteği yapmaz. Yeni anahtar üretip sunucu ayarını değiştirmek yerine m
 secret'ıyla log protokolü kullanıldı. Tanılama dalı:
 `audit/live-collection-diagnosis-20261020`; çalışma commit'i `d5025eb`.
 
-Sonraki ajan için kısa başlangıç: `AI_CALISMA_BAGLAMI.md`.
+Sonraki ajan için kısa başlangıç: `../AI_CALISMA_BAGLAMI.md`.

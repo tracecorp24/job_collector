@@ -1,8 +1,8 @@
 # Eski ve yeni sürümlerde HTTP 429 karşılaştırması ve güncel plan
 
-20 Ekim 2026. Ana raporun eki: `TOPLAMA_HIZI_ANALIZI_2026-10-20.md`.
+20 Ekim 2026. Ana raporun eki: `deney_sonuclari/TOPLAMA_HIZI_ANALIZI_2026-10-20.md`.
 Kullanıcının istediği deneylerden sonraki güncel ve daha ayrıntılı uygulama planı:
-`DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`. Aşağıdaki başlangıç planının
+`deney_sonuclari/DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`. Aşağıdaki başlangıç planının
 üzerine oturum sahipliği, anlamsal başarı, lease ve zamanla bozulan kaynak
 toparlanması deneyleri eklendi.
 Dayanak: 09:45 İstanbul'da indirilen üretim logları; son olay 09:18:25 İstanbul.

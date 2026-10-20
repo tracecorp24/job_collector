@@ -536,4 +536,4 @@ olarak kullanılmıyor.
   süre 604,524 saniye. Bu, yukarıdaki tarihsel 239 testlik baseline’dan sonraki
   uygulama testlerini de içerir. Kayıt: `.qa/ui-collection-unit.log`.
 - Birleşik dal ve tarayıcı doğrulamasının güncel devir notu:
-  `ENTEGRASYON_NOTLARI_2026-10-20.md`. Bu sonuç üretim 429 oranını ölçmez.
+  `../ENTEGRASYON_NOTLARI_2026-10-20.md`. Bu sonuç üretim 429 oranını ölçmez.

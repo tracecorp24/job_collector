@@ -1,6 +1,6 @@
 import unittest
 
-from jobapp.locations import normalize
+from jobapp.locations import normalize, normalize_country
 
 
 class LocationNormalizationTests(unittest.TestCase):
@@ -14,6 +14,11 @@ class LocationNormalizationTests(unittest.TestCase):
 
     def test_normalizes_long_us_location(self):
         self.assertEqual(normalize("San Francisco Bay Area, California, United States"), ("ABD", "San Francisco"))
+
+    def test_normalizes_ai_country_names_and_rejects_unknown_values(self):
+        self.assertEqual(normalize_country("Germany"), "Almanya")
+        self.assertEqual(normalize_country("United States"), "ABD")
+        self.assertEqual(normalize_country("Somewhere"), "")
 
 
 if __name__ == "__main__":

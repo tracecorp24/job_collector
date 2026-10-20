@@ -14,3 +14,6 @@ start_server.sh
 
 # Gizli bilgiler (şifreler, API anahtarları)
 SIFRELER.txt
+
+# Ayrı repo (NextStep AI)
+next_step/

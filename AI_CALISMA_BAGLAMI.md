@@ -11,7 +11,7 @@ Sonra aşağıdaki uygulama durumu ve tarihsel kanıtlarla devam et.
 
 ## Önce oku
 
-Son mola incelemesi ve uygulama: `MOLA_CANLI_BULGULAR_2026-10-20.md`.
+Son mola incelemesi ve uygulama: `deney_sonuclari/MOLA_CANLI_BULGULAR_2026-10-20.md`.
 `294c81d` canlı ölçümünde liste ucu da 429 alıyordu; 64 dakikalık mola
 `Retry-After` değil yerel fallback idi. Detay kuyruğu boştu. Bu retler
 arasında deploy olduğundan tek süreç session devamlılığı ölçülmüş sayılmaz.
@@ -24,11 +24,11 @@ bağlanır; yeni şema yok. Yeni kayıtta kaynak süresi / yerel hesap / ikisi a
 kanıtsız eski molaya `legacy_unknown` denir. UI eski logları güncel hata diye sunmaz.
 
 1. `CALISMA_YONTEMI.md`: canlı log protokolü, anahtar kapsamı, incident yaşam döngüsü.
-2. `TOPLAMA_HIZI_ANALIZI_2026-10-20.md`: kanıtlar, nedenler, öncelikli düzeltmeler.
+2. `deney_sonuclari/TOPLAMA_HIZI_ANALIZI_2026-10-20.md`: kanıtlar, nedenler, öncelikli düzeltmeler.
 3. `CLAUDE.md`: çalışma ve üretim kuralları.
 4. `429_ARTISI_ANALIZI_VE_PLAN_2026-10-20.md`: son kullanıcı yönlendirmesiyle
    güncellenen neden analizi ve yeni uygulama sırası; oturum düzeltmesi ilk sırada.
-5. **Güncel uygulama planı:** `DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`.
+5. **Güncel uygulama planı:** `deney_sonuclari/DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`.
    Önceki deneyler, uygulama kararları ve canlıya geçiş kabul koşulları burada.
 
 ## Bu dalda uygulananlar

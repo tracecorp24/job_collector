@@ -1,12 +1,12 @@
 # Çalışma yöntemi: canlı loglara dayalı geliştirme
 
-20 Ekim hız incelemesi: `TOPLAMA_HIZI_ANALIZI_2026-10-20.md`; sonraki ajanlar için
+20 Ekim hız incelemesi: `deney_sonuclari/TOPLAMA_HIZI_ANALIZI_2026-10-20.md`; sonraki ajanlar için
 kısa başlangıç ve yerel anahtar yokken kullanılan GitHub tanılama yolu:
 `AI_CALISMA_BAGLAMI.md`. Salt okunur yedek özeti: `scripts/collection_diagnosis.py`.
 Eski/yeni 429 oranı ve oturum ömrü karşılaştırması; güncellenen uygulama sırası:
 `429_ARTISI_ANALIZI_VE_PLAN_2026-10-20.md`.
 Deney sonuçları ve uygulanacak ayrıntılı aşamalar:
-`DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`.
+`deney_sonuclari/DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`.
 Planın yerel kod uygulaması, test sonuçları ve canlı rollout'ta bekleyen işler için
 önce `AI_CALISMA_BAGLAMI.md` içindeki “Bu dalda uygulananlar” bölümünü oku.
 

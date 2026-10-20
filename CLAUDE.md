@@ -5,9 +5,9 @@ sunucusu ve otonom toplayıcı (`serve_service.py`). Arayüz `jobapp/templates/i
 `jobapp/static/`. Ayrıntı: `README.md`, `SERVICE.md`.
 
 Toplama hızı ve canlı iletişim incelemesinin kısa devir notu: `AI_CALISMA_BAGLAMI.md`.
-Kanıtlar ve düzeltme sırası: `TOPLAMA_HIZI_ANALIZI_2026-10-20.md`.
+Kanıtlar ve düzeltme sırası: `deney_sonuclari/TOPLAMA_HIZI_ANALIZI_2026-10-20.md`.
 429 artışı için güncel öncelikler: `429_ARTISI_ANALIZI_VE_PLAN_2026-10-20.md`.
-Yapılan deneyler ve ayrıntılı uygulama planı: `DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`.
+Yapılan deneyler ve ayrıntılı uygulama planı: `deney_sonuclari/DENEY_SONUCLARI_VE_AYRINTILI_PLAN_2026-10-20.md`.
 
 ## Çalışma kuralları
 - Kullanıcı Türkçe konuşur; issue yanıtları, PR açıklamaları ve arayüz metinleri Türkçe olsun.

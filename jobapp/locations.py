@@ -95,6 +95,11 @@ _COUNTRIES = (
 _COUNTRY_BY_KEY = {_key(alias): country for country, *aliases in _COUNTRIES for alias in (country, *aliases)}
 
 
+def normalize_country(value):
+    """Return a canonical country for a known name or alias, else an empty string."""
+    return _COUNTRY_BY_KEY.get(_key(value)) or ""
+
+
 _CITY_ROWS = (
     ("Aarhus", "Aarhus", "Århus"), ("Amsterdam", "Amsterdam"), ("Ankara", "Ankara"),
     ("Anvers", "Antwerp", "Antwerpen", "Anvers"), ("Atina", "Athens", "Athina", "Atina"),

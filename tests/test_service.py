@@ -9,7 +9,7 @@ from sqlalchemy import text
 import test_light
 import test_workspace
 from test_light import response, card, DETAIL
-from jobapp import config, db, pipeline, server, service, runs
+from jobapp import config, db, pipeline, server, service, runs, country_enrichment
 from jobapp.models import Job, SearchRun, SearchTask
 from jobapp.transport import Coordinator
 
@@ -19,6 +19,18 @@ class ServiceTests(unittest.TestCase):
     tearDown = test_workspace.WorkspaceTests.tearDown
     scrape = test_light.FullLightTests.scrape
     start_worker = test_workspace.WorkspaceTests.start_worker
+
+    def test_country_enrichment_fills_only_missing_country(self):
+        with self.factory() as session:
+            job = Job(source="linkedin", external_id="country-1", title="Engineer",
+                      location="Berlin", location_country="")
+            session.add(job)
+            session.commit()
+            job_id = job.id
+        with patch.object(country_enrichment, "_infer", return_value={job_id: "Almanya"}):
+            country_enrichment._run(server, [job_id], job_id, time.time())
+        with self.factory() as session:
+            self.assertEqual(session.get(Job, job_id).location_country, "Almanya")
 
     def test_stale_autosave_preserves_cancelled_task(self):
         tasks = [dict(id='first',keyword='AI'),dict(id='second',keyword='Backend')]
