@@ -347,10 +347,10 @@ class AccountlessScraper:
                 if cooldown > config.INLINE_RETRY_WAIT_SECONDS:
                     self._report_page(interrupted=True, level="warning")
                     raise SourcePaused(self.coordinator.pause(str(err), getattr(err, "status_code", None),
-                        retry_after=str(int(cooldown)), violation=False)) from err
+                        retry_after=str(int(cooldown)), violation=False, retry_after_is_local=True)) from err
                 if cooldown > 0:
                     self.coordinator.pause(str(err), getattr(err, "status_code", None),
-                        retry_after=str(int(cooldown)), violation=False)
+                        retry_after=str(int(cooldown)), violation=False, retry_after_is_local=True)
                 cooldown_int = max(0, int(round(cooldown)))
                 if self.emit:
                     self.emit("waiting", {"seconds": cooldown_int, "attempt": attempt, "reason": "Bağlantı veya hız sınırı nedeniyle yeniden deneme bekleniyor."})

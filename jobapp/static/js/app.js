@@ -609,7 +609,7 @@ function setOllama(available){
 }
 function renderSource(){
   const blocked=!!sourceState?.paused;
-  $('source-status').hidden=!blocked;$('source-status').textContent=sourceState?.message||'';
+  $('source-status').hidden=!blocked;$('source-status').textContent=blocked?sourcePauseExplanation(sourceState):sourceState?.message||'';
   $('acknowledge-source').hidden=!sourceState?.manual_pause;$('acknowledge-source').disabled=!sourceState?.acknowledge_allowed;
   // Sistem meşgulken veya kaynak beklerken kuyruk sıraya alınır; servis uygun olunca başlatır.
   $('start-scrape').disabled=queueStarting;$('start-scrape').textContent=blocked||busy?'Kuyruğa ekle — uygun olunca başlar':'Kuyruğu başlat';
@@ -623,14 +623,24 @@ function renderWait(){
   const deadline=sourceWait?sourceState.blocked_until*1000:retryWait?currentRun.next_attempt_at*1000:waitingUntil;
   const remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));
   $('wait-banner').hidden=!sourceWait&&!retryWait&&!(busy&&remaining>0);
-  $('wait-title').textContent=sourceWait?'Yeni ilan toplama kısa bir molada':retryWait?'İşlem yeniden denenecek':'İstekler arasında bekleniyor';
-  $('wait-explanation').textContent=sourceWait?'Kaynak bir süreliğine erişimi sınırladı; süre dolunca toplama kendiliğinden sürer. Bu sırada kayıtlı ilanlara göz atabilirsin.':retryWait?currentRun.status_reason:waitReason;
+  $('wait-title').textContent=sourceWait?'Kaynak erişimi nedeniyle toplama bekliyor':retryWait?'İşlem yeniden denenecek':'İstekler arasında bekleniyor';
+  $('wait-explanation').textContent=sourceWait?sourcePauseExplanation(sourceState):retryWait?currentRun.status_reason:waitReason;
   const interval=sourceState?.effective_interval,maximum=sourceState?.interval_with_jitter_max;
   $('effective-interval').textContent=interval!=null?`Geçerli istek aralığı: ${Number(interval).toFixed(1)}–${Number(maximum??interval).toFixed(1)} saniye. Önceki sınırlandırmalar bu aralığı artırabilir.`:'';
   $('wait-countdown').textContent=remaining>0?[Math.floor(remaining/3600),Math.floor(remaining%3600/60),remaining%60].map(n=>String(n).padStart(2,'0')).join(':'):'Devam kontrolü…';
-  $('wait-next').textContent=sourceWait?`Devam: ${new Date(deadline).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})} · Ayrıntı: ${sourceState.reason||'—'}`:'Bekleme tamamlandığında işlem otomatik sürecek.';
+  $('wait-next').textContent=sourceWait?`Yeniden deneme: ${new Date(deadline).toLocaleString('tr-TR')} · Yeni bir ret gelirse bekleme uzayabilir.`:'Bekleme tamamlandığında işlem otomatik sürecek.';
   document.querySelectorAll('[data-source-countdown]').forEach(el=>{el.textContent=$('wait-countdown').textContent;});
   renderPill();
+}
+function sourcePauseExplanation(source){
+  const response=source.status_code?`Kaynak HTTP ${source.status_code} döndürdü. `:'';
+  const reported=source.reported_retry_after_seconds;
+  const applied=source.applied_pause_seconds;
+  const duration=applied!=null?` Uygulanan mola: ${Math.ceil(applied/60)} dakika.`:'';
+  if(source.cooldown_origin==='local_fallback')return response+'Kaynak bekleme süresi bildirmedi; mola uygulamanın artan bekleme kuralıyla hesaplandı.'+duration;
+  if(source.cooldown_origin==='retry_after_and_local_policy')return response+`Kaynağın bildirdiği süre: ${reported} saniye. Uygulamanın koruma kuralı daha uzun bekleme gerektiriyor.`+duration;
+  if(source.cooldown_origin==='retry_after')return response+`Kaynağın bildirdiği bekleme süresi: ${reported} saniye.`+duration;
+  return response+'Bu mola eski sürümden devralındı; sürenin kaynağı eski kayıtta belirtilmemiş. Süre dolunca otomatik yeniden denenecek.';
 }
 // Üst çubuktaki küçük durum göstergesi; ayrıntı Tarama kuyruğunda.
 function renderPill(){
@@ -873,6 +883,8 @@ function logSummary(e){const d=e.data;if(e.kind==='page_result')return `Sayfa ${
   if(e.kind==='task_start')return `Arama başladı · ${d.keyword} · ${d.location}`;
   if(e.kind==='task_done')return `Arama tamamlandı · ${d.count} ilan · ${d.reason||''}`;
   if(e.kind==='source_paused')return d.message;
+  if(e.kind==='detail_deferred')return `İlan kartının açıklaması daha sonra tamamlanacak · ${d.external_id}`;
+  if(e.kind==='routine_page_turn_started')return 'Rutin tarama sırası başladı; ilk sayfa tamamlanana kadar otomatik detay işine geçilmeyecek.';
   if(e.kind==='cache_hit')return `Detay önbellekten alındı · ${d.external_id}`;
   if(e.kind==='cache_miss'){const reasons={not_cached:'İlk kez detay isteniyor',expired:'Önbellek süresi doldu',card_changed:'İlan kartı değişti',forced_refresh:'Zorunlu yenileme seçildi'};return `${reasons[d.reason]||'Detay önbellekten kullanılamadı'} · ${d.external_id}`;}
   if(e.kind==='shared_rate_wait')return `Ortak istek aralığı bekleniyor · ${d.seconds} saniye`;

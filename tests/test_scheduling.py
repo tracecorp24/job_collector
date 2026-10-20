@@ -10,7 +10,7 @@ import test_light
 import test_workspace
 from test_light import card, response, DETAIL
 from jobapp import repair, routine_cities, runs, scheduling, server, service, watches
-from jobapp.models import Job, RepairTask, SearchRun, SearchTask
+from jobapp.models import Job, RepairTask, SearchRun, SearchTask, SearchEvent
 
 
 class SchedulingTests(unittest.TestCase):
@@ -81,6 +81,52 @@ class SchedulingTests(unittest.TestCase):
             options = json.loads(session.get(SearchRun, "routine").options)
             self.assertEqual(options["priority_yield"], "repair")
             self.assertEqual(options["auto_resume_at"], 0)
+
+    def test_routine_keeps_turn_until_a_complete_page_is_saved(self):
+        with self.factory() as session:
+            self.run_row(session, "routine", "routine", "running", routine_turn_after_event_id=0)
+            self.missing(session)
+            session.add(SearchEvent(run_id="routine", kind="page_result", data='{"interrupted":true}'))
+            session.commit()
+        with patch.object(server.state, "running", True), patch.object(server.state, "run_id", "routine"), patch.object(server.state, "kind", "scrape"), patch.object(server.state, "stop_flag", False):
+            service.tick(server)
+            self.assertFalse(server.state.stop_flag)
+            with self.factory() as session:
+                session.add(SearchEvent(run_id="routine", kind="page_result", data='{"interrupted":false,"collected":10}'))
+                session.commit()
+            service.tick(server)
+            self.assertTrue(server.state.stop_flag)
+
+    def test_manual_preempts_protected_routine_page(self):
+        with self.factory() as session:
+            self.run_row(session, "routine", "routine", "running", routine_turn_after_event_id=0)
+            self.run_row(session, "manual")
+            session.commit()
+        with patch.object(server.state, "running", True), patch.object(server.state, "run_id", "routine"), patch.object(server.state, "kind", "scrape"), patch.object(server.state, "stop_flag", False):
+            service.tick(server)
+            self.assertTrue(server.state.stop_flag)
+
+    def test_due_city_enters_queue_despite_detail_backlog(self):
+        with self.factory() as session:
+            self.missing(session)
+        live = type("LiveSupervisor", (), {"is_alive":lambda self:True})()
+        with patch.object(service, "supervisor", live), patch.object(service, "routine_idle_since", 0), patch.object(routine_cities, "dispatch", return_value="city") as city, patch.object(repair, "dispatch") as dispatch:
+            service.tick(server, now=time.time())
+            city.assert_called_once()
+            dispatch.assert_not_called()
+
+    def test_routine_start_resets_page_marker_without_old_progress(self):
+        with self.factory() as session:
+            self.run_row(session, "routine", "routine")
+            session.add(SearchEvent(run_id="routine", kind="page_result", data='{}'))
+            session.commit()
+        with patch("threading.Thread.start"):
+            runs.start(server, "routine")
+        with self.factory() as session:
+            self.assertTrue(scheduling.routine_page_pending(session, "routine"))
+            session.add(SearchEvent(run_id="other", kind="page_result", data='{}'))
+            session.commit()
+            self.assertTrue(scheduling.routine_page_pending(session, "routine"))
 
     def test_manual_request_preempts_routine_even_during_source_cooldown(self):
         with self.factory() as session:

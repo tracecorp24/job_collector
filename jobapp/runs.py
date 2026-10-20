@@ -125,6 +125,13 @@ def start(server, run_id):
         options.pop("auto_resume_at", None)
         options.pop("user_paused", None)
         options.pop("priority_yield", None)
+        if options.get("queue_layer") == "routine" or options.get("watch_id") or options.get("parent_run_id"):
+            from .scheduling import layer
+            if layer(options) == "routine":
+                options["routine_turn_after_event_id"] = session.query(func.max(SearchEvent.id)).filter_by(run_id=run_id).scalar() or 0
+                audit.record(session, run_id, None, "routine_page_turn_started", {
+                    "after_event_id":options["routine_turn_after_event_id"], "page_budget":1,
+                    "reason":"card_discovery_before_automatic_details"})
         run.options = json.dumps(options)
         run.updated_at = datetime.utcnow()
         session.commit()

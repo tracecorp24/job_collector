@@ -18,7 +18,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 from . import config, db
-from .models import DetailCache, SourcePolicy, Job
+from .models import DetailCache, SourcePolicy, Job, Setting
 
 
 class HTTPTransport:
@@ -180,7 +180,10 @@ class Coordinator:
         self.interval = max(config.MIN_REQUEST_INTERVAL, config.REQUEST_INTERVAL if interval is None else interval)
         self.clock = clock or time.time
         self.sleep = sleeper or time.sleep
-        db.once_per_engine(_policy_tables, self.engine, lambda bind: SourcePolicy.__table__.create(bind, checkfirst=True))
+        def ensure_policy_tables(bind):
+            SourcePolicy.__table__.create(bind, checkfirst=True)
+            Setting.__table__.create(bind, checkfirst=True)
+        db.once_per_engine(_policy_tables, self.engine, ensure_policy_tables)
 
     @contextmanager
     def transaction(self):
@@ -195,12 +198,24 @@ class Coordinator:
                 raise
 
     def row(self, connection):
-        return dict(connection.execute(text("SELECT * FROM source_policy WHERE source=:source"), {"source":self.source}).mappings().one())
+        return self.with_pause_evidence(connection, dict(connection.execute(text("SELECT * FROM source_policy WHERE source=:source"), {"source":self.source}).mappings().one()))
+
+    def with_pause_evidence(self, connection, row):
+        value = connection.execute(text("SELECT value FROM settings WHERE key=:key"),
+            {"key":"source_pause_evidence_"+self.source}).scalar()
+        try:
+            evidence = json.loads(value or "{}")
+        except (TypeError, ValueError):
+            evidence = {}
+        row["pause_evidence"] = evidence if isinstance(evidence, dict) and evidence.get("blocked_until") == row["blocked_until"] else {}
+        return row
 
     def state(self):
         # Salt okuma: yazma kilidi almaz. Satır yalnızca hiç yoksa (ilk çağrı) bir kez oluşturulur.
         with self.engine.connect() as connection:
             row = connection.execute(text("SELECT * FROM source_policy WHERE source=:source"), {"source":self.source}).mappings().first()
+            if row:
+                row = self.with_pause_evidence(connection, dict(row))
         if row:
             return self.describe(dict(row))
         with self.transaction() as connection:
@@ -215,7 +230,11 @@ class Coordinator:
             message += f" En az {math.ceil(remaining)} saniye beklenmeli."
         if paused:
             message += " Süre dolunca sistem otomatik devam edecek."
+        evidence = row.get("pause_evidence", {})
         return {"source":self.source,"paused":paused,"manual_pause":False,"automatic_resume":True,
+                "cooldown_origin":evidence.get("cooldown_origin", "legacy_unknown"),
+                "reported_retry_after_seconds":evidence.get("reported_retry_after_seconds"),
+                "applied_pause_seconds":evidence.get("applied_pause_seconds"),
                 "blocked_until":row["blocked_until"],"remaining_seconds":math.ceil(remaining),
                 "reason":row["reason"],"message":message,"status_code":row["status_code"],
                 "violation_streak":row["violation_streak"],"interval_floor":max(config.MIN_REQUEST_INTERVAL,row["interval_floor"]),
@@ -288,7 +307,7 @@ class Coordinator:
                 {"source":self.source,"now":self.clock(), "streak":0 if stable else row["violation_streak"],
                  "floor":max(config.MIN_REQUEST_INTERVAL, row["interval_floor"]*.95) if stable else row["interval_floor"]})
 
-    def pause(self, reason, status_code=None, retry_after=None, hard=False, violation=True, minimum=None):
+    def pause(self, reason, status_code=None, retry_after=None, hard=False, violation=True, minimum=None, retry_after_is_local=False):
         now = self.clock()
         requested = retry_after_seconds(retry_after, now)
         with self.transaction() as connection:
@@ -309,6 +328,14 @@ class Coordinator:
             connection.execute(text("UPDATE source_policy SET blocked_until=:deadline, manual_pause=0, interval_floor=:floor, reason=:reason, status_code=:status, violation_streak=:streak, last_violation_at=:last WHERE source=:source"),
                                {"deadline":deadline,"floor":floor,"reason":reason,"status":status_code,"streak":streak,
                                 "last":now if violation else row["last_violation_at"],"source":self.source})
+            if now+delay >= row["blocked_until"]:
+                reported = None if retry_after_is_local else requested
+                evidence = {"blocked_until":deadline, "reported_retry_after_seconds":reported,
+                    "applied_pause_seconds":delay,
+                    "cooldown_origin":"local_fallback" if reported is None else
+                        "retry_after_and_local_policy" if delay > requested else "retry_after"}
+                connection.execute(text("INSERT INTO settings (key, value) VALUES (:key, :value) ON CONFLICT(key) DO UPDATE SET value=excluded.value"),
+                    {"key":"source_pause_evidence_"+self.source, "value":json.dumps(evidence)})
             return self.describe(self.row(connection))
 
     def acknowledge(self):

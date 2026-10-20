@@ -11,6 +11,18 @@ Sonra aşağıdaki uygulama durumu ve tarihsel kanıtlarla devam et.
 
 ## Önce oku
 
+Son mola incelemesi ve uygulama: `MOLA_CANLI_BULGULAR_2026-10-20.md`.
+`294c81d` canlı ölçümünde liste ucu da 429 alıyordu; 64 dakikalık mola
+`Retry-After` değil yerel fallback idi. Detay kuyruğu boştu. Bu retler
+arasında deploy olduğundan tek süreç session devamlılığı ölçülmüş sayılmaz.
+Son düzeltme rutinlere başlangıç başına bir tamamlanmış sayfa fırsatı tanır;
+manuel işler yine kesebilir. `routine_turn_after_event_id` run options içinde
+kalıcıdır; her gerçek start'ta yenilenir. Zamanı gelen rutinlerin detay backlog'u
+yüzünden kuyruğa bile girememesi de giderildi. Kaynak gate'i ve mola hesabı aynı.
+Molanın kanıtı settings içindeki `source_pause_evidence_<source>` ile deadline'a
+bağlanır; yeni şema yok. Yeni kayıtta kaynak süresi / yerel hesap / ikisi ayrıdır;
+kanıtsız eski molaya `legacy_unknown` denir. UI eski logları güncel hata diye sunmaz.
+
 1. `CALISMA_YONTEMI.md`: canlı log protokolü, anahtar kapsamı, incident yaşam döngüsü.
 2. `TOPLAMA_HIZI_ANALIZI_2026-10-20.md`: kanıtlar, nedenler, öncelikli düzeltmeler.
 3. `CLAUDE.md`: çalışma ve üretim kuralları.

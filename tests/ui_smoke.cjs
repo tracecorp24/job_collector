@@ -231,7 +231,7 @@ async function openDetails(locator){if(!await locator.evaluate(node=>node.open))
     const blockedUntil=Date.now()/1000+120;
     await page.route('**/api/scrape/status',async route=>{
       const original=await route.fetch();const body=await original.json();
-      body.source_state={paused:true,manual_pause:false,automatic_resume:true,blocked_until:blockedUntil,effective_interval:120,interval_with_jitter_max:156,reason:'Kaynak erişimi sınırlandırdı (HTTP 429).',acknowledge_allowed:false,message:'Kaynak bekleme süresi: 120 saniye. Otomatik devam.'};
+      body.source_state={paused:true,manual_pause:false,automatic_resume:true,blocked_until:blockedUntil,effective_interval:120,interval_with_jitter_max:156,status_code:429,cooldown_origin:'local_fallback',reported_retry_after_seconds:null,applied_pause_seconds:3840,reason:'Kaynak erişimi sınırlandırdı (HTTP 429).',acknowledge_allowed:false,message:'Kaynak bekleme süresi: 120 saniye. Otomatik devam.'};
       await route.fulfill({response:original,json:body});
     });
     await page.locator('header [data-action="new-search"]').click();
@@ -240,6 +240,11 @@ async function openDetails(locator){if(!await locator.evaluate(node=>node.open))
     assert.equal(await page.locator('#acknowledge-source').isVisible(),false);
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#wait-banner').isVisible(),true);
+    assert.match(await page.locator('#wait-explanation').textContent(),/Kaynak HTTP 429.*bekleme süresi bildirmedi.*64 dakika/);
+    assert.match(await page.locator('#wait-next').textContent(),/Yeniden deneme:.*bekleme uzayabilir/);
+    assert.match(await page.evaluate(()=>sourcePauseExplanation({cooldown_origin:'retry_after',reported_retry_after_seconds:120,applied_pause_seconds:120})),/Kaynağın bildirdiği bekleme süresi: 120 saniye/);
+    assert.match(await page.evaluate(()=>sourcePauseExplanation({cooldown_origin:'retry_after_and_local_policy',reported_retry_after_seconds:1,applied_pause_seconds:900})),/koruma kuralı daha uzun bekleme/);
+    assert.match(await page.evaluate(()=>sourcePauseExplanation({})),/eski sürümden devralındı/);
     assert.match(await page.locator('#effective-interval').textContent(),/120\.0–156\.0/);
     const before=await page.locator('#wait-countdown').textContent();
     await page.waitForTimeout(1100);

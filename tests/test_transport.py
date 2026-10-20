@@ -190,6 +190,35 @@ class TransportTests(unittest.TestCase):
         self.assertFalse(state['manual_pause'])
         self.assertGreaterEqual(state['remaining_seconds'],config.ACCESS_PAUSE_SECONDS)
 
+    def test_pause_evidence_persists_and_separates_local_from_reported_delay(self):
+        coordinator = Coordinator(clock=lambda:1000)
+        state = coordinator.pause('Rate limit', 429)
+        self.assertEqual(state['cooldown_origin'], 'local_fallback')
+        self.assertIsNone(state['reported_retry_after_seconds'])
+        deadline = state['blocked_until']
+        reread = Coordinator(clock=lambda:1001).state()
+        self.assertEqual(reread['blocked_until'], deadline)
+        self.assertEqual(reread['cooldown_origin'], 'local_fallback')
+        state = coordinator.pause('Rate limit', 429, '7200')
+        self.assertEqual(state['cooldown_origin'], 'retry_after')
+        self.assertEqual(state['reported_retry_after_seconds'], 7200)
+        self.assertEqual(state['applied_pause_seconds'], 7200)
+        local = Coordinator(source='network-test', clock=lambda:1000).pause('Network retry',
+            retry_after='30', violation=False, retry_after_is_local=True)
+        self.assertEqual(local['applied_pause_seconds'], 30)
+        self.assertIsNone(local['reported_retry_after_seconds'])
+        self.assertEqual(local['cooldown_origin'], 'local_fallback')
+
+    def test_escalated_reported_delay_and_legacy_wait_are_honest(self):
+        coordinator = Coordinator(clock=lambda:1000)
+        for _ in range(config.ACCESS_FAILURE_THRESHOLD):
+            state = coordinator.pause('Rate limit', 429, '1')
+        self.assertEqual(state['cooldown_origin'], 'retry_after_and_local_policy')
+        self.assertGreater(state['applied_pause_seconds'], 1)
+        with self.engine.begin() as connection:
+            connection.execute(text("DELETE FROM settings WHERE key='source_pause_evidence_linkedin'"))
+        self.assertEqual(coordinator.state()['cooldown_origin'], 'legacy_unknown')
+
     def test_source_pause_keeps_pending_detail_and_resume_same_task(self):
         run=self.start_worker([dict(keyword='AI',location='Istanbul',limit=2)],
             [response(card(1)+card(2)),response(DETAIL),response(status=429,**{'Retry-After':'120'})])

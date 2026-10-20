@@ -2,7 +2,7 @@
 import json
 import time
 from sqlalchemy import func
-from .models import SearchRun, SearchTask, RepairTask, Watch, RoutineCitySchedule, Setting
+from .models import SearchRun, SearchTask, RepairTask, Watch, RoutineCitySchedule, Setting, SearchEvent
 from . import audit
 
 LAYERS = ("manual", "repair", "routine")
@@ -43,6 +43,19 @@ def active_layer(server, session):
         return server.state.last.get("queue_layer", "repair")
     run = session.get(SearchRun, server.state.run_id) if server.state.run_id else None
     return layer(json.loads(run.options or "{}")) if run else "manual"
+
+
+def routine_page_pending(session, run_id):
+    """Let a routine finish one saved page before automatic repair preempts it."""
+    run = session.get(SearchRun, run_id) if run_id else None
+    options = json.loads(run.options or "{}") if run else {}
+    baseline = options.get("routine_turn_after_event_id")
+    if baseline is None:
+        return False  # Compatibility for already-running legacy work.
+    return not session.query(SearchEvent.id).filter(
+        SearchEvent.run_id == run_id, SearchEvent.id > baseline,
+        SearchEvent.kind == "page_result",
+        func.coalesce(func.json_extract(SearchEvent.data, '$.interrupted'), 0) == 0).first()
 
 
 def yield_to(server, session, incoming):

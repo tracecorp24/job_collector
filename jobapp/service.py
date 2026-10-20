@@ -55,7 +55,7 @@ def tick(server, now=None):
                         scheduling.yield_to(server, session, "manual")
                     elif current == "routine":
                         repair.discover(session)
-                        if repair.ready(session, now, source):
+                        if repair.ready(session, now, source) and not scheduling.routine_page_pending(session, server.state.run_id):
                             _mark_routine_idle_start(now)
                             scheduling.yield_to(server, session, "repair")
                 session.commit()
@@ -127,6 +127,11 @@ def tick(server, now=None):
                 _mark_routine_idle_start(now)
                 return
             live_supervisor = bool(supervisor and supervisor.is_alive())
+            # Due schedules must enter the queue even while detail work exists;
+            # otherwise the fairness budget cannot see any routine candidate.
+            if live_supervisor and not routine and not source["paused"] and _routine_idle_ready(now):
+                if routine_cities.dispatch(session, now, source) or watches.dispatch(session, now, source):
+                    return
             repair_budget = repair.source_request_budget(session, now) if routine and not source["paused"] else 0
             requests_since_routine = repair.source_request_count_since_routine(session)
             routine_turn_due = bool(live_supervisor and routine and not source["paused"] and
