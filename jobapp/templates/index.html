@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>ilanlar. — Profesyonel İş İlanları Keşif Platformu</title>
+  <title>ilanlar. — Profesyonel İş İlanları Keşif Platformu · Linko Scrapper Light</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20viewBox=%220%200%2040%2040%22%20width=%2240%22%20height=%2240%22%20xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22f%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%23004182%22/%3E%3Cstop%20offset=%220.5%22%20stop-color=%22%230A66C2%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%232557A7%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width=%2240%22%20height=%2240%22%20rx=%2211%22%20fill=%22url%28%23f%29%22/%3E%3Ccircle%20cx=%2220%22%20cy=%2211%22%20r=%223%22%20fill=%22%23fff%22/%3E%3Crect%20x=%2214%22%20y=%2217%22%20width=%2212%22%20height=%2214%22%20rx=%223%22%20fill=%22none%22%20stroke=%22%23fff%22%20stroke-width=%223%22/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -77,9 +77,10 @@
       }
     };
   </script>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20261020.theme.1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v='20261020.merge.1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css', v='20261020.merge.1') }}">
   <script src="{{ url_for('static', filename='js/dashboard.js', v='20261020.1') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/app.js', v='20261020.theme.1') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js', v='20261020.merge.1') }}" defer></script>
 </head>
 <body class="bg-canvas-light dark:bg-canvas-dark text-ink-primary dark:text-zinc-100 min-h-screen flex flex-col selection:bg-[#0A66C2]/15 selection:text-[#0A66C2] transition-colors duration-200">
   <a class="skip sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:p-3 focus:bg-[#0A66C2] focus:text-white focus:rounded-lg" href="#main">İlanlara geç</a>
@@ -313,7 +314,8 @@
           <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 pt-1">
             
             <!-- Sol Hızlı Filtre Hapları -->
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="quick-filters">
+              <div class="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 data-quick="posted:1"
@@ -416,6 +418,7 @@
 
               <!-- Aktif Filtre Rozetleri -->
               <div id="active-filters" class="active-filters flex items-center gap-1.5 pl-2 border-l border-black/10 dark:border-white/10 empty:hidden"></div>
+              </div>
             </div>
 
             <!-- Sağ Kontroller: Sıralama & Kart/Liste Görünümü -->
@@ -477,6 +480,7 @@
               <div class="flex items-center justify-between mb-1">
                 <div class="flex items-center gap-2">
                   <h2 class="font-display font-bold text-sm text-slate-900 dark:text-white">Filtrele</h2>
+                  <button id="close-mobile-filters" type="button" class="lg:hidden text-xs text-ink-muted" aria-label="Filtreleri kapat">Kapat ✕</button>
                   <span id="sidebarActiveBadge" class="hidden px-2 py-0.5 text-[10px] font-mono font-bold rounded-full bg-[#E8F3FF] text-[#0A66C2] dark:bg-[#0A66C2]/30 dark:text-[#70B5F9]">0</span>
                 </div>
                 <button id="reset-filters" type="button" class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline px-1 py-0.5 transition-colors cursor-pointer">
@@ -1065,6 +1069,11 @@
           <button id="classify-groq" class="px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 hover:border-[#0A66C2]">Groq ile analiz et</button>
           <button id="stop-maintenance" class="px-3 py-1.5 rounded-lg text-rose-500 border border-rose-500/20" hidden>İşlemi durdur</button>
         </div>
+        <div class="space-y-1 pt-2 text-[11px] text-ink-muted" aria-live="polite">
+          <p id="hint-embed"></p>
+          <p id="hint-classify"></p>
+          <p id="hint-groq"></p>
+        </div>
         <div id="maintenance-status" class="pt-2 text-[11px] text-ink-muted" role="status"></div>
       </div>
     </details>
@@ -1091,6 +1100,7 @@
       <button id="history-select-all" class="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10">Tümünü seç</button>
       <button id="queue-selected" class="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10">Seçilenleri kuyruğa ekle</button>
       <button id="restart-selected" class="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10">Seçilenleri yeniden tara</button>
+      <button id="restart-all" class="px-2.5 py-1 rounded-lg border border-black/10 dark:border-white/10">Tümünü yeniden tara</button>
       <button id="delete-selected" class="px-2.5 py-1 rounded-lg text-rose-500 border border-rose-500/20">Çöpe taşı</button>
     </div>
     <p id="history-selected-count" class="text-[11px] text-ink-muted mb-3"></p>
@@ -1187,7 +1197,7 @@
     </button>
   </nav>
 
-  <div id="bottom-sheet" class="bottom-sheet fixed inset-0 z-50 bg-black/50 backdrop-blur-xs hidden" hidden>
+  <div id="bottom-sheet" class="bottom-sheet fixed inset-0 z-50 bg-black/50 backdrop-blur-xs" hidden>
     <div class="sheet-backdrop absolute inset-0" data-sheet-close></div>
     <section class="sheet-panel absolute bottom-0 left-0 right-0 bg-surface-light dark:bg-surface-dark rounded-t-2xl p-5 border-t border-black/10 dark:border-white/10 max-h-[75vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
       <div class="sheet-handle w-10 h-1 rounded-full bg-black/20 dark:bg-white/20 mx-auto mb-4" data-sheet-close></div>

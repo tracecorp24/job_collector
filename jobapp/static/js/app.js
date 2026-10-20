@@ -25,6 +25,7 @@ let nav={previous:null,next:null}, currentJob=null, logContext=null, logBefore=n
 let activeLogRun=null, sourceState=null;
 let editingTask=null;
 let reportContext=null;
+let jobDrawerCloseTimer, jobDrawerReturnFocus;
 // "Yeni" = son "Görüldü say" anından sonra sisteme eklenen ilan; açılan ilanlar sönük gösterilir.
 let seen={mark:null,ids:[]};try{seen={...seen,...JSON.parse(localStorage.getItem('linko.seen.v1')||'{}')};}catch{}
 if(!seen.mark)seen.mark=new Date().toISOString();
@@ -64,8 +65,10 @@ function showDialog(id){
   if(id==='job-dialog'){
     const bd=$('jobDrawerBackdrop');
     if(bd){
+      clearTimeout(jobDrawerCloseTimer);
+      if(bd.classList.contains('hidden'))jobDrawerReturnFocus=document.activeElement;
       bd.classList.remove('hidden');
-      requestAnimationFrame(()=>bd.classList.add('drawer-open'));
+      requestAnimationFrame(()=>{bd.classList.add('drawer-open');$('closeJobDrawerBtn').focus();});
     }
     return;
   }
@@ -74,9 +77,12 @@ function showDialog(id){
 function closeDialog(id){
   if(id==='job-dialog'){
     const bd=$('jobDrawerBackdrop');
-    if(bd){
+    if(bd&&!bd.classList.contains('hidden')){
       bd.classList.remove('drawer-open');
-      setTimeout(()=>bd.classList.add('hidden'),260);
+      clearTimeout(jobDrawerCloseTimer);
+      jobDrawerCloseTimer=setTimeout(()=>bd.classList.add('hidden'),260);
+      $('job-dialog').dispatchEvent(new Event('close'));
+      if(jobDrawerReturnFocus?.isConnected)jobDrawerReturnFocus.focus();
     }
     return;
   }
@@ -145,7 +151,7 @@ function organizeFilterGroups(){
   const companyText=document.querySelector('[data-filter="company_text"]').closest('label');
   $('facet-company').append(companyText);
   $('facet-skills').querySelector('summary').textContent='Yetenekler';
-  $('facet-skills').append(skillsSection.querySelector('.fields'));
+  $('facet-skills').append(skillsSection.querySelector('.fields, .filter-body-inner'));
   skillsSection.remove();
 
   const moveFacet=(key,host)=>{
@@ -158,7 +164,7 @@ function organizeFilterGroups(){
   const experience=sectionFor('[data-filter="experience_min"]');
   experience.querySelector('summary').textContent='Kıdem ve deneyim';
   moveFacet('seniority',experience);
-  experience.append(experience.querySelector('.fields'));
+  experience.append(experience.querySelector('.fields, .filter-body-inner'));
 
   const history=sectionFor('#run-filter');
   history.querySelector('summary').textContent='Arama ve tarama geçmişi';
@@ -244,6 +250,7 @@ function jobCard(j){
         </div>
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
+            ${devId(j)}
             <h3 class="font-display font-bold text-sm sm:text-base text-slate-900 dark:text-white hover:text-[#0A66C2] dark:hover:text-[#70B5F9] cursor-pointer truncate">
               <button class="job-open text-left" data-action="job" data-id="${j.id}">${esc(j.title||'Unvan belirtilmemiş')}</button>
             </h3>
@@ -282,6 +289,7 @@ function jobCard(j){
   return `<article data-job-id="${j.id}" data-id="${j.id}" class="job-card group relative bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark hover:shadow-card-hover dark:hover:shadow-card-dark-hover p-5 flex flex-col justify-between overflow-hidden border border-black/[0.06] dark:border-white/[0.07] ${isSeen?'seen opacity-85':''} ${j.deleted_at?'opacity-55 border-dashed border-rose-500/40':''}">
     <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0A66C2] opacity-0 group-hover:opacity-100 transition-opacity"></div>
     <div>
+      ${devId(j)}
       <div class="flex items-start justify-between gap-3 mb-3">
         <div class="flex items-center gap-3 min-w-0">
           <div class="w-11 h-11 rounded-xl border ${hue} flex items-center justify-center font-display font-extrabold text-base shrink-0 shadow-xs">
@@ -443,7 +451,7 @@ async function openJob(id){
             <span class="text-xs font-medium text-ink-muted">${posted?.fresh?'Bugün yayınlandı':(posted?posted.text:'Tarih belirtilmemiş')}</span>
             ${j.deleted_at?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">Çöp kutusunda</span>`:''}
           </div>
-          <h2 class="font-display font-bold text-xl sm:text-2xl text-slate-900 dark:text-white leading-snug">${esc(j.title||'Unvan belirtilmemiş')}</h2>
+          <h2 id="job-title" class="font-display font-bold text-xl sm:text-2xl text-slate-900 dark:text-white leading-snug">${esc(j.title||'Unvan belirtilmemiş')}</h2>
           <p class="text-sm font-bold text-[#0A66C2] dark:text-[#70B5F9] mt-0.5">${esc(j.company||'Şirket belirtilmemiş')}</p>
         </div>
       </div>
@@ -1074,7 +1082,7 @@ function openJobsFromDashboard(el){
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   filters=next;showTab('jobs');syncControls();renderChips();persist(true);loadAll();$('main').scrollIntoView({block:'start'});
 }
-function setNavMore(open){$('nav-more-menu').hidden=!open;$('nav-more-toggle').setAttribute('aria-expanded',String(open));}
+function setNavMore(open){const menu=$('nav-more-menu');menu.hidden=!open;menu.classList.toggle('hidden',!open);$('nav-more-toggle').setAttribute('aria-expanded',String(open));}
 function wire(id,event,fn){$(id).addEventListener(event,async e=>{try{await fn(e);}catch(error){toast(error.message,null,'',true);}});}
 function initTheme(){
   let theme='light';
@@ -1098,6 +1106,13 @@ function initTheme(){
       apply(next);
     });
   }
+}
+function setMobileFilters(open){
+  const sidebar=$('filter-panel');
+  sidebar.classList.toggle('hidden',!open);
+  for(const cls of ['sticky','w-72','top-[80px]','max-h-[calc(100vh-100px)]'])sidebar.classList.toggle(cls,!open);
+  for(const cls of ['block','fixed','inset-0','w-full','z-50','bg-black/50','backdrop-blur-xs','p-4'])sidebar.classList.toggle(cls,open);
+  $('mobileFilterBtn').setAttribute('aria-expanded',String(open));
 }
 function initHeroSearchAndPopovers(){
   const kwInput = $('search');
@@ -1212,16 +1227,12 @@ function initHeroSearchAndPopovers(){
   const mobBtn = $('mobileFilterBtn');
   const sidebar = $('filter-panel');
   if (mobBtn && sidebar) {
-    mobBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('hidden');
-      sidebar.classList.toggle('block');
-      sidebar.classList.toggle('fixed');
-      sidebar.classList.toggle('inset-0');
-      sidebar.classList.toggle('z-50');
-      sidebar.classList.toggle('bg-black/50');
-      sidebar.classList.toggle('backdrop-blur-xs');
-      sidebar.classList.toggle('p-4');
-    });
+    mobBtn.setAttribute('aria-controls','filter-panel');
+    mobBtn.setAttribute('aria-expanded','false');
+    mobBtn.addEventListener('click',()=>setMobileFilters(!sidebar.classList.contains('fixed')));
+    $('close-mobile-filters').addEventListener('click',()=>setMobileFilters(false));
+    sidebar.addEventListener('click',e=>{if(e.target===sidebar&&sidebar.classList.contains('fixed'))setMobileFilters(false);});
+    window.matchMedia('(min-width: 1024px)').addEventListener('change',e=>{if(e.matches)setMobileFilters(false);});
   }
 
   const drawerBackdrop = $('jobDrawerBackdrop');
@@ -1232,11 +1243,17 @@ function initHeroSearchAndPopovers(){
       }
     });
   }
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape'||document.querySelector('dialog[open]'))return;
+    if(!drawerBackdrop.classList.contains('hidden'))closeDialog('job-dialog');
+    if(sidebar.classList.contains('fixed'))setMobileFilters(false);
+  });
 }
 function initialize(){
   initTheme();
   initHeroSearchAndPopovers();
   // Üst menüde az kullanılan seçenekler ⋯ altında; seçim yapınca, dışarı tıklayınca veya Esc ile kapanır.
+  setNavMore(false);
   wire('nav-more-toggle','click',()=>setNavMore($('nav-more-menu').hidden));
   document.addEventListener('click',e=>{if(!$('nav-more-menu').hidden&&(!e.target.closest('.nav-more')||e.target.closest('#nav-more-menu [data-action]')))setNavMore(false);});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('nav-more-menu').hidden){setNavMore(false);$('nav-more-toggle').focus();}});
@@ -1257,8 +1274,8 @@ function initialize(){
   wire('run-filter','change',e=>{delete filters.task_id;setFilter('run_id',e.target.value?[e.target.value]:[]);});
   wire('date-preset','change',e=>setPostedPreset(Number(e.target.value)));
   wire('new-only','click',()=>setFilter('created_from',filters.created_from===seen.mark?'':seen.mark));wire('new-mark','click',markAllSeen);
-  wire('filter-toggle','click',()=>{const open=$('filter-panel').classList.toggle('open');$('filter-toggle').setAttribute('aria-expanded',String(open));});wire('reset-filters','click',resetFilters);wire('retry-jobs','click',loadAll);
-  wire('view-cards','click',()=>{view='cards';applyView();persist(true);});wire('view-list','click',()=>{view='list';applyView();persist(true);});
+  wire('reset-filters','click',resetFilters);wire('retry-jobs','click',loadAll);
+  wire('view-cards','click',()=>{view='cards';applyView();renderJobs();persist(true);});wire('view-list','click',()=>{view='list';applyView();renderJobs();persist(true);});
   for(const [id,delta] of [['prev',-1],['next',1]])wire(id,'click',()=>{filters.page=String(Math.max(1,Math.min(pages,Number(filters.page||1)+delta)));persist(true);loadJobs();$('count').scrollIntoView({block:'center'});});
   wire('previous-job','click',()=>nav.previous&&openJob(nav.previous));wire('next-job','click',()=>nav.next&&openJob(nav.next));
   $('job-dialog').addEventListener('close',()=>{detailController?.abort();currentJob=null;});

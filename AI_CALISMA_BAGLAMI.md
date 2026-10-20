@@ -1,9 +1,11 @@
 # Ajanlar için kısa çalışma bağlamı
 
 Güncelleme: 20 Ekim 2026. İlk inceleme üretim `f3d6819` sürümünü kapsıyordu.
-Planın yerel uygulaması şimdi `improve/reliable-collection-plan` dalında; henüz
-canlıya alınmadı. Yeni ajan önce aşağıdaki uygulama durumunu, sonra tarihsel
-kanıtları okusun.
+Toplama uygulamasının kaynak dalı `improve/reliable-collection-plan`.
+Arayüzle birleşik çalışma `integrate/ui-and-reliable-collection-20261020` dalında;
+canlıya alınmadı. Eşzamanlı başka Codex çalışıyor: önce
+`ENTEGRASYON_NOTLARI_2026-10-20.md` dosyasındaki dal ve klasör sahipliğini oku.
+Sonra aşağıdaki uygulama durumu ve tarihsel kanıtlarla devam et.
 
 ## Önce oku
 
@@ -39,10 +41,10 @@ kanıtları okusun.
   yeni oturum 8/8, kalıcı oturum 1/8 ret aldı. IP bütçesi ve `Retry-After`
   kollarında fark yok; bu nedenle canlı 429 oranının düştüğünü kanıtlamaz.
 - Son hedefli paketler: transport 15/15, repair 16/16, service 12/12, scheduling
-  22/22, details 13/13, problems 17/17, audit 9/9 geçti. `test_light.py` 9/11
-  geçti; kalan iki
-  UI beklentisi (`Linko Scrapper Light`, `quick-filters`) çalışma başında mevcut
-  kullanıcı arayüzü değişiklikleriyle uyuşmuyor. Bu arayüz dosyalarına dokunma.
+  22/22, details 13/13, problems 17/17, audit 9/9 geçti. Entegrasyondaki tüm
+  Python paketi 248/248 geçti (604,524 saniye); `test_light.py` artık 11/11.
+  Eski marka/CSS sınıfı beklentileri gerçek kontrol kimlikleriyle güncellendi.
+  Kaynak çalışma klasöründeki arayüz dosyalarını entegrasyon kopyasıyla ezme.
 - Canlı üretimde gözlem, merge veya deploy yapılmadı. Aşama 2 için doğal iş yükünde
   24–72 saatlik, aynı endpoint ve başlangıç koşullarıyla ölçüm hâlâ gerekli.
 

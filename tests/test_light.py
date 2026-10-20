@@ -69,11 +69,12 @@ class FullLightTests(unittest.TestCase):
     def test_index_page_is_revalidated_after_deploy(self):
         response = self.client.get("/")
         self.assertEqual(response.headers.get("Cache-Control"), "no-cache")
-        self.assertIn('class="quick-filters"', response.get_data(as_text=True))
+        self.assertIn('data-quick="posted:1"', response.get_data(as_text=True))
 
     def test_full_ui_retained_without_login_option(self):
         html = self.client.get("/").get_data(as_text=True)
-        self.assertIn("Linko Scrapper Light", html)
+        self.assertIn('id="view-jobs"', html)
+        self.assertIn('id="filter-panel"', html)
         self.assertIn("classify-backend", html)
         self.assertIn("use-embeddings", html)
         self.assertIn("Limitsiz", html)

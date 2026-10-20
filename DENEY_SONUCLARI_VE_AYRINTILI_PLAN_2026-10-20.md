@@ -530,10 +530,9 @@ olarak kullanılmıyor.
   .qa/collection-transport-implementation-2026-10-20.json.
 - Hedefli testler: test_transport 15, test_repair 16, test_service 12,
   test_scheduling 22, test_details 13, test_problems 17 ve test_audit 9 test geçti.
-- test_light 11 testten 9’unu geçti; kalan iki UI assertion mevcut kullanıcı
-  arayüzü dosyalarının “Linko Scrapper Light” ve quick-filters beklentileriyle
-  uyuşmamasından başarısız. İlgili arayüz değişiklikleri çalışma başlamadan vardı
-  ve bu uygulamada değiştirilmedi.
-- Tam 239 testlik paket yeni uygulama dalında yeniden temiz sonuçla çalıştırılmadı.
-  Eski baseline’daki bir portable alt süreç timeout’u ve bu dalın UI assertion
-  farkları yüzünden 239/239 geçti iddiası yok.
+- Arayüz entegrasyonunda `test_light` beklentileri marka ve eski CSS sınıfından
+  gerçek kontrol kimliklerine geçirildi. Tüm Python paketi **248/248 geçti**;
+  süre 604,524 saniye. Bu, yukarıdaki tarihsel 239 testlik baseline’dan sonraki
+  uygulama testlerini de içerir. Kayıt: `.qa/ui-collection-unit.log`.
+- Birleşik dal ve tarayıcı doğrulamasının güncel devir notu:
+  `ENTEGRASYON_NOTLARI_2026-10-20.md`. Bu sonuç üretim 429 oranını ölçmez.

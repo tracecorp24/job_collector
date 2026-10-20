@@ -43,4 +43,4 @@ with db.SessionLocal() as session:
             session.add(TaskJob(task_id='fixture-repeat-search',job_id=job.id,is_new=False))
     session.commit()
 app.view_functions['api_ollama_models'] = lambda: jsonify(ok=True, models=[], default='')
-app.run(host='127.0.0.1', port=8027, threaded=True, use_reloader=False)
+app.run(host='127.0.0.1', port=int(os.environ.get('LINKO_UI_PORT', '8027')), threaded=True, use_reloader=False)
