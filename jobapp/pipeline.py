@@ -125,7 +125,8 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
 def run_scrape(keywords, locations, limit=None, classify_backend="rules",
                use_embeddings=False, require_login=False, emit=None, should_stop=None,
                on_scraper_ready=None, output_dir=None, checkpoint=None, resume_folder=None, search_id=None, run_id=None, attempt_id=None,
-               mode="incremental", refresh_details=False, search_options=None):
+               mode="incremental", refresh_details=False, search_options=None, transport=None,
+               request_context=None):
     """Full run driven by the web button.
 
     ``keywords``: [{"keyword": str, "limit": int|None}, ...] or [str, ...]
@@ -292,7 +293,9 @@ def run_scrape(keywords, locations, limit=None, classify_backend="rules",
     try:
         from .scraper.accountless import AccountlessScraper
         scraper = AccountlessScraper(emit=_emit, should_stop=should_stop, mode=mode, refresh_details=refresh_details,
-                                     search_options=search_options)
+                                     search_options=search_options, transport=transport,
+                                     request_context=request_context or {"run_id":run_id,"task_id":search_id,
+                                         "attempt_id":attempt_id, "request_reason":"routine_search"})
         scraper.resume_checkpoint = checkpoint or {}
         if on_scraper_ready:
             on_scraper_ready(scraper)

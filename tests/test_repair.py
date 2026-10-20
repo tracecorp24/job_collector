@@ -3,6 +3,7 @@ import json
 import time
 import unittest
 from pathlib import Path
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import test_light
@@ -120,6 +121,123 @@ class RepairTests(unittest.TestCase):
         raw = {"external_id":"123", "card_lines":["Engineer","Company","City"]}
         Details().put(raw, "  ")
         self.assertIsNone(Details().get(raw))
+
+    def test_pending_revision_reuses_matching_fresh_cache_without_http(self):
+        self.seed()
+        raw = {"external_id":"123","card_lines":["Engineer","Company","City"],"detail_pending":True}
+        with self.factory() as session:
+            job = session.query(Job).one()
+            job.raw = json.dumps(raw)
+            session.commit()
+            repair.discover(session)
+            task = session.get(RepairTask,("linkedin","123"))
+            queued = json.loads(task.raw)
+            self.assertFalse(queued["_repair_force"])
+            self.assertTrue(queued["_repair_fields"].count("description"))
+            session.commit()
+        Details().put(raw,"Fresh matching description")
+        # The cache must be present before the worker makes its lookup.
+        with patch("requests.Session.get",side_effect=AssertionError("matching fresh cache should avoid HTTP")) as get:
+            self.assertTrue(self.step())
+            get.assert_not_called()
+            self.assertTrue(self.step())
+            get.assert_not_called()
+        with self.factory() as session:
+            job = session.query(Job).one()
+            self.assertEqual(job.description,"Fresh matching description")
+            self.assertEqual(session.get(RepairTask,("linkedin","123")).status,"done")
+
+    def test_pending_changed_card_does_not_accept_retained_old_description(self):
+        self.seed()
+        old = {"external_id":"123","card_lines":["Engineer","Company","City"]}
+        Details().put(old,"Old revision description")
+        with self.factory() as session:
+            job = session.query(Job).one()
+            job.title = "Senior Engineer"
+            job.description = "Old revision description"
+            job.raw = json.dumps({"detail_pending":True,"description":"Old revision description"})
+            session.commit()
+            repair.discover(session)
+            task = session.get(RepairTask,("linkedin","123"))
+            self.assertFalse(json.loads(task.raw)["_repair_force"])
+            session.commit()
+        with patch("requests.Session.get",return_value=response(DETAIL)) as get:
+            self.assertTrue(self.step())
+            self.assertEqual(get.call_count,1)
+            with self.factory() as session:
+                self.assertEqual(session.get(RepairTask,("linkedin","123")).stage,"enrich")
+            self.assertTrue(self.step())
+        with self.factory() as session:
+            job = session.query(Job).one()
+            self.assertIn("PyTorch",job.description)
+            self.assertNotEqual(job.description,"Old revision description")
+
+    def test_done_task_with_same_card_clears_stale_pending_flag_without_http(self):
+        self.seed()
+        current = {"external_id":"123", "card_lines":["Engineer", "Company", "City"],
+                   "posted":"2 days ago", "detail_pending":True}
+        with self.factory() as session:
+            job = session.query(Job).one()
+            job.description = "Current card description"
+            job.raw = json.dumps(current)
+            session.add(RepairTask(source="linkedin", external_id="123",
+                raw=json.dumps(dict(current, description=job.description)), stage="enrich", status="done"))
+            session.commit()
+        with patch("requests.Session.get", side_effect=AssertionError("same completed card must not refetch")) as get:
+            self.assertFalse(self.step())
+            get.assert_not_called()
+        with self.factory() as session:
+            job = session.query(Job).one()
+            self.assertNotIn("detail_pending", json.loads(job.raw))
+            self.assertEqual(session.get(RepairTask, ("linkedin", "123")).status, "done")
+
+    def test_done_task_reopens_for_changed_card_revision(self):
+        self.seed()
+        old = {"external_id":"123", "card_lines":["Engineer", "Company", "City"],
+               "posted":"2 days ago", "description":"Old description"}
+        with self.factory() as session:
+            job = session.query(Job).one()
+            job.title = "Senior Engineer"
+            job.description = "Old description"
+            job.raw = json.dumps({"card_lines":["Senior Engineer", "Company", "City"],
+                "posted":"1 day ago", "detail_pending":True, "description":"Old description"})
+            session.add(RepairTask(source="linkedin", external_id="123",
+                raw=json.dumps(old), stage="enrich", status="done", attempts=3))
+            session.commit()
+        with self.factory() as session:
+            repair.discover(session)
+            task = session.get(RepairTask, ("linkedin", "123"))
+            self.assertEqual(task.status, "pending")
+            self.assertEqual(task.stage, "detail")
+            self.assertEqual(task.attempts, 0)
+            session.commit()
+        with patch("requests.Session.get", return_value=response(DETAIL)) as get:
+            self.assertTrue(self.step())
+            self.assertEqual(get.call_count, 1)
+            self.assertTrue(self.step())
+        with self.factory() as session:
+            job = session.query(Job).one()
+            self.assertIn("PyTorch", job.description)
+            self.assertEqual(session.get(RepairTask, ("linkedin", "123")).status, "done")
+
+    def test_adaptive_fairness_budget_tracks_backlog_age_and_size(self):
+        with self.factory() as session:
+            repair.enqueue(session,{"external_id":"700"})
+            session.flush()
+            self.assertEqual(repair.source_request_budget(session),1)
+            for ident in range(701,751):
+                repair.enqueue(session,{"external_id":str(ident)})
+            session.flush()
+            old = datetime.utcnow()-timedelta(hours=7)
+            session.query(RepairTask).update({RepairTask.updated_at:old})
+            self.assertEqual(repair.source_request_budget(session),3)
+            self.assertEqual(repair.source_request_count_since_routine(session),0)
+            repair.add_source_requests_since_routine(session,2)
+            session.commit()
+            self.assertEqual(repair.source_request_count_since_routine(session),2)
+            repair.reset_source_requests_since_routine(session)
+            session.commit()
+            self.assertEqual(repair.source_request_count_since_routine(session),0)
 
     def test_manual_search_precedes_repair_and_older_routine(self):
         self.seed()

@@ -12,7 +12,8 @@ import test_workspace
 from test_light import card, response, DETAIL
 from jobapp import config, pipeline, server
 from jobapp.models import Job, TaskJob
-from jobapp.transport import Coordinator, Details, SourcePaused, retry_after_seconds
+from jobapp.transport import Coordinator, Details, HTTPTransport, SourcePaused, retry_after_seconds
+from jobapp.scraper.accountless import AccountlessScraper
 
 
 class TransportTests(unittest.TestCase):
@@ -92,6 +93,60 @@ class TransportTests(unittest.TestCase):
         self.assertGreaterEqual(now[0],105)
         two.release(owner)
         self.assertIsNone(one.acquire(should_stop=lambda:True))
+
+    def test_borrowed_transport_keeps_session_identity_and_sequence(self):
+        transport = HTTPTransport()
+        events = []
+        try:
+            for external_id in ("501", "502"):
+                scraper = AccountlessScraper(transport=transport, max_retries=0,
+                    request_context={"task_id":external_id, "attempt_id":f"attempt-{external_id}",
+                                     "queue_layer":"routine", "request_reason":"routine_search"},
+                    emit=lambda kind, data: events.append((kind, data)))
+                self.assertFalse(scraper.owns_transport)
+                with patch("requests.Session.get", return_value=response(DETAIL)):
+                    soup = scraper._get(scraper.detail_url({"external_id":external_id}))
+                self.assertIsNotNone(soup)
+            started = [data for kind,data in events if kind == "request_started"]
+            finished = [data for kind,data in events if kind == "request_finished"]
+            self.assertEqual([x["session_request_number"] for x in started], [1,2])
+            self.assertEqual({x["transport_session_id"] for x in started}, {transport.session_id})
+            self.assertEqual({x["process_id"] for x in started}, {transport.process_id})
+            self.assertEqual([x["task_id"] for x in started], ["501","502"])
+            self.assertEqual([x["semantic_outcome"] for x in finished], ["description_available"]*2)
+            self.assertFalse(transport._closed)
+        finally:
+            transport.close()
+
+    def test_http_200_challenge_is_not_semantic_success(self):
+        events = []
+        transport = HTTPTransport()
+        scraper = AccountlessScraper(transport=transport, max_retries=0,
+                                     emit=lambda kind,data:events.append((kind,data)))
+        try:
+            with patch("requests.Session.get", return_value=response("<html><title>Security verification</title></html>")):
+                with self.assertRaises(SourcePaused):
+                    scraper._get(scraper.detail_url({"external_id":"503"}))
+            finished = [data for kind,data in events if kind == "request_finished"]
+            self.assertEqual(len(finished),1)
+            self.assertEqual(finished[0]["http_status"],200)
+            self.assertEqual(finished[0]["semantic_outcome"],"security_challenge")
+            self.assertEqual(finished[0]["cooldown_origin"],"local_fallback")
+            self.assertEqual(scraper.access_denied_requests,1)
+            self.assertTrue(Coordinator().state()["paused"])
+        finally:
+            transport.close()
+
+    def test_lease_renewal_and_release_are_fenced_to_owner(self):
+        coordinator = Coordinator()
+        owner = coordinator.acquire()
+        self.assertTrue(coordinator.renew(owner))
+        with coordinator.transaction() as connection:
+            connection.execute(text("UPDATE source_policy SET lease_owner='new-owner', lease_until=9999999999 WHERE source='linkedin'"))
+        self.assertFalse(coordinator.renew(owner))
+        coordinator.release(owner)
+        with coordinator.transaction() as connection:
+            self.assertEqual(coordinator.row(connection)["lease_owner"], "new-owner")
 
     def test_concurrent_clients_are_serialized(self):
         coordinator = Coordinator(interval=.05)

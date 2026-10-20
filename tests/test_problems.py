@@ -8,7 +8,7 @@ from unittest.mock import patch
 from sqlalchemy import text
 import test_light
 from jobapp import config, logstore, problems, service
-from jobapp.models import Incident, SearchRun, Setting
+from jobapp.models import Incident, SearchEvent, SearchRun, Setting
 from jobapp.transport import Coordinator
 
 ADMIN = {"Authorization": "Bearer admin-anahtari-123"}
@@ -125,6 +125,18 @@ class ProblemTests(unittest.TestCase):
             self.assertIn("detail_backlog", problems.active_keys)
             self.run_rules(25 * 3600 + 60)        # 9'a düştü: ilerleme var, sayaç sıfırlanır
             self.assertNotIn("detail_backlog", problems.active_keys)
+
+    def test_detail_backlog_counts_successes_even_when_queue_size_stays_constant(self):
+        with patch.object(problems.details,"pending_count",return_value=10):
+            self.run_rules()
+            with self.factory() as session:
+                session.add(SearchEvent(run_id="detail-filler",kind="detail_filled",
+                                        data=json.dumps({"external_id":"123"})))
+                session.commit()
+            self.run_rules(25*3600)
+            self.assertNotIn("detail_backlog",problems.active_keys)
+            self.run_rules(50*3600)
+            self.assertIn("detail_backlog",problems.active_keys)
 
     def test_backup_stale_and_failed(self):
         path = Path(config.BACKUP_STATUS_PATH)

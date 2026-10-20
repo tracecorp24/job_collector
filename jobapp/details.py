@@ -21,7 +21,8 @@ MAX_ATTEMPTS = 3
 DESCRIPTION_SELECTOR = ".show-more-less-html__markup, .description__text"
 PENDING = "deleted_at IS NULL AND json_extract(raw, '$.detail_pending') = 1"
 SYSTEM_RUN = "detail-filler"  # koşusu bilinmeyen ilanlar için; search_runs'ta karşılığı yok
-RECORDED = {"request_started", "request_finished", "waiting", "shared_rate_wait", "shared_rate_wait_finished"}
+RECORDED = {"request_started", "request_finished", "waiting", "shared_rate_wait", "shared_rate_wait_finished",
+            "cache_hit", "cache_miss", "processing_stage", "processing_result"}
 worker = None
 
 
@@ -53,7 +54,8 @@ def record(server, raw, kind, data, level="info"):
 def recorder(server, raw, job_id):
     def emit(kind, data):
         if kind in RECORDED:
-            record(server, raw, kind, dict(data, job_id=job_id), data.get("level", "info"))
+            record(server, raw, kind, dict(data, job_id=job_id,
+                external_id=raw.get("external_id")), data.get("level", "info"))
     return emit
 
 
