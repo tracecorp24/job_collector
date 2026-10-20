@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from jobapp import config, db, embed, pipeline, server
 from jobapp.models import Job
 from jobapp.scraper.accountless import AccountlessScraper
+from jobapp.transport import close_shared_http_transport
 
 
 def response(html="", status=200, **headers):
@@ -56,6 +57,7 @@ class FullLightTests(unittest.TestCase):
             item.start()
             self.addCleanup(item.stop)
         self.client = server.create_app().test_client()
+        self.addCleanup(close_shared_http_transport, server.state)
 
     def scrape(self, replies, limit=None):
         events = []

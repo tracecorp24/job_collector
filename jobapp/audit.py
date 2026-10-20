@@ -63,10 +63,14 @@ def report(session, run_id, task_id=None):
                    processing_failures=0, quality_rejections=0, model_fallbacks=0, retry_waits=0, wait_seconds=0,
                    cache_hits=0, cache_misses=0, source_pauses=0, pause_seconds=0)
     metrics.update(shared_wait_seconds=0, source_wait_seconds=0, http_seconds=0, processing_seconds=0,
-                   network_cards=0, snapshot_resumes=0)
+                   network_cards=0, snapshot_resumes=0, gate_wait_seconds=0, parse_seconds=0,
+                   semantic_success_requests=0, semantic_noncontent_200=0, unique_transport_sessions=0,
+                   request_started_events=0, unmatched_request_starts=0, detail_content_successes=0)
     pause_intervals, cache_reasons = [], Counter()
     statuses = Counter()
     returned_ids, collected_ids, failed_ids = set(), set(), set()
+    transport_sessions, semantic_outcomes, started_request_ids, finished_request_ids = set(), Counter(), set(), set()
+    detailed_success_ids = set()
     reasons, timeline, last_error = {}, [], None
     has_pages = False
     for event in events:
@@ -90,9 +94,30 @@ def report(session, run_id, task_id=None):
             metrics["processing_seconds"] += data.get("duration_ms", 0)/1000
         elif event.kind == "request_finished":
             metrics["requests"] += 1
-            metrics["http_seconds"] += data.get("duration_ms", 0)/1000
-            metrics["search_requests" if data.get("params") else "detail_requests"] += 1
+            metrics["http_seconds"] += data.get("http_ms", data.get("duration_ms", 0))/1000
+            metrics["gate_wait_seconds"] += data.get("gate_wait_ms", 0)/1000
+            metrics["parse_seconds"] += data.get("parse_ms", 0)/1000
+            endpoint = data.get("endpoint_kind")
+            category = "search_requests" if endpoint == "search" else "detail_requests" if endpoint == "detail" else ("search_requests" if data.get("params") else "detail_requests")
+            metrics[category] += 1
             statuses[str(data.get("status") or "network_error")] += 1
+            if data.get("transport_session_id"):
+                transport_sessions.add(data["transport_session_id"])
+            outcome = data.get("semantic_outcome")
+            if outcome:
+                semantic_outcomes[outcome] += 1
+            if outcome in ("description_available", "cards_available", "empty_search", "public_content"):
+                metrics["semantic_success_requests"] += 1
+            if data.get("status") == 200 and outcome not in ("description_available", "cards_available", "empty_search", "public_content"):
+                metrics["semantic_noncontent_200"] += 1
+            finished_request_ids.add(data.get("request_id"))
+        elif event.kind == "request_started":
+            metrics["request_started_events"] += 1
+            started_request_ids.add(data.get("request_id"))
+        elif event.kind in ("detail_filled", "repair_completed"):
+            external_id = data.get("external_id")
+            if external_id:
+                detailed_success_ids.add(str(external_id))
         elif event.kind == "page_result":
             has_pages = True
             for key in ("collected", "duplicates", "detail_failures", "invalid_cards", "not_processed"):
@@ -131,6 +156,10 @@ def report(session, run_id, task_id=None):
             merged.append((start, end))
     metrics["source_wait_seconds"] = round(sum(end-start for start, end in merged), 3)
     metrics["cache_miss_reasons"] = dict(cache_reasons)
+    metrics["semantic_outcomes"] = dict(semantic_outcomes)
+    metrics["unique_transport_sessions"] = len(transport_sessions)
+    metrics["unmatched_request_starts"] = len(started_request_ids-finished_request_ids)
+    metrics["detail_content_successes"] = len(detailed_success_ids)
     linked = session.query(Job).join(TaskJob, TaskJob.job_id == Job.id).filter(TaskJob.task_id.in_(ids)).distinct()
     metrics.update(found_jobs=linked.count(), new_jobs=links.filter(TaskJob.is_new.is_(True)).count(),
                    updated_jobs=links.filter(TaskJob.is_new.is_(False), TaskJob.outcome != "unchanged").count(),

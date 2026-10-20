@@ -2,7 +2,9 @@
 import hashlib
 import json
 import math
+import os
 import random
+import threading
 import time
 import uuid
 import weakref
@@ -12,9 +14,96 @@ from email.utils import parsedate_to_datetime
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.sqlite import insert
+import requests
+from requests.adapters import HTTPAdapter
 
 from . import config, db
 from .models import DetailCache, SourcePolicy, Job
+
+
+class HTTPTransport:
+    """Own one sequential public-source HTTP session for a collector process.
+
+    Scrapers borrow this object for one job/run. Their callbacks and job state stay
+    local to that operation; the transport only owns cookies and connection pools.
+    """
+
+    def __init__(self, session=None):
+        self.session = session or requests.Session()
+        self.session_id = uuid.uuid4().hex
+        self.process_id = os.getpid()
+        self.request_number = 0
+        self._sequence_lock = threading.Lock()
+        self._request_lock = threading.Lock()
+        self._closed = False
+        if session is None:
+            self.session.trust_env = False
+            adapter = HTTPAdapter(pool_connections=5, pool_maxsize=10, max_retries=0)
+            self.session.mount("https://", adapter)
+            self.session.mount("http://", adapter)
+            self.session.headers.update({
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "same-origin",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            })
+
+    def begin_request(self):
+        if self._closed:
+            raise RuntimeError("Public-source HTTP transport is closed.")
+        with self._sequence_lock:
+            self.request_number += 1
+            return self.request_number
+
+    def get(self, url, **kwargs):
+        if self._closed:
+            raise RuntimeError("Public-source HTTP transport is closed.")
+        # Requests.Session is borrowed only by the serialized source collector.
+        # Keep its cookie jar and connection pool coherent if callers race.
+        with self._request_lock:
+            return self.session.get(url, **kwargs)
+
+    def close(self):
+        if self._closed:
+            return
+        with self._request_lock:
+            if not self._closed:
+                self._closed = True
+                self.session.close()
+
+
+def shared_http_transport(state):
+    """Return the process-owned transport stored on the application's state."""
+    lock = getattr(state, "source_transport_lock", None)
+    if lock is None:
+        # Compatibility for small embedders/tests which build a state object.
+        lock = state.source_transport_lock = threading.Lock()
+    with lock:
+        transport = getattr(state, "source_transport", None)
+        if transport is None or transport._closed:
+            transport = state.source_transport = HTTPTransport()
+        return transport
+
+
+def close_shared_http_transport(state):
+    lock = getattr(state, "source_transport_lock", None)
+    if lock is None:
+        return
+    with lock:
+        transport = getattr(state, "source_transport", None)
+        state.source_transport = None
+        if transport is not None:
+            transport.close()
 
 
 def retry_after_seconds(value, now=None):
@@ -50,6 +139,38 @@ class SourcePaused(RuntimeError):
     def __init__(self, state):
         self.state = state
         super().__init__(state.get("message") or "Kaynak için tarama duraklatıldı.")
+
+
+class LeaseHeartbeat:
+    """Renew a held source lease while one blocking HTTP call is in flight."""
+
+    def __init__(self, coordinator, owner):
+        self.coordinator = coordinator
+        self.owner = owner
+        self.interval = max(1.0, config.NETWORK_LEASE_SECONDS / 3.0)
+        self.stop_event = threading.Event()
+        self.lost_event = threading.Event()
+        self.thread = threading.Thread(target=self._run, name="source-lease-heartbeat", daemon=True)
+        self.thread.start()
+
+    @property
+    def lost(self):
+        return self.lost_event.is_set()
+
+    def _run(self):
+        while not self.stop_event.wait(self.interval):
+            try:
+                if not self.coordinator.renew(self.owner):
+                    self.lost_event.set()
+                    return
+            except Exception:
+                self.lost_event.set()
+                return
+
+    def close(self):
+        self.stop_event.set()
+        if self.thread is not threading.current_thread():
+            self.thread.join(timeout=min(5.0, self.interval + 1.0))
 
 
 class Coordinator:
@@ -148,6 +269,16 @@ class Coordinator:
         with self.transaction() as connection:
             connection.execute(text("UPDATE source_policy SET lease_owner='', lease_until=0 WHERE source=:source AND lease_owner=:owner"), {"source":self.source,"owner":owner})
 
+    def renew(self, owner):
+        """Extend a lease only while the original owner token still holds it."""
+        with self.transaction() as connection:
+            result = connection.execute(text("UPDATE source_policy SET lease_until=:lease WHERE source=:source AND lease_owner=:owner"),
+                {"lease":self.clock()+config.NETWORK_LEASE_SECONDS,"source":self.source,"owner":owner})
+            return result.rowcount == 1
+
+    def lease_heartbeat(self, owner):
+        return LeaseHeartbeat(self, owner)
+
     def success(self):
         with self.transaction() as connection:
             row = self.row(connection)
@@ -238,6 +369,13 @@ class Details:
                 for job in jobs:
                     try:
                         previous = json.loads(job.raw or "{}")
+                        if not isinstance(previous, dict):
+                            previous = {}
+                        # Older rows often have no card_lines. Reconstruct their
+                        # current source-card identity before comparing the cache,
+                        # so a selected-field refresh does not discard a valid
+                        # existing description merely because the raw shape is old.
+                        previous["card_lines"] = [job.title or "", job.company or "", job.location or ""]
                         # A pending refresh may retain an older description next to
                         # a changed card. Never label it as fresh content.
                         if previous.get("detail_pending"):

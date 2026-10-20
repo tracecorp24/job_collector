@@ -257,6 +257,11 @@ class SchedulingTests(unittest.TestCase):
         self.assertEqual(result.status_code, 202)
         with patch("requests.Session.get", return_value=response('<a class="topcard__org-name-link">New Company</a>')) as get:
             self.step()
+            with self.factory() as session:
+                task = session.query(RepairTask).one()
+                self.assertEqual(task.status, "pending", task.last_error)
+                self.assertEqual(task.stage, "enrich", task.last_error)
+                self.assertEqual(json.loads(task.raw).get("_queue_layer"), "manual")
             self.step()
         self.assertEqual(get.call_count, 1)
         with self.factory() as session:

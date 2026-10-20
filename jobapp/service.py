@@ -13,6 +13,7 @@ heartbeat = 0.0
 last_error = ""
 last_error_at = 0.0
 supervisor = None
+_supervisor_stop = threading.Event()
 ROUTINE_IDLE_DELAY_SECONDS = 60
 routine_idle_since = None
 
@@ -57,8 +58,6 @@ def tick(server, now=None):
                         if repair.ready(session, now, source):
                             _mark_routine_idle_start(now)
                             scheduling.yield_to(server, session, "repair")
-                if current != "routine":
-                    _mark_routine_idle_start(now)
                 session.commit()
                 return
             candidates = session.query(SearchRun).filter(SearchRun.deleted_at.is_(None), or_(
@@ -127,16 +126,27 @@ def tick(server, now=None):
             if repair.ready(session, now, source, "manual") and repair.dispatch(server, session, now, source, "manual"):
                 _mark_routine_idle_start(now)
                 return
-            if repair.dispatch(server, session, now, source):
-                _mark_routine_idle_start(now)
+            live_supervisor = bool(supervisor and supervisor.is_alive())
+            repair_budget = repair.source_request_budget(session, now) if routine and not source["paused"] else 0
+            requests_since_routine = repair.source_request_count_since_routine(session)
+            routine_turn_due = bool(live_supervisor and routine and not source["paused"] and
+                                    _routine_idle_ready(now) and repair_budget and requests_since_routine >= repair_budget)
+            if routine_turn_due:
+                audit.record(session, None, None, "routine_fairness_yield", {
+                    "repair_source_requests_since_routine":requests_since_routine,
+                    "repair_source_request_budget":repair_budget,
+                    "oldest_ready_detail_seconds":repair.summary(session).get("oldest_detail_seconds", 0)})
+                session.commit()
+            if not routine_turn_due and repair.dispatch(server, session, now, source):
                 return
             # Automatic searches share the same 60-second quiet period. A
             # direct tick() remains useful for explicit queued work in tests/tools.
-            live_supervisor = bool(supervisor and supervisor.is_alive())
             if not live_supervisor or _routine_idle_ready(now):
                 for run_id in routine:
                     try:
                         runs.start(server, run_id)
+                        repair.reset_source_requests_since_routine(session)
+                        session.commit()
                     except SourcePaused:
                         return
                     except ValueError as exc:
@@ -182,10 +192,31 @@ def start(server):
     global supervisor, routine_idle_since
     if supervisor and supervisor.is_alive():
         return
+    _supervisor_stop.clear()
     routine_idle_since = time.time()
     def supervise():
-        while True:
+        while not _supervisor_stop.is_set():
             step(server)
-            time.sleep(config.SERVICE_POLL_SECONDS)
+            _supervisor_stop.wait(config.SERVICE_POLL_SECONDS)
     supervisor = threading.Thread(target=supervise, name="collector-supervisor", daemon=True)
     supervisor.start()
+
+
+def stop(server, timeout=30.0):
+    """Stop scheduling, let an active request observe cancellation, then close its owner."""
+    global supervisor
+    _supervisor_stop.set()
+    server.state.stop_flag = True
+    current = supervisor
+    if current and current.is_alive() and current is not threading.current_thread():
+        current.join(timeout=min(timeout, max(1.0, config.SERVICE_POLL_SECONDS+1)))
+    worker = server.state.thread
+    if worker and worker.is_alive() and worker is not threading.current_thread():
+        worker.join(timeout=max(0.0, timeout))
+    if worker and worker.is_alive():
+        log.error("Collector worker did not stop within %.1f seconds; keeping its HTTP session open.", timeout)
+        return False
+    from .transport import close_shared_http_transport
+    close_shared_http_transport(server.state)
+    server.state.running = False
+    return True

@@ -8,11 +8,11 @@ import json
 import logging
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import config, details, logstore, service
-from .models import SearchRun, Setting
+from .models import SearchEvent, SearchRun, Setting
 
 log = logging.getLogger("linko.problems")
 EVERY_SECONDS = 300.0
@@ -69,21 +69,36 @@ def supervisor_error(session, now):
 def detail_backlog(session, now):
     count = details.pending_count(session)
     paused = session.get(Setting, "completion_paused")
-    if paused and paused.value == "1":
-        session.merge(Setting(key=BACKLOG_KEY, value=json.dumps({"min":count, "since":now})))
-        session.commit()
-        return None  # An explicit user pause is not a stalled collector.
+    from .transport import Coordinator
+    source_paused = Coordinator().state()["paused"]
+    last_progress = session.query(SearchEvent).filter(SearchEvent.kind.in_(("detail_filled", "detail_missing", "repair_completed"))).order_by(SearchEvent.id.desc()).first()
+    progress_id = last_progress.id if last_progress else 0
     row = session.get(Setting, BACKLOG_KEY)
     try:
         saved = json.loads(row.value) if row else None
     except ValueError:
         saved = None
-    if not saved or count < saved["min"]:
-        saved = {"min": count, "since": now}  # azaldı: ilerleme var, sayaç yeniden başlar
-        session.merge(Setting(key=BACKLOG_KEY, value=json.dumps(saved)))
+
+    # Empty queues, explicit completion pauses and source blocks are not stalls.
+    if count == 0 or (paused and paused.value == "1") or source_paused:
+        session.merge(Setting(key=BACKLOG_KEY, value=json.dumps({
+            "count":count, "progress_at":now, "progress_event_id":progress_id})))
         session.commit()
-    if count > 0 and now - saved["since"] >= DETAIL_BACKLOG_SECONDS:
-        return ("Detay tamamlama tıkandı", f"{count} ilanın detayı bekliyor; {int((now - saved['since']) / 3600)} saattir azalmadı.")
+        return None
+
+    if not saved or saved.get("count", 0) == 0:
+        saved = {"count":count, "progress_at":now, "progress_event_id":progress_id}
+    else:
+        progressed = count < saved.get("count", count) or progress_id > saved.get("progress_event_id", 0)
+        if progressed:
+            saved["progress_at"] = now
+        saved["count"] = count
+        saved["progress_event_id"] = progress_id
+    session.merge(Setting(key=BACKLOG_KEY, value=json.dumps(saved)))
+    session.commit()
+    if now - saved["progress_at"] >= DETAIL_BACKLOG_SECONDS:
+        elapsed_hours = int((now-saved["progress_at"])/3600)
+        return ("Detay tamamlama tıkandı", f"{count} ilanın detayı bekliyor; {elapsed_hours} saattir başarıyla tamamlanan ilan olmadı.")
 
 
 def backup_stale(session, now):

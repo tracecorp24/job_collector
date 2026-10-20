@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from .. import config
-from ..transport import Coordinator, Details, SourcePaused, retry_after_seconds
+from ..transport import Coordinator, Details, HTTPTransport, SourcePaused, retry_after_seconds
 
 
 class RateLimitError(Exception):
@@ -30,16 +30,24 @@ class AccountlessScraper:
     REQUEST_INTERVAL = config.REQUEST_INTERVAL
 
     def __init__(self, emit=None, should_stop=None, max_retries=None, mode="incremental", refresh_details=False,
-                 search_options=None):
+                 search_options=None, transport=None, request_context=None):
         self.emit = emit
         self.should_stop = should_stop or (lambda: False)
         self.require_login = False
         self.driver = None  # compatible with the server's stop watchdog
         self.requests = 0
+        self.access_denied_requests = 0
+        self.network_errors = 0
+        self.http_status_counts = {}
+        self.last_semantic_outcome = None
         self.collected = 0
         self.cache = {}
         self.details = Details()
         self.coordinator = Coordinator(interval=self.REQUEST_INTERVAL)
+        self.transport = transport or HTTPTransport()
+        self.owns_transport = transport is None
+        self.session = self.transport.session
+        self.request_context = dict(request_context or {})
         self.mode = mode
         self.refresh_details = refresh_details
         # Düzenli taramalar: posted_within (sn), sort_recent, stop_when_known — istek sayısını azaltır.
@@ -55,39 +63,13 @@ class AccountlessScraper:
         else:
             self.max_retries = config.MAX_RETRIES
 
-        self.session = None
-        self._reset_session()
-
     def _reset_session(self):
-        """Create a fresh isolated HTTP session with modern desktop browser headers."""
-        if hasattr(self, "session") and self.session is not None:
-            try:
-                self.session.close()
-            except Exception:
-                pass
-        self.session = requests.Session()
-        # Do not inherit .netrc credentials or environment proxy credentials.
-        self.session.trust_env = False
-        from requests.adapters import HTTPAdapter
-        adapter = HTTPAdapter(pool_connections=5, pool_maxsize=10, max_retries=0)
-        self.session.mount("https://", adapter)
-        self.session.mount("http://", adapter)
-        self.session.headers.update({
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-            ),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Sec-Ch-Ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
-            "Sec-Ch-Ua-Mobile": "?0",
-            "Sec-Ch-Ua-Platform": '"Windows"',
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-User": "?1",
-            "Upgrade-Insecure-Requests": "1",
-        })
+        """Replace only an owned session; borrowed process transport is never reset."""
+        if not self.owns_transport:
+            raise RuntimeError("Cannot reset an HTTP transport borrowed from the collector.")
+        self.transport.close()
+        self.transport = HTTPTransport()
+        self.session = self.transport.session
 
     def _log(self, msg, level="info"):
         if self.emit:
@@ -148,65 +130,157 @@ class AccountlessScraper:
         for _ in range(4):
             if not self._public_url(current_url):
                 raise RuntimeError("Accountless stopped: sign-in or non-public redirect. No login attempted.")
+            gate_started = time.monotonic()
+            policy_before = self.coordinator.state()
             owner = self.coordinator.acquire(self.should_stop, self.emit)
             if owner is None:
                 return None
+            heartbeat = self.coordinator.lease_heartbeat(owner)
             try:
                 self.requests += 1
                 self.last_request = time.monotonic()
                 request_id = uuid.uuid4().hex
+                session_request_number = self.transport.begin_request()
                 started = time.monotonic()
+                parsed_url = urlparse(current_url)
+                endpoint_kind = "detail" if "/jobPosting/" in parsed_url.path else "search" if "seeMoreJobPostings" in parsed_url.path else "other"
+                external_id = parsed_url.path.rsplit("/", 1)[-1] if endpoint_kind == "detail" else None
+                context = dict(self.request_context)
+                request_fields = {name:context[name] for name in ("run_id", "task_id", "attempt_id", "queue_layer", "request_reason") if context.get(name) is not None}
+                common = {"request_id":request_id, "url":current_url, "params":current_params,
+                    "process_id":self.transport.process_id, "transport_session_id":self.transport.session_id,
+                    "session_request_number":session_request_number, "request_number":self.requests,
+                    "endpoint_kind":endpoint_kind, "external_id":external_id,
+                    "gate_wait_ms":round((started-gate_started)*1000),
+                    "policy_before":{k:policy_before.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")},
+                    **request_fields}
                 if self.emit:
-                    self.emit("request_started", {"request_id": request_id, "url": current_url, "params": current_params,
-                                                  "request_number": self.requests})
+                    self.emit("request_started", dict(common, started_at=time.time()))
                 try:
-                    response = self.session.get(current_url, params=current_params, timeout=20, allow_redirects=False)
+                    response = self.transport.get(current_url, params=current_params, timeout=20, allow_redirects=False)
                 except requests.RequestException as exc:
+                    self.network_errors += 1
+                    self.last_semantic_outcome = "network_error"
                     if self.emit:
-                        self.emit("request_finished", {"request_id": request_id, "url": current_url, "status": None,
-                                                       "duration_ms": round((time.monotonic()-started)*1000), "error": type(exc).__name__, "level": "error"})
+                        self.emit("request_finished", dict(common, status=None, http_status=None,
+                            semantic_outcome="network_error", duration_ms=round((time.monotonic()-started)*1000),
+                            http_ms=round((time.monotonic()-started)*1000), error=type(exc).__name__, level="error"))
                     raise NetworkRetryError(f"Ağ hatası: {type(exc).__name__}") from exc
-    
+
                 with response:
                     # Persist a source block before another process can acquire the gate.
                     self.last_status = response.status_code
+                    status_key = str(response.status_code)
+                    self.http_status_counts[status_key] = self.http_status_counts.get(status_key, 0) + 1
+                    http_finished = time.monotonic()
+                    retry_after = response.headers.get("Retry-After")
+                    retry_delay = retry_after_seconds(retry_after)
+                    semantic_outcome = "http_error"
+                    soup = None
+                    parse_ms = 0
+                    cards_returned = 0
+                    description_chars = 0
+                    cooldown_origin = None
                     if response.status_code in (401, 403, 429, 999):
+                        self.access_denied_requests += 1
+                        semantic_outcome = "access_denied"
+                        self.last_semantic_outcome = semantic_outcome
                         state = self.coordinator.pause(f"Kaynak erişimi sınırlandırdı (HTTP {response.status_code}).",
-                            response.status_code, response.headers.get("Retry-After"), hard=response.status_code != 429)
+                            response.status_code, retry_after, hard=response.status_code != 429)
+                        cooldown_origin = "retry_after" if retry_delay is not None else "local_fallback"
+                        if self.emit:
+                            self.emit("request_finished", dict(common, status=response.status_code, http_status=response.status_code,
+                                semantic_outcome=semantic_outcome, duration_ms=round((time.monotonic()-started)*1000),
+                                http_ms=round((http_finished-started)*1000), parse_ms=0, response_bytes=len(response.content),
+                                retry_after=retry_after, retry_after_seconds=retry_delay, cooldown_origin=cooldown_origin,
+                                policy_after={k:state.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")}, level="warning"))
+                        self.last_response_request_id = request_id
+                        raise SourcePaused(state)
                     else:
                         state = None
-                    if self.emit:
-                        self.emit("request_finished", {"request_id": request_id, "url": current_url, "params": current_params,
-                                                       "status": response.status_code, "duration_ms": round((time.monotonic()-started)*1000),
-                                                       "retry_after":response.headers.get("Retry-After"), "content_type":response.headers.get("Content-Type"),
-                                                       "response_bytes":len(response.content),
-                                                       "cards_returned": len(BeautifulSoup(response.text, "html.parser").select("div.base-search-card")),
-                                                       "level": "warning" if response.status_code != 200 else "info"})
-                    self.last_response_request_id = request_id
-                    if state:
-                        raise SourcePaused(state)
                     if response.is_redirect:
+                        semantic_outcome = "public_redirect"
                         current_url = urljoin(current_url, response.headers.get("Location", ""))
                         current_params = None
                         if not self._public_url(current_url):
-                            raise SourcePaused(self.coordinator.pause("Giriş veya güvenlik kontrolüne yönlendirme.", 403, hard=True))
+                            semantic_outcome = "blocked_redirect"
+                            self.last_semantic_outcome = semantic_outcome
+                            state = self.coordinator.pause("Giriş veya güvenlik kontrolüne yönlendirme.", 403, hard=True)
+                            cooldown_origin = "local_fallback"
+                            if self.emit:
+                                self.emit("request_finished", dict(common, status=response.status_code, http_status=response.status_code,
+                                    semantic_outcome=semantic_outcome, duration_ms=round((time.monotonic()-started)*1000),
+                                    http_ms=round((http_finished-started)*1000), parse_ms=0, response_bytes=len(response.content),
+                                    retry_after=retry_after, retry_after_seconds=retry_delay, cooldown_origin=cooldown_origin,
+                                    policy_after={k:state.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")},
+                                    level="warning"))
+                            self.last_response_request_id = request_id
+                            raise SourcePaused(state)
+                        if self.emit:
+                            state_after = self.coordinator.state()
+                            self.emit("request_finished", dict(common, status=response.status_code, http_status=response.status_code,
+                                semantic_outcome=semantic_outcome, duration_ms=round((time.monotonic()-started)*1000),
+                                http_ms=round((http_finished-started)*1000), parse_ms=0, response_bytes=len(response.content),
+                                retry_after=retry_after, retry_after_seconds=retry_delay, cooldown_origin=None,
+                                policy_after={k:state_after.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")}, level="info"))
+                        self.last_response_request_id = request_id
+                        self.last_semantic_outcome = semantic_outcome
+                        if heartbeat.lost:
+                            raise RuntimeError("Source request lease expired during redirect; no further request was sent.")
                         continue
                     if response.status_code in (404, 410):
+                        semantic_outcome = "source_resource_missing"
+                        self.last_semantic_outcome = semantic_outcome
+                        if self.emit:
+                            state_after = self.coordinator.state()
+                            self.emit("request_finished", dict(common, status=response.status_code, http_status=response.status_code,
+                                semantic_outcome=semantic_outcome, duration_ms=round((time.monotonic()-started)*1000),
+                                http_ms=round((http_finished-started)*1000), parse_ms=0, response_bytes=len(response.content),
+                                retry_after=retry_after, retry_after_seconds=retry_delay, cooldown_origin=None,
+                                policy_after={k:state_after.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")}, level="warning"))
+                        self.last_response_request_id = request_id
                         self._log("Public job/page is no longer available.", "warning")
                         return None
                     if response.status_code != 200:
-                        if retry_after_seconds(response.headers.get("Retry-After")) is not None:
-                            raise SourcePaused(self.coordinator.pause("Kaynak bekleme istedi.", response.status_code,
-                                response.headers.get("Retry-After"), violation=False))
-                        if response.status_code < 500:
-                            raise RuntimeError(f"Beklenmeyen HTTP {response.status_code}")
-                        raise RateLimitError(f"Kaynak hatası (HTTP {response.status_code})", status_code=response.status_code)
-    
+                        if retry_delay is not None:
+                            semantic_outcome = "source_requested_wait"
+                            self.last_semantic_outcome = semantic_outcome
+                            state = self.coordinator.pause("Kaynak bekleme istedi.", response.status_code,
+                                retry_after, violation=False)
+                            if self.emit:
+                                self.emit("request_finished", dict(common, status=response.status_code, http_status=response.status_code,
+                                    semantic_outcome=semantic_outcome, duration_ms=round((time.monotonic()-started)*1000),
+                                    http_ms=round((http_finished-started)*1000), parse_ms=0, response_bytes=len(response.content),
+                                    retry_after=retry_after, retry_after_seconds=retry_delay, cooldown_origin="retry_after",
+                                    policy_after={k:state.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")}, level="warning"))
+                            self.last_response_request_id = request_id
+                            raise SourcePaused(state)
+                        semantic_outcome = "http_error"
+                        self.last_semantic_outcome = semantic_outcome
+                        if response.status_code >= 500:
+                            error = RateLimitError(f"Kaynak hatası (HTTP {response.status_code})", status_code=response.status_code)
+                        else:
+                            error = RuntimeError(f"Beklenmeyen HTTP {response.status_code}")
+                        if self.emit:
+                            state_after = self.coordinator.state()
+                            self.emit("request_finished", dict(common, status=response.status_code, http_status=response.status_code,
+                                semantic_outcome=semantic_outcome, duration_ms=round((time.monotonic()-started)*1000),
+                                http_ms=round((http_finished-started)*1000), parse_ms=0, response_bytes=len(response.content),
+                                retry_after=retry_after, retry_after_seconds=retry_delay, cooldown_origin=None,
+                                policy_after={k:state_after.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")}, level="error"))
+                        self.last_response_request_id = request_id
+                        raise error
+
+                    parse_started = time.monotonic()
                     soup = BeautifulSoup(response.text, "html.parser")
+                    parse_ms = round((time.monotonic()-parse_started)*1000)
+                    cards_returned = len(soup.select("div.base-search-card"))
+                    description = soup.select_one(".show-more-less-html__markup, .description__text") if endpoint_kind == "detail" else None
+                    description_chars = len(description.get_text("\n", strip=True)) if description else 0
                     public_content = soup.select_one(
                         "div.base-search-card, .show-more-less-html__markup, .description__text"
                     )
-                    if soup.select_one(
+                    challenge = bool(soup.select_one(
                         'form[action*="checkpoint"], form[action*="authwall"], '
                         'iframe[src*="captcha"], #captcha-internal'
                     ) or (not public_content and soup.select_one(
@@ -214,11 +288,37 @@ class AccountlessScraper:
                     )) or (soup.title and any(
                         word in soup.title.get_text().lower()
                         for word in ("sign in", "security verification", "authwall", "captcha")
-                    )):
-                        raise SourcePaused(self.coordinator.pause("Güvenlik kontrolü / Authwall algılandı.", 403, hard=True))
-                    self.coordinator.success()
+                    )))
+                    if challenge:
+                        self.access_denied_requests += 1
+                        semantic_outcome = "security_challenge"
+                        self.last_semantic_outcome = semantic_outcome
+                        state = self.coordinator.pause("Güvenlik kontrolü / Authwall algılandı.", 403, hard=True)
+                        cooldown_origin = "local_fallback"
+                    elif endpoint_kind == "detail":
+                        semantic_outcome = "description_available" if description_chars else "no_description"
+                    elif endpoint_kind == "search":
+                        semantic_outcome = "cards_available" if cards_returned else "empty_search"
+                    else:
+                        semantic_outcome = "public_content" if public_content else "empty_response"
+                    if not challenge and semantic_outcome in ("description_available", "cards_available", "empty_search", "public_content"):
+                        self.coordinator.success()
+                    policy_after = state or self.coordinator.state()
+                    if self.emit:
+                        self.emit("request_finished", dict(common, status=response.status_code, http_status=response.status_code,
+                            semantic_outcome=semantic_outcome, duration_ms=round((time.monotonic()-started)*1000),
+                            http_ms=round((http_finished-started)*1000), parse_ms=parse_ms, response_bytes=len(response.content),
+                            cards_returned=cards_returned, description_chars=description_chars,
+                            retry_after=retry_after, retry_after_seconds=retry_delay, cooldown_origin=cooldown_origin,
+                            policy_after={k:policy_after.get(k) for k in ("effective_interval", "interval_floor", "blocked_until", "next_request_at", "violation_streak")},
+                            level="warning" if challenge or semantic_outcome == "no_description" else "info"))
+                    self.last_response_request_id = request_id
+                    self.last_semantic_outcome = semantic_outcome
+                    if challenge:
+                        raise SourcePaused(state)
                     return soup
             finally:
+                heartbeat.close()
                 self.coordinator.release(owner)
         raise RuntimeError("Accountless stopped: too many redirects.")
 
@@ -361,8 +461,8 @@ class AccountlessScraper:
                         self._log(f"Sonraki kuyruk görevine hazırlanıyor ({inter_pause:.0f}s mola)...", "info")
                         self._sleep_cancellable(inter_pause)
         finally:
-            if hasattr(self, "session") and self.session:
-                self.session.close()
+            if self.owns_transport:
+                self.transport.close()
 
     def _search(self, keyword, location, limit, on_job):
         checkpoint = getattr(self, "resume_checkpoint", {})

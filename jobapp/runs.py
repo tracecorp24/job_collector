@@ -241,11 +241,16 @@ def worker(server, run_id):
                 elif kind == "error":
                     server.state.emit("notice", {"msg": data.get("msg"), "level": "error"})
 
+            from .transport import shared_http_transport
+            queue_layer = options.get("queue_layer", "routine" if options.get("watch_id") or options.get("parent_run_id") else "manual")
             result = run_scrape([args], [args["location"]], classify_backend=options.get("classify_backend", "rules"),
                                 use_embeddings=options.get("use_embeddings", False), emit=emit,
                                 should_stop=lambda: server.state.stop_flag or getattr(server.state, "task_stop_id", None) == task_id,
                                 checkpoint=checkpoint, resume_folder=folder or None, search_id=task_id, run_id=run_id, attempt_id=attempt_id,
                                 mode=options.get("mode", "incremental"), refresh_details=options.get("refresh_details", False),
+                                transport=shared_http_transport(server.state),
+                                request_context={"run_id":run_id,"task_id":task_id,"attempt_id":attempt_id,
+                                    "queue_layer":queue_layer,"request_reason":"routine_search" if queue_layer=="routine" else "manual_search"},
                                 search_options=dict({k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known", "low_yield_threshold") if options.get(k) is not None},
                                     defer_details=options.get("defer_details", config.DEFER_DETAILS)))
             with server.SessionLocal() as session:

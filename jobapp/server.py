@@ -50,6 +50,9 @@ class ScrapeState:
         self.sequence = 0
         self.messages = deque(maxlen=1000)
         self.condition = threading.Condition()
+        # Process-owned public-source connection pool; each run borrows it serially.
+        self.source_transport = None
+        self.source_transport_lock = threading.Lock()
 
     def emit(self, event_type, data):
         event = {

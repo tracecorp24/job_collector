@@ -136,7 +136,9 @@ def install(server):
                 _repair_existing_job_id=job.id, _repair_fields=list(dict.fromkeys(fields)),
                 _repair_force=True, _repair_values={}, _queue_layer="manual")
             raw["_repair_revision"] = repair.revision(job)
-            repair.enqueue(session, raw, "Kullanıcı seçili alanları yeniden çekmeyi istedi.", replace=True)
+            raw["_repair_card_fingerprint"] = repair.card_fingerprint(job)
+            repair.enqueue(session, raw, "Kullanıcı seçili alanları yeniden çekmeyi istedi.",
+                           replace=True, force_refresh=True)
             audit.record(session, None, None, "repair_requested", {"job_id":job.id, "fields":raw["_repair_fields"], "queue_layer":"manual"})
             scheduling.yield_to(server, session, "manual")
             session.commit()

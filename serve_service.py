@@ -24,7 +24,11 @@ def main():
     problems.start(server)
     logging.getLogger("linko").info("Servis başladı: http://%s:%s, veritabanı %s, sürüm %s", config.HOST, config.PORT, config.DB_PATH,
                                     config.version_info().get("sha"))
-    http.run()
+    try:
+        http.run()
+    finally:
+        service.stop(server, timeout=30.0)
+        logstore.shutdown()
 
 
 if __name__ == '__main__':
