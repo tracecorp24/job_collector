@@ -8,6 +8,7 @@ imports/
 jobapp/backup_before_ux_*/
 logs/
 .local/
+/next_step_v2/
 consumer_jobs.db*
 .env
 start_server.sh

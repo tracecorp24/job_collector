@@ -66,11 +66,12 @@ def _wait_for_quota(need, max_wait, sleep, clock):
         sleep(delay + 0.2)
 
 
-def chat(messages, model=None, max_tokens=800, max_wait=8.0, json_mode=True, post=None, sleep=time.sleep, clock=time.time):
+def chat(messages, model=None, max_tokens=800, max_wait=8.0, json_mode=True, post=None, sleep=time.sleep, clock=time.time, request_timeout=60):
     """Bir sohbet isteği gönderir ve modelin metin yanıtını döndürür.
 
     `max_wait`: kota beklemesi için en fazla bekleme. Tarama sırasında kısa tutulur (tarama
-    yavaşlamasın, iş kurallara düşsün); toplu analizde uzun tutulur (kota açılınca devam eder)."""
+    yavaşlamasın, iş kurallara düşsün); toplu analizde uzun tutulur (kota açılınca devam eder).
+    `request_timeout`: tek HTTP isteğinin bağlantı/okuma zaman aşımıdır."""
     if not config.GROQ_API_KEY:
         raise GroqError("GROQ_API_KEY tanımlı değil.", 503)
     post = post or requests.post
@@ -84,7 +85,7 @@ def chat(messages, model=None, max_tokens=800, max_wait=8.0, json_mode=True, pos
     for attempt in range(3):
         _wait_for_quota(need, max_wait, sleep, clock)
         try:
-            response = post(URL, json=body, timeout=60, headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"})
+            response = post(URL, json=body, timeout=request_timeout, headers={"Authorization": f"Bearer {config.GROQ_API_KEY}"})
         except requests.RequestException:
             raise GroqError("Groq servisine ulaşılamadı.")
         _remember(response.headers or {}, clock())

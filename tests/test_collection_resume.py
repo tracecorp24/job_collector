@@ -8,8 +8,8 @@ from sqlalchemy import text
 import test_light
 import test_workspace
 from test_light import card, response, DETAIL
-from jobapp import audit, config, details, pipeline, runs, server, service
-from jobapp.models import Job, SearchRun, SearchTask, TaskJob
+from jobapp import config, details, pipeline, runs, server, service
+from jobapp.models import Job, SearchTask, TaskJob
 from jobapp.transport import Coordinator, Details
 
 
@@ -18,6 +18,48 @@ class CollectionResumeTests(unittest.TestCase):
     tearDown = test_workspace.WorkspaceTests.tearDown
     start_worker = test_workspace.WorkspaceTests.start_worker
     scrape = test_light.FullLightTests.scrape
+
+    def test_localized_query_is_persisted_and_reused_after_resume(self):
+        plan = dict(keyword='Softwareentwickler', original_keyword='yazılım geliştirici',
+                    location='Berlin, Germany', language='de', status='translated')
+        def request_and_wait(path, replies, body=None, run_id=None):
+            with patch('requests.Session.get', side_effect=replies):
+                result = self.client.post(path, json=body)
+                self.assertEqual(result.status_code, 200, result.json)
+                thread = server.state.thread
+                # SQLite commits can exceed the legacy helper's 15s on Windows.
+                thread.join(180)
+                timed_out = thread.is_alive()
+                if timed_out:
+                    server.state.stop_flag = True
+                    thread.join(15)
+                self.assertFalse(thread.is_alive(), 'collector worker did not stop')
+                self.assertFalse(timed_out, 'collector worker exceeded the test deadline')
+            run_id = run_id or result.json['run_id']
+            return self.client.get('/api/runs/'+run_id).json
+
+        # The shared HTTP transport uses the config interval, independently of
+        # the scraper interval already patched by setUp. No real pacing here.
+        with patch.object(config, 'REQUEST_INTERVAL', 0), patch.object(config, 'REQUEST_JITTER', 0), \
+                patch.object(pipeline, 'run_scrape', wraps=pipeline.run_scrape) as scrape:
+            with patch('jobapp.query_translation.plan', return_value=plan) as translate:
+                original = request_and_wait('/api/scrape',
+                    [response(card(1)+card(2)), response(DETAIL), response(status=429)],
+                    body={'tasks':[dict(keyword='yazılım geliştirici', location='Berlin, Germany', limit=2)]})
+                self.assertEqual(translate.call_count, 1)
+            self.assertEqual(original['tasks'][0]['stats']['search_plan'], plan)
+            self.assertEqual(original['tasks'][0]['keyword'], 'yazılım geliştirici')
+            self.assertEqual(scrape.call_args.args[0][0]['keyword'], 'Softwareentwickler')
+            self.clear_deadline()
+            with patch('jobapp.query_translation.plan', side_effect=AssertionError('resume must reuse stored query')):
+                final = request_and_wait('/api/runs/'+original['id']+'/resume',
+                    [response(DETAIL)], run_id=original['id'])
+            self.assertEqual(scrape.call_count, 2)
+            self.assertEqual(scrape.call_args.args[0][0]['keyword'], 'Softwareentwickler')
+        self.assertEqual(final['tasks'][0]['stats']['search_plan'], plan)
+        self.assertEqual(final['tasks'][0]['count'], 2)
+        self.assertEqual(final['tasks'][0]['keyword_language'], 'de')
+        self.assertEqual(final['tasks'][0]['stats']['search_efficiency']['keyword_language'], 'de')
 
     def paused(self):
         return self.start_worker([dict(keyword='AI', location='Istanbul', limit=2)],

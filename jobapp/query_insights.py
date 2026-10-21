@@ -1,6 +1,6 @@
 """Persist and compare per-search yield metrics, including bilingual variants."""
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from . import audit, professions
 from .models import SearchTask
@@ -48,7 +48,9 @@ def efficiency(metrics):
 def annotate(session, task, metrics=None, compare=True):
     """Store an evidence-based efficiency snapshot on a completed search task."""
     meta = professions.query_metadata(task.keyword, task.location)
-    task.keyword_language = meta["keyword_language"]
+    search_plan = json.loads(task.stats or '{}').get('search_plan') or {}
+    task.keyword_language = search_plan.get('language') or meta["keyword_language"]
+    meta['keyword_language'] = task.keyword_language
     task.profession_group = meta["profession_group"]
     task.profession_code = meta["profession_code"]
     task.location_key = meta["location_key"]

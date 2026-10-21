@@ -174,6 +174,26 @@ def worker(server, run_id):
                 session.commit()
             failed = []
 
+            # Planı görevde sakla: devam ederken aynı sayfa aynı sorguyla alınmalı.
+            from . import query_translation
+            with server.SessionLocal() as session:
+                task = session.get(SearchTask, task_id)
+                saved_stats = json.loads(task.stats or '{}')
+                search_plan = saved_stats.get('search_plan')
+            if not isinstance(search_plan, dict) or (not checkpoint and search_plan and (
+                    search_plan.get('original_keyword') != args['keyword'] or search_plan.get('location') != args['location'])):
+                search_plan = None
+            if not search_plan:
+                search_plan = (dict(args, original_keyword=args['keyword'], language='', status='resumed_original')
+                               if checkpoint else query_translation.plan(args['keyword'], args['location']))
+                with server.SessionLocal() as session:
+                    task = session.get(SearchTask, task_id)
+                    saved_stats = json.loads(task.stats or '{}')
+                    task.stats = json.dumps(dict(saved_stats, search_plan=search_plan), ensure_ascii=False)
+                    audit.record(session, run_id, task_id, 'search_query_planned', search_plan)
+                    session.commit()
+            args['keyword'] = search_plan['keyword']
+
             def emit(kind, data):
                 data = dict(data, attempt_id=attempt_id)
                 with server.SessionLocal() as session:

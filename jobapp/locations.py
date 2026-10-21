@@ -94,6 +94,28 @@ _COUNTRIES = (
 
 _COUNTRY_BY_KEY = {_key(alias): country for country, *aliases in _COUNTRIES for alias in (country, *aliases)}
 
+_TURKISH_PROVINCES = ('Adana Adıyaman Afyonkarahisar Ağrı Amasya Ankara Antalya Artvin Aydın Balıkesir '
+    'Bilecik Bingöl Bitlis Bolu Burdur Bursa Çanakkale Çankırı Çorum Denizli Diyarbakır Edirne Elazığ '
+    'Erzincan Erzurum Eskişehir Gaziantep Giresun Gümüşhane Hakkari Hatay Isparta Mersin İstanbul İzmir '
+    'Kars Kastamonu Kayseri Kırklareli Kırşehir Kocaeli Konya Kütahya Malatya Manisa Kahramanmaraş '
+    'Mardin Muğla Muş Nevşehir Niğde Ordu Rize Sakarya Samsun Siirt Sinop Sivas Tekirdağ Tokat '
+    'Trabzon Tunceli Şanlıurfa Uşak Van Yozgat Zonguldak Aksaray Bayburt Karaman Kırıkkale Batman '
+    'Şırnak Bartın Ardahan Iğdır Yalova Karabük Kilis Osmaniye Düzce').split()
+_TURKISH_LOCALITIES = {_key(city): city for city in _TURKISH_PROVINCES}
+for _parent, _districts in (
+    ('İstanbul', 'Ümraniye Kadıköy Şişli Beşiktaş Ataşehir Sarıyer Pendik Kartal Maltepe Üsküdar Tuzla Esenyurt Kağıthane Beykoz Bağcılar Başakşehir Beylikdüzü Zeytinburnu Fatih Bakırköy Eyüpsultan Sultangazi Sultanbeyli Sancaktepe Çekmeköy Büyükçekmece Küçükçekmece Silivri Çatalca Şile Arnavutköy Güngören Bayrampaşa Gaziosmanpaşa Esenler Avcılar Beyoğlu Bahçelievler Adalar'),
+    ('Ankara', 'Çankaya Sincan Yenimahalle Keçiören Mamak Etimesgut Gölbaşı Altındağ Polatlı Kahramankazan Pursaklar Şereflikoçhisar Beypazarı Çubuk Elmadağ Güdül Haymana Kalecik Kızılcahamam Nallıhan Akyurt Ayaş Bala'),
+    ('İzmir', 'Bornova Konak Karşıyaka Bayraklı Buca Çiğli Gaziemir Torbalı Urla Çeşme Menemen Kemalpaşa Aliağa Karabağlar Balçova Bayındır Bergama Beydağ Dikili Foça Güzelbahçe Karaburun Kınık Kiraz Menderes Narlıdere Ödemiş Seferihisar Selçuk Tire'),
+    ('Kocaeli', 'Gebze İzmit Darıca Çayırova Dilovası'),
+    ('Bursa', 'Nilüfer Osmangazi Yıldırım'),
+    ('Tekirdağ', 'Çerkezköy Çorlu'),
+):
+    _TURKISH_LOCALITIES.update({_key(district): _parent for district in _districts.split()})
+
+
+def _turkish_city(parts):
+    return next((_TURKISH_LOCALITIES[_key(part)] for part in parts if _key(part) in _TURKISH_LOCALITIES), '')
+
 
 def normalize_country(value):
     """Return a canonical country for a known name or alias, else an empty string."""
@@ -181,6 +203,8 @@ def normalize(value):
         if remote:
             return country, "Uzaktan"
         before = parts[:country_index]
+        if country == 'Türkiye' and _turkish_city(before):
+            return country, _turkish_city(before)
         city = next((_city(part) for part in before if _key(_city(part)) in _CITY_BY_KEY), None)
         if not city:
             city = _city(before[0]) if before else "Belirtilmemiş"
@@ -188,6 +212,9 @@ def normalize(value):
 
     if remote:
         return "Uzaktan", "Uzaktan"
+
+    if _turkish_city(parts):
+        return 'Türkiye', _turkish_city(parts)
 
     for part in parts:
         city = _city(part)
