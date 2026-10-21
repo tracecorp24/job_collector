@@ -4,6 +4,8 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 const debounce = (fn, ms=350) => { let timer; return (...args) => {clearTimeout(timer); timer=setTimeout(()=>fn(...args),ms);}; };
 const names = {category:'Genel kategori',seniority:'Kıdem',workplace:'Çalışma biçimi',location:'Konum',location_text:'Konum',company:'Şirket',skills:'Yetenek',flag:'İlan değerlendirmesi',backend:'Analiz yöntemi',source:'Kaynak',search_term:'Aranan unvan',search_location:'Aranan konum',search:'Arama',semantic:'Anlama göre arama',title:'Unvanda',description:'Açıklamada',company_text:'Şirket adında',phrase:'Tam ifade',exclude:'Hariç kelimeler',exclude_skills:'Hariç yetenekler',skill_mode:'Yetenek koşulu',salary_min:'En az maaş',salary_max:'En çok maaş',currency:'Para birimi',period:'Maaş dönemi',has_salary:'Maaş bilgisi',experience_min:'En az deneyim',experience_max:'En çok deneyim',experience_missing:'Deneyim bilinmiyor',run_id:'Çalışma',task_id:'Arama',discovery:'Bulunma türü',has_description:'Açıklama',has_summary:'Özet',has_embedding:'Eşleştirme verisi',quality:'Ayrıştırma kalitesi',visibility:'Görünürlük',posted_from:'Yayın başlangıcı',posted_to:'Yayın bitişi',posted_missing:'Yayın tarihi bilinmiyor',created_from:'İlk eklenme başlangıcı',created_to:'İlk eklenme bitişi',scraped_from:'Son tarama başlangıcı',scraped_to:'Son tarama bitişi'};
 const translations = {Engineering:'Mühendislik / Yazılım',Data:'Veri ve yapay zekâ',Design:'Tasarım',Product:'Ürün',Finance:'Finans',Sales:'Satış',Marketing:'Pazarlama',HR:'İnsan kaynakları',Operations:'Operasyon',Other:'Diğer',Intern:'Stajyer',Junior:'Başlangıç',Mid:'Orta seviye',Senior:'Kıdemli',Lead:'Lider',Manager:'Yönetici',Unknown:'Belirtilmemiş',Remote:'Uzaktan',Hybrid:'Hibrit',Onsite:'Ofiste',Office:'Ofiste',rules:'Hızlı analiz',local:'Yerel yapay zekâ',llm:'Bulut yapay zekâ',claude:'Bulut yapay zekâ',groq:'Groq yapay zekâ',scam:'Şüpheli ilan',ghost:'Aktifliği şüpheli',clean:'İşaretlenmemiş',__missing__:'Belirtilmemiş',queued:'Bekliyor',running:'Çalışıyor',pausing:'Duraklatılıyor',paused:'Duraklatıldı',stopping:'Durduruluyor',stopped:'Durduruldu',cancelling:'İptal ediliyor',cancelled:'İptal edildi',finished:'Tamamlandı',error:'Hata oluştu',active:'Aktif',trash:'Çöp kutusu',all:'Tümü',any:'Herhangi biri',valid:'Geçerli',invalid:'Eksik ayrıştırılan',new:'İlk kez eklenenler',month:'Aylık',year:'Yıllık',hour:'Saatlik'};
+names.opportunity_type='Fırsat türü';
+Object.assign(translations,{internship:'Staj',graduate:'Yeni mezun programı',job:'İş',unknown:'Türü belirsiz'});
 names.country='Ülke';names.city='Şehir';
 names.profession_group='Ana meslek grubu';names.profession_subgroup='Meslek alt grubu';
 const tr = value => translations[value] || value;
@@ -11,7 +13,7 @@ const languageNames = {tr:'Türkçe',en:'İngilizce',other:'Diğer'};
 const date = value => value ? new Date(/[zZ]|[+]\d\d:\d\d$/.test(value) ? value : value+'Z').toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short'}) : 'Belirtilmemiş';
 // Kartlar için kısa tarih: yayın günü (saat bilgisi yok), eklenme gün + saat.
 const shortDate = (value, time) => value ? new Date(/[zZ]|[+]\d\d:\d\d$/.test(value) ? value : value+'Z').toLocaleString('tr-TR', time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short',year:'numeric'}) : 'Belirtilmemiş';
-const groupKeys = ['category','seniority','workplace','company','skills','flag','backend','source','search_term','search_location'];
+const groupKeys = ['opportunity_type','category','seniority','workplace','company','skills','flag','backend','source','search_term','search_location'];
 const multiKeys = new Set([...groupKeys,'profession_group','profession_subgroup','run_id','task_id','exclude_skills']);
 let prefs={}; try {prefs=JSON.parse(localStorage.getItem('linko.ui.v2')||'{}');} catch {}
 let filters={}, view=prefs.view||'cards', draft=Array.isArray(prefs.draft)?prefs.draft:[], form=prefs.form||{};
@@ -49,7 +51,7 @@ function params(){
   return p;
 }
 function persist(push=false){
-  form={'kw-input':$('kw-input').value,'loc-input':$('loc-input').value,'limit-input':$('limit-input').value,'unlimited':$('unlimited').checked,'classify-backend':$('classify-backend').value,'use-embeddings':$('use-embeddings').checked,'scrape-mode':$('scrape-mode').value,'refresh-details':$('refresh-details').checked};
+  form={'kw-input':$('kw-input').value,'loc-input':$('loc-input').value,'limit-input':$('limit-input').value,'unlimited':$('unlimited').checked,'classify-backend':$('classify-backend').value,'use-embeddings':$('use-embeddings').checked,'scrape-mode':$('scrape-mode').value,'refresh-details':$('refresh-details').checked,'collection-opportunity-type':$('collection-opportunity-type').value};
   prefs={filters,view,draft,form,draftRunId};try{localStorage.setItem('linko.ui.v2',JSON.stringify(prefs));}catch{}
   const p=params();p.set('view',view);const url=location.pathname+'?'+p;
   if(url!==location.pathname+location.search)history[push?'pushState':'replaceState']({},'',url);
@@ -236,7 +238,7 @@ function jobCard(j){
   const hue=brandHue(j.company||'');
   const parentCat=(j.profession_groups||[])[0]||tr(j.category)||'Genel Meslekler';
   const subCat=(j.profession_subgroups||[])[0]||'';
-  const seniority=j.seniority&&j.seniority!=='Unknown'?tr(j.seniority):'';
+  const seniority=[j.opportunity_type && j.opportunity_type!=='unknown'?tr(j.opportunity_type):'',j.seniority&&j.seniority!=='Unknown'?tr(j.seniority):''].filter(Boolean).join(' · ');
   const workplace=j.workplace_type?tr(j.workplace_type):'';
   const place=[j.location,workplace].filter(Boolean).join(' · ');
 
@@ -561,7 +563,7 @@ function renderDraft(){
 function scheduleDraftSave(){clearTimeout(draftSaveTimer);if(queueStarting)return;draftSaveTimer=setTimeout(()=>saveDraft().catch(e=>{$('task-error').textContent='Kuyruk sunucuya kaydedilemedi: '+e.message;}),600);}
 function saveDraft(){
   const tasks=draft.map(t=>({...t})),backend=$('classify-backend').value,embeddings=$('use-embeddings').checked,mode=$('scrape-mode').value,refresh=$('refresh-details').checked;
-  draftSaveChain=draftSaveChain.catch(()=>{}).then(async()=>{const data=await api('/api/queue',{method:'POST',body:{run_id:draftRunId,tasks,classify_backend:backend,use_embeddings:embeddings,mode,refresh_details:refresh}});draftRunId=data.run_id;persist();$('queue-identity').textContent=draftRunId?'Kuyruk süreç kimliği: '+draftRunId:'';return draftRunId;});return draftSaveChain;
+  draftSaveChain=draftSaveChain.catch(()=>{}).then(async()=>{const data=await api('/api/queue',{method:'POST',body:{run_id:draftRunId,tasks,classify_backend:backend,use_embeddings:embeddings,mode,refresh_details:refresh,opportunity_type:$('collection-opportunity-type').value}});draftRunId=data.run_id;persist();$('queue-identity').textContent=draftRunId?'Kuyruk süreç kimliği: '+draftRunId:'';return draftRunId;});return draftSaveChain;
 }
 function addTasks(){
   const keywords=$('kw-input').value.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);const location=$('loc-input').value.trim();const raw=$('limit-input').value;const limit=$('unlimited').checked?null:Number(raw);
@@ -1322,7 +1324,7 @@ function initialize(){
   wire('previous-job','click',()=>nav.previous&&openJob(nav.previous));wire('next-job','click',()=>nav.next&&openJob(nav.next));
   $('job-dialog').addEventListener('close',()=>{detailController?.abort();currentJob=null;});
   wire('add-tasks','click',addTasks);wire('start-scrape','click',startScrape);wire('suggest-titles','click',suggestTitles);wire('add-suggested','click',addSuggested);wire('cancel-suggested','click',closeSuggestions);$('suggest-list').addEventListener('change',updateSuggestCount);for(const [id,on] of [['suggest-all',true],['suggest-none',false]])wire(id,'click',()=>{document.querySelectorAll('#suggest-list [data-suggest]').forEach(el=>el.checked=on);updateSuggestCount();});['loc-input','limit-input'].forEach(id=>wire(id,'input',updateSuggestCount));wire('unlimited','change',()=>{$('limit-input').disabled=$('unlimited').checked;persist();updateSuggestCount();});
-  ['kw-input','loc-input','limit-input','classify-backend','use-embeddings','scrape-mode','refresh-details'].forEach(id=>wire(id,'input',()=>{persist();if(draft.length&&['classify-backend','use-embeddings','scrape-mode','refresh-details'].includes(id))scheduleDraftSave();}));
+  ['kw-input','loc-input','limit-input','collection-opportunity-type','classify-backend','use-embeddings','scrape-mode','refresh-details'].forEach(id=>wire(id,'input',()=>{persist();if(draft.length&&['collection-opportunity-type','classify-backend','use-embeddings','scrape-mode','refresh-details'].includes(id))scheduleDraftSave();}));
   wire('pause-run','click',()=>currentRun&&runAction(currentRun.id,'pause'));wire('resume-run','click',()=>currentRun&&runAction(currentRun.id,'resume'));wire('stop-run','click',()=>currentRun&&runAction(currentRun.id,'stop'));wire('cancel-run','click',()=>currentRun&&runAction(currentRun.id,'cancel'));wire('cancel-all','click',cancelAll);wire('live-logs','click',()=>currentRun&&openLogs(currentRun.id));
   wire('history-status','change',renderHistory);wire('history-search','input',renderHistory);wire('history-trash','change',()=>{selectedHistory.clear();loadHistory();});
   wire('history-select-all','click',()=>{const query=$('history-search').value.toLocaleLowerCase('tr');const tasks=historyRuns.filter(r=>JSON.stringify(r).toLocaleLowerCase('tr').includes(query)).flatMap(r=>r.tasks);const all=tasks.every(t=>selectedHistory.has(t.id));for(const t of tasks)if(all)selectedHistory.delete(t.id);else selectedHistory.add(t.id);renderHistory();});

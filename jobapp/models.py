@@ -50,6 +50,8 @@ class Job(Base):
     profession_groups = Column(Text, default='["Genel Meslekler"]')  # broad occupation roots, JSON array
     profession_subgroups = Column(Text, default='["Diğer / Belirtilmemiş"]')  # filterable occupation specialisms
     seniority = Column(String(32), default="Unknown", index=True)
+    opportunity_type = Column(String(24), default="unknown", index=True)
+    internship_details = Column(Text, default="{}")
     tags = Column(Text, default="[]")  # JSON array of strings
     summary = Column(Text, default="")  # optional one-liner (LLM)
     about_company = Column(Text, default="")  # optional company blurb (LLM)
@@ -114,6 +116,8 @@ class Job(Base):
             "category": self.category,
             "profession_groups": json.loads(self.profession_groups or '["Genel Meslekler"]'),
             "profession_subgroups": json.loads(self.profession_subgroups or '["Diğer / Belirtilmemiş"]'),
+            "opportunity_type": self.opportunity_type or "unknown",
+            "internship_details": json.loads(self.internship_details or "{}"),
             "seniority": self.seniority,
             "tags": tags,
             "summary": self.summary,

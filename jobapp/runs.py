@@ -83,6 +83,7 @@ def snapshot(session, run):
     for task_id, is_new, outcome, count in session.query(TaskJob.task_id, TaskJob.is_new, TaskJob.outcome, func.count()).filter(TaskJob.task_id.in_(task_counts)).group_by(TaskJob.task_id, TaskJob.is_new, TaskJob.outcome):
         task_counts[task_id][outcome if outcome in counts else "new" if is_new else "updated"] += count
     return {"id": run.id, "kind":json.loads(run.options).get("kind", "scrape"), "queue_layer":layer(json.loads(run.options or "{}")), "status": run.status, "stats": stats,
+            "opportunity_type":json.loads(run.options or "{}").get("opportunity_type", "all"),
             "next_attempt_at":json.loads(run.options or "{}").get("auto_resume_at"),
             "automatic_resume":run.status in ("paused", "error") and not json.loads(run.options or "{}").get("user_paused") and ("auto_resume_at" in json.loads(run.options or "{}") or any(json.loads(t.stats or "{}").get("termination_reason") == "source_paused" for t in tasks if t.status == "paused")),
             **timing(run), "has_started":has_started(run) or any(has_started(t) for t in tasks),
@@ -278,7 +279,7 @@ def worker(server, run_id):
                                 transport=shared_http_transport(server.state),
                                 request_context={"run_id":run_id,"task_id":task_id,"attempt_id":attempt_id,
                                     "queue_layer":queue_layer,"request_reason":"routine_search" if queue_layer=="routine" else "manual_search"},
-                                search_options=dict({k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known", "low_yield_threshold") if options.get(k) is not None},
+                                search_options=dict({k:options[k] for k in ("posted_within", "sort_recent", "stop_when_known", "low_yield_threshold", "opportunity_type") if options.get(k) is not None},
                                     defer_details=options.get("defer_details", config.DEFER_DETAILS)))
             with server.SessionLocal() as session:
                 run = session.get(SearchRun, run_id)

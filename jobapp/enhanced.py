@@ -18,7 +18,10 @@ def scrape_options(body):
     mode = body.get("mode", "incremental")
     if mode not in ("incremental", "full"):
         raise ValueError("Geçersiz tarama yöntemi.")
-    return {"mode":mode, "refresh_details":bool(body.get("refresh_details"))}
+    opportunity_type = body.get("opportunity_type", "all")
+    if opportunity_type not in ("all", "internship"):
+        raise ValueError("Toplama türü tüm fırsatlar veya staj olmalı.")
+    return {"mode":mode, "refresh_details":bool(body.get("refresh_details")), "opportunity_type":opportunity_type}
 
 
 def safe_folder(name):

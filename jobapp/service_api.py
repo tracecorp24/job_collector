@@ -18,6 +18,8 @@ def init_journal():
         )
     with db.engine.begin() as conn:
         conn.exec_driver_sql("CREATE TABLE IF NOT EXISTS job_changes (sequence INTEGER PRIMARY KEY AUTOINCREMENT, job_id INTEGER NOT NULL, operation TEXT NOT NULL, payload TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')))")
+        for trigger in ("jobs_journal_insert", "jobs_journal_update", "jobs_journal_delete", "task_jobs_journal"):
+            conn.exec_driver_sql(f"DROP TRIGGER IF EXISTS {trigger}")
         for event, prefix in (("INSERT", "NEW"), ("UPDATE", "NEW"), ("DELETE", "OLD")):
             operation = "'delete'" if event == "DELETE" else f"CASE WHEN {prefix}.deleted_at IS NOT NULL OR {prefix}.quality_ok=0 THEN 'delete' ELSE 'upsert' END"
             conn.exec_driver_sql(f"CREATE TRIGGER IF NOT EXISTS jobs_journal_{event.lower()} AFTER {event} ON jobs BEGIN INSERT INTO job_changes(job_id,operation,payload) VALUES ({prefix}.id,{operation},{payload(prefix)}); END")
@@ -140,7 +142,7 @@ def install(server):
         after, limit = integer('after_id', 0), integer('limit', 100, 500)
         with server.SessionLocal() as session:
             query = session.query(Job).filter(Job.id > after, Job.deleted_at.is_(None), Job.quality_ok.is_(True))
-            for key in ('source', 'category', 'company', 'location'):
+            for key in ('source', 'category', 'company', 'location', 'opportunity_type'):
                 if request.args.get(key):
                     query = query.filter(getattr(Job, key) == request.args[key])
             rows = query.order_by(Job.id).limit(limit+1).all()
@@ -157,6 +159,8 @@ def install(server):
                 data = json.loads(row['payload'])
                 for key in ('tags', 'offerings'):
                     data[key] = json.loads(data[key] or '[]')
+                data['internship_details'] = json.loads(data.get('internship_details') or '{}')
+                data['opportunity_type'] = data.get('opportunity_type') or 'unknown'
                 data['quality_ok'] = bool(data['quality_ok'])
                 items.append(dict(sequence=row['sequence'], operation=row['operation'], job_id=row['job_id'],
                     changed_at=row['created_at'], job=data if row['operation']=='upsert' else None))

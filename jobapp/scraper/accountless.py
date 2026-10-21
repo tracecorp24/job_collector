@@ -476,7 +476,8 @@ class AccountlessScraper:
         # Only source listing filters identify the page. A CLI/web transition can
         # express the same defaults differently (e.g. absent vs defer_details=False).
         identity = {"keyword": keyword, "location": location, "options": {
-            key:self.search_options[key] for key in ("posted_within", "sort_recent") if self.search_options.get(key)}}
+            key:self.search_options[key] for key in ("posted_within", "sort_recent", "opportunity_type")
+            if self.search_options.get(key) and (key != "opportunity_type" or self.search_options[key] == "internship")}}
         saved_page = checkpoint.get("page_snapshot")
         if (not isinstance(saved_page, dict) or saved_page.get("identity") != identity
                 or saved_page.get("page") != page or not isinstance(saved_page.get("cards"), list)):
@@ -526,6 +527,8 @@ class AccountlessScraper:
                 save_checkpoint()
                 self._log(f"📄 [Sayfa {page + 1}] LinkedIn istek gönderiliyor (start={start_offset})...", "info")
                 params = {"keywords": keyword, "location": location, "start": start_offset}
+                if self.search_options.get("opportunity_type") == "internship":
+                    params["f_JT"] = "I"
                 if self.search_options.get("posted_within"):
                     params["f_TPR"] = f"r{int(self.search_options['posted_within'])}"
                 if self.search_options.get("sort_recent"):

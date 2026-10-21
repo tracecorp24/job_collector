@@ -950,6 +950,11 @@
     <section id="new-search-form" class="space-y-4 text-xs">
       <p class="text-ink-muted leading-relaxed">Bir unvan yaz; yapay zekâ onu ilgili alanın farklı (ortogonal) 5 unvanıyla çoğaltsın. İstemediklerinin işaretini kaldır, kalanlar tek paket olarak kuyruğa eklensin.</p>
       <label class="block space-y-1">
+        <span class="font-semibold text-slate-900 dark:text-zinc-200">Bu kuyrukta toplanacak fırsatlar</span>
+        <select id="collection-opportunity-type" class="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-[#1A2028] border border-black/10 dark:border-white/10"><option value="all">Tüm fırsatlar</option><option value="internship">Staj ilanları</option></select>
+        <small>Staj seçimi kuyruktaki tüm aramalara uygulanır. Her ilanın fırsat türü kendi içeriğinden ayrıca belirlenir.</small>
+      </label>
+      <label class="block space-y-1">
         <span class="font-semibold text-slate-900 dark:text-zinc-200">Unvan</span>
         <textarea id="kw-input" rows="2" placeholder="Örn. agentic ai. Birden fazla unvanı satır satır veya virgülle yazabilirsin." class="w-full px-3 py-2 rounded-xl bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 focus:outline-none focus:border-[#0A66C2]"></textarea>
       </label>
