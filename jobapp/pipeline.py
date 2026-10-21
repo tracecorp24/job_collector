@@ -482,6 +482,8 @@ def run_classify_backfill(backend="local", limit=None, model=None, emit=None, sh
                 continue
 
             consecutive_failures = 0
+            from .opportunities import refresh
+            refresh(job)
             job.category = cls["category"]
             job.seniority = cls["seniority"]
             job.workplace_type = cls.get("workplace_type") or job.workplace_type

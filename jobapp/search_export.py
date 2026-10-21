@@ -114,11 +114,14 @@ class SearchExport:
             return False  # frontend requires both fields
         text = f"{title}\n{location}\n{description}"
         experience = self.skills.extract_experience_years(description, title) if self.skills else None
+        from .opportunities import classify
+        opportunity = classify(title, description, raw.get("employment_type", ""))
         job_id = f"ap-linkedin-{raw['external_id']}"
         job = {
             "id": job_id, "title": title, "company": company, "location": location,
             "type": (self.skills.extract_work_type(text) if self.skills else None) or "Office",
             "source": "LinkedIn", "salary": None, "desc": description,
+            "opportunityType": opportunity["opportunity_type"], "internshipDetails": opportunity["internship_details"],
             "skills": self.skills.extract_skills(title, description) if self.skills else [],
             "applyUrl": raw.get("url") or None, "posted": raw.get("posted") or "Bilinmiyor",
             "experience": f"{experience}+ yıl" if experience is not None else "Belirtilmemiş",

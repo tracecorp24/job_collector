@@ -260,6 +260,8 @@ def sync_exports(session, job, raw):
         data = json.loads(path.read_text(encoding="utf-8"))
         data.update(title=job.title, company=job.company, location=job.location,
                     desc=job.description, skills=json.loads(job.tags or "[]"))
+        data["opportunityType"] = job.opportunity_type
+        data["internshipDetails"] = json.loads(job.internship_details or "{}")
         data.setdefault("_collector", {}).update(descriptionAvailable=True, repairedAt=datetime.utcnow().isoformat()+"Z")
         _write_json(path, data)
 
@@ -424,6 +426,8 @@ def worker(server, key):
                     dependent = bool(set(fields) & {"title", "description"})
                     if dependent or "tags" in fields:
                         job.tags = json.dumps(list(dict.fromkeys(tags+skills.extract_skills(job.title, job.description))), ensure_ascii=False)
+                    from .opportunities import refresh
+                    refresh(job)
                     if dependent or "experience_years" in fields:
                         from .pipeline import experience_years
                         job.experience_years = experience_years(job.description, job.title)

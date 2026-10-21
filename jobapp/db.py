@@ -97,6 +97,10 @@ def _migrate() -> None:
                            ("location_city", "VARCHAR(128) DEFAULT ''")):
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {name} {kind}"))
+        for name, kind in (("opportunity_type", "VARCHAR(24) DEFAULT 'unknown'"), ("internship_details", "TEXT DEFAULT '{}'")):
+            if name not in existing:
+                conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {name} {kind}"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_jobs_opportunity_type ON jobs(opportunity_type)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_jobs_location_country ON jobs(location_country)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_jobs_location_city ON jobs(location_city)"))
         if "package" not in {row[1] for row in conn.execute(text("PRAGMA table_info(search_tasks)"))}:
@@ -154,6 +158,27 @@ def _migrate() -> None:
     _backfill_profession_taxonomy()
     _backfill_location_taxonomy()
     _reprocess_rule_fields()
+    _backfill_opportunities()
+
+
+def _backfill_opportunities():
+    from .models import Setting
+    from .opportunities import refresh, VERSION
+    marker = f"opportunities_v{VERSION}"
+    with sessionmaker(bind=engine, autoflush=False)() as session:
+        if session.get(Setting, marker):
+            return
+        last_id = 0
+        while True:
+            rows = session.query(Job).filter(Job.id > last_id).order_by(Job.id).limit(500).all()
+            if not rows:
+                break
+            for job in rows:
+                refresh(job)
+            last_id = rows[-1].id
+            session.commit()
+        session.add(Setting(key=marker, value="1"))
+        session.commit()
 
 
 def _repair_guest_card_fields():
@@ -417,6 +442,8 @@ _UPDATABLE = (
     "workplace_type",
     "category",
     "seniority",
+    "opportunity_type",
+    "internship_details",
     "tags",
     "summary",
     "about_company",
@@ -482,6 +509,17 @@ def upsert_job(session, record: dict) -> tuple[Job, bool]:
         .one_or_none()
     )
 
+    from .opportunities import classify
+    original_description = record.get("description")
+    try:
+        source_record = json.loads(record.get("raw") or (existing.raw if existing else "{}"))
+    except (ValueError, TypeError):
+        source_record = {}
+    result = classify(record.get("title", existing.title if existing else ""),
+                      original_description if original_description is not None else existing.description if existing else "",
+                      source_record.get("employment_type", "") if isinstance(source_record, dict) else "")
+    record.update(opportunity_type=result["opportunity_type"],
+                  internship_details=json.dumps(result["internship_details"], ensure_ascii=False))
     if existing is None:
         job = Job(**{k: v for k, v in record.items() if hasattr(Job, k)})
         session.add(job)

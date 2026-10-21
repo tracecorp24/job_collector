@@ -6,6 +6,7 @@ from .models import Job, TaskJob, SearchTask
 from .db import parse_date
 
 FIELDS = {name: getattr(Job, column) for name, column in {
+    "opportunity_type": "opportunity_type",
     "category": "category", "seniority": "seniority", "workplace": "workplace_type",
     "profession_group": "profession_groups", "profession_subgroup": "profession_subgroups",
     "company": "company", "location": "location", "country": "location_country", "city": "location_city",
