@@ -81,3 +81,8 @@ Ek arama regresyonu: `mekanik tasarım` ve `mechanical design` aynı sonuçları
 Mechanical Designer ve ilgili mühendis unvanları aynı meslek kavramına dönüştürülür.
 Özgün sorgudaki bilinen meslek kavramı, ek dil çevirilerinde de zorunlu kalır;
 genel `design` çevirisi elektrik veya arayüz tasarımı ilanlarını ekleyemez.
+
+Güncel `main` tabanında birleştirme öncesi doğrulama: 213 backend testi,
+44 JavaScript regresyonu, 22 mevcut birim testi ve 40 Collector regresyonu geçti.
+İki Chrome senaryosu da geçti: staj keşfi ve mekanik tasarım/mechanical design dahil
+genel ilan keşfi. Ağ ve hesap verileri bu tarayıcı senaryolarında izole sahte yanıtlardır.
