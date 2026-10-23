@@ -789,7 +789,7 @@ async function pollStatus(){
   try{const status=await api('/api/scrape/status');busy=status.running;sourceState=status.source_state;waitingRuns=status.waiting||[];renderSource();renderWaiting();renderQueueLayers(status);lastPoll=Date.now();
     if(status.run){currentRun=status.run;activeLogRun=currentRun.id;renderRun();}
     else if(busy){$('status-bar').hidden=false;$('status-text').textContent=status.kind==='repair'?'İlanın eksik alanları tamamlanıyor…':status.kind==='embed'?'İlan eşleştirmeleri hazırlanıyor…':'İlanlar analiz ediliyor…';$('status-detail').textContent='Yeni manuel istekler en yüksek öncelikle kuyruğa alınır.';$('status-progress').removeAttribute('value');}
-    else if(currentRun&&activeStatus(currentRun.status)){currentRun=await api('/api/runs/'+currentRun.id);renderRun();loadAll();}
+    else if(currentRun&&activeStatus(currentRun.status)){currentRun=await api('/api/runs/'+currentRun.id);renderRun();}
     if($('history-dialog').open)loadHistory();
     $('embed-jobs').disabled=$('embed-jobs').dataset.ollama==='0';$('classify-jobs').disabled=$('classify-jobs').dataset.ollama==='0';$('stop-maintenance').hidden=!busy||['scrape','repair'].includes(status.kind);$('classify-groq').disabled=!groqAvailable;
   }catch(e){$('connection').textContent='Sunucu bağlantısı bekleniyor…';}
@@ -813,19 +813,20 @@ async function repairJob(id){
   await api('/api/jobs/'+id+'/repair',{method:'POST',body:{fields}});toast('Seçili alanlar manuel öncelikle kuyruğa eklendi.');await pollStatus();
 }
 function connectEvents(){
-  const source=new EventSource('/events');source.onopen=()=>{$('connection').textContent='Canlı';$('connection').dataset.state='ok';$('connection').title='Yeni ilanlar sayfayı yenilemeden listeye düşer.';pollStatus();};source.onerror=()=>{$('connection').textContent='Yeniden bağlanılıyor…';$('connection').dataset.state='warn';};
-  const refreshJobs=debounce(loadAll,1200);const refreshStatus=debounce(pollStatus,300);
+  const source=new EventSource('/events');source.onopen=()=>{$('connection').textContent='Canlı';$('connection').dataset.state='ok';$('connection').title='Yeni ilanlar toplanırken bildirim şeridi güncellenir; liste akışınız kesintiye uğramaz.';pollStatus();};source.onerror=()=>{$('connection').textContent='Yeniden bağlanılıyor…';$('connection').dataset.state='warn';};
+  const refreshStatus=debounce(pollStatus,300);
+  const refreshNewCount=debounce(loadNewCount,1200);
   source.onmessage=event=>{let ev;try{ev=JSON.parse(event.data);}catch{return;}const d=ev.data||{};
     if(['waiting','shared_rate_wait'].includes(ev.type)){waitingUntil=Date.now()+d.seconds*1000;waitReason=d.reason;renderWait();refreshStatus();}
-    if(ev.type==='job'){waitingUntil=0;refreshJobs();refreshStatus();}
+    if(ev.type==='job'){waitingUntil=0;if(!lastJobs.length){debounce(loadAll,1000)();}else{refreshNewCount();}refreshStatus();}
     if(['task_start','task_done','job_progress','run_finished','finished','error','source_paused','task_control'].includes(ev.type)){refreshStatus();}
-    if(ev.type==='run_finished'){if(!$('view-watches').hidden)loadWatches();if(Dash.visible())Dash.load(true);currentRun=d;renderRun();loadAll();loadRunOptions();if($('history-dialog').open)loadHistory();toast(`Çalışma ${tr(d.status).toLocaleLowerCase('tr')}: ${d.stats.new||0} yeni, ${d.stats.updated||0} güncellenen ilan.`,()=>{showResults('run_id',d.id);},'Sonuçları gör');}
+    if(ev.type==='run_finished'){if(!$('view-watches').hidden)loadWatches();if(Dash.visible())Dash.load(true);currentRun=d;renderRun();refreshNewCount();loadRunOptions();if($('history-dialog').open)loadHistory();toast(`Çalışma ${tr(d.status).toLocaleLowerCase('tr')}: ${d.stats.new||0} yeni, ${d.stats.updated||0} güncellenen ilan.`,()=>{showResults('run_id',d.id);},'Sonuçları gör');}
     if(ev.type==='notice'||ev.type==='error'){toast(d.msg||'İşlem tamamlanamadı. Sonuçlar korundu.',()=>showTab('queue'),'Ayrıntılar',true);}
     if(ev.type==='log'&&busy&&!currentRun)$('maintenance-status').textContent=localLogMessage(d.msg);
-    if(ev.type==='finished'&&!d.run_id){$('maintenance-status').textContent=`İşlem tamamlandı. ${d.embedded??d.classified??0} ilan işlendi, ${d.skipped||0} ilan atlandı.`;loadAll();}
+    if(ev.type==='finished'&&!d.run_id){$('maintenance-status').textContent=`İşlem tamamlandı. ${d.embedded??d.classified??0} ilan işlendi, ${d.skipped||0} ilan atlandı.`;refreshNewCount();}
   };
   setInterval(()=>{if(document.visibilityState==='visible'){if(Date.now()-lastPoll>4000)pollStatus();updateQueueClocks();renderWait();}},1000);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pollStatus();loadAll();}});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pollStatus();refreshNewCount();}});
 }
 async function loadRunOptions(){try{const data=await api('/api/runs');$('run-filter').innerHTML='<option value="">Tüm çalışmalar</option>'+data.runs.map(r=>`<option value="${r.id}">${esc(date(r.created_at))} · ${esc(r.tasks.map(t=>t.keyword).join(', '))}</option>`).join('');$('run-filter').value=filters.run_id?.[0]||'';if(!currentRun){const paused=data.runs.find(r=>['paused','error'].includes(r.status));if(paused){currentRun=paused;renderRun();}}}catch{}}
 
