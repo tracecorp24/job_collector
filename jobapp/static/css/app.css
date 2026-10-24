@@ -396,3 +396,49 @@ html.dark .toast {
   padding: 0.15rem 0.4rem;
   cursor: copy;
 }
+
+/* ==========================================================================
+   MOBİL İYİLEŞTİRMELERİ (Linko Executive Mobile Experience)
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  /* Konum Popover: Mobilde ekranın altından açılan modern Bottom-Sheet */
+  #heroLocationPopover {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-height: 85vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3) !important;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 16px)) !important;
+    z-index: 9999 !important;
+  }
+  #heroLocationOptionsList {
+    max-height: 48vh !important;
+  }
+
+  /* Alt Gezinme Çubuğu: iOS Safe Area ve Yüksek Ergonomi */
+  #bottom-nav {
+    padding-bottom: calc(0.375rem + env(safe-area-inset-bottom, 12px)) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+  }
+  html.dark #bottom-nav, body[data-theme="dark"] #bottom-nav {
+    background: rgba(22, 27, 34, 0.92) !important;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Mobilde kart dokunma alanları ve kaydırma boşluğu */
+  .results {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 16px)) !important;
+  }
+  .job-card {
+    border-radius: 14px !important;
+  }
+}
+
