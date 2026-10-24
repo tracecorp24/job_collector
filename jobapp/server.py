@@ -217,6 +217,21 @@ def api_job(job_id):
         session.close()
 
 
+@app.route("/api/jobs/<int:job_id>/translate", methods=["POST"])
+def api_job_translate(job_id):
+    from .translate import translate_job_fields
+    session = SessionLocal()
+    try:
+        job = session.get(Job, job_id)
+        if not job:
+            return jsonify({"error": "not found"}), 404
+        data = job.to_dict(include_description=True)
+        return jsonify(translate_job_fields(data, target="tr"))
+    finally:
+        session.close()
+
+
+
 @app.route("/api/jobs/<int:job_id>/fetch-detail", methods=["POST"])
 def api_fetch_job_detail(job_id):
     # Manual detail requests share the priority queue and its single worker.

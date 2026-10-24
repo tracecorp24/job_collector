@@ -26,9 +26,87 @@ def fold(value):
     return str(value).translate(str.maketrans("İıŞşĞğÜüÖöÇç", "iissgguuoocc")).lower()
 
 
+CROSS_LINGUAL_SYNONYMS = {
+    "ai": ["ai", "yapay zeka", "artificial intelligence"],
+    "yapay zeka": ["ai", "yapay zeka", "artificial intelligence"],
+    "artificial intelligence": ["ai", "yapay zeka", "artificial intelligence"],
+    "ml": ["ml", "makine ogrenmesi", "machine learning"],
+    "makine ogrenmesi": ["ml", "makine ogrenmesi", "machine learning"],
+    "machine learning": ["ml", "makine ogrenmesi", "machine learning"],
+    "dl": ["dl", "derin ogrenme", "deep learning"],
+    "derin ogrenme": ["dl", "derin ogrenme", "deep learning"],
+    "deep learning": ["dl", "derin ogrenme", "deep learning"],
+    "nlp": ["nlp", "dogal dil isleme", "natural language processing"],
+    "natural language processing": ["nlp", "dogal dil isleme", "natural language processing"],
+    "cv": ["cv", "bilgisayarli goru", "computer vision"],
+    "computer vision": ["cv", "bilgisayarli goru", "computer vision"],
+    "yazilim muhendisi": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
+    "yazilim gelistirici": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
+    "software engineer": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
+    "software developer": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
+    "softwareentwickler": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
+    "veri bilimci": ["data scientist", "veri bilimci", "veri bilimcisi", "datenwissenschaftler"],
+    "data scientist": ["data scientist", "veri bilimci", "veri bilimcisi", "datenwissenschaftler"],
+    "veri analisti": ["data analyst", "veri analisti", "datenanalyst"],
+    "data analyst": ["data analyst", "veri analisti", "datenanalyst"],
+    "frontend": ["frontend", "front-end", "front end", "on yuz"],
+    "front-end": ["frontend", "front-end", "front end", "on yuz"],
+    "front end": ["frontend", "front-end", "front end", "on yuz"],
+    "backend": ["backend", "back-end", "back end", "arka yuz"],
+    "back-end": ["backend", "back-end", "back end", "arka yuz"],
+    "back end": ["backend", "back-end", "back end", "arka yuz"],
+    "fullstack": ["fullstack", "full stack", "full-stack"],
+    "full stack": ["fullstack", "full stack", "full-stack"],
+    "full-stack": ["fullstack", "full stack", "full-stack"],
+    "urun yoneticisi": ["product manager", "urun yoneticisi", "urun muduru"],
+    "product manager": ["product manager", "urun yoneticisi", "urun muduru"],
+    "stajyer": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
+    "staj": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
+    "intern": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
+    "internship": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
+    "werkstudent": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
+    "qa": ["qa", "quality assurance", "test muhendisi", "test engineer", "kalite guvence"],
+    "test muhendisi": ["qa", "quality assurance", "test muhendisi", "test engineer", "kalite guvence"],
+    "quality assurance": ["qa", "quality assurance", "test muhendisi", "test engineer", "kalite guvence"],
+    "devops": ["devops", "cloud engineer", "sre", "site reliability engineer"],
+    "engineer": ["engineer", "muhendis"],
+    "muhendis": ["engineer", "muhendis"],
+    "developer": ["developer", "gelistirici", "entwickler"],
+    "gelistirici": ["developer", "gelistirici", "entwickler"],
+    "uzaktan": ["uzaktan", "evden", "remote", "homeoffice"],
+    "remote": ["uzaktan", "evden", "remote", "homeoffice"]
+}
+
+
+def expand_search_terms(text):
+    text_folded = fold(text).strip()
+    if not text_folded:
+        return []
+    if text_folded in CROSS_LINGUAL_SYNONYMS:
+        return [CROSS_LINGUAL_SYNONYMS[text_folded]]
+    tokens = text_folded.split()
+    groups = []
+    i = 0
+    while i < len(tokens):
+        if i + 1 < len(tokens):
+            pair = f"{tokens[i]} {tokens[i+1]}"
+            if pair in CROSS_LINGUAL_SYNONYMS:
+                groups.append(CROSS_LINGUAL_SYNONYMS[pair])
+                i += 2
+                continue
+        tok = tokens[i]
+        if tok in CROSS_LINGUAL_SYNONYMS:
+            groups.append(CROSS_LINGUAL_SYNONYMS[tok])
+        else:
+            groups.append([tok])
+        i += 1
+    return groups
+
+
 def contains(column, value):
     value = fold(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return folded(column).like("%" + value + "%", escape="\\")
+
 
 
 def values(args, key):
@@ -91,7 +169,15 @@ def filtered(session, args, omit=None):
         q = q.filter(or_(contains(Job.location, loc_val), contains(Job.search_location, loc_val)))
     text = args.get("search", "").strip()
     if text and args.get("semantic") not in ("1", "true"):
-        q = q.filter(or_(*(contains(col, text) for col in (Job.title, Job.company, Job.description, Job.tags))))
+        term_groups = expand_search_terms(text)
+        if term_groups:
+            cols = (Job.title, Job.company, Job.description, Job.tags)
+            group_conds = []
+            for group in term_groups:
+                group_conds.append(or_(*(or_(*(contains(col, syn) for col in cols)) for syn in group)))
+            q = q.filter(and_(*group_conds))
+        else:
+            q = q.filter(or_(*(contains(col, text) for col in (Job.title, Job.company, Job.description, Job.tags))))
     if args.get("phrase", "").strip():
         q = q.filter(or_(contains(Job.title, args["phrase"]), contains(Job.description, args["phrase"])))
     for term in args.get("exclude", "").split(","):

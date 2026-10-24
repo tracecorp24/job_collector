@@ -85,7 +85,7 @@ class Job(Base):
     experience_years = Column(Integer, nullable=True)
     deleted_at = Column(DateTime, nullable=True, index=True)
 
-    def to_dict(self, include_description: bool = False) -> dict:
+    def to_dict(self, include_description: bool = False, links=None) -> dict:
         import json
 
         try:
@@ -145,7 +145,8 @@ class Job(Base):
             data["formatted_description"] = self.formatted_description
         from sqlalchemy.orm import object_session
         session = object_session(self)
-        links = session.query(TaskJob, SearchTask.run_id).join(SearchTask, TaskJob.task_id == SearchTask.id).filter(TaskJob.job_id == self.id).all() if session else []
+        if links is None:
+            links = session.query(TaskJob, SearchTask.run_id).join(SearchTask, TaskJob.task_id == SearchTask.id).filter(TaskJob.job_id == self.id).all() if session else []
         data["search_ids"] = [link.task_id for link, _ in links]
         data["run_ids"] = list(dict.fromkeys(run_id for _, run_id in links))
         data["discoveries"] = [{"search_id": link.task_id, "run_id": run_id, "is_new": link.is_new, "outcome":link.outcome,

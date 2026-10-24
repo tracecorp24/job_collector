@@ -5,7 +5,7 @@ import time
 from flask import jsonify, request
 from sqlalchemy import text
 from . import config, db, runs, service, audit
-from .models import Job, SearchRun, SearchTask, Setting
+from .models import Job, SearchRun, SearchTask, Setting, TaskJob
 
 
 def init_journal():
@@ -137,6 +137,9 @@ def install(server):
             heartbeat_at=service.heartbeat, last_error=service.last_error, last_error_at=service.last_error_at,
             version=config.version_info(), logging=logstore.stats(), problems=sorted(problems.active_keys))
 
+    from .catalog_api import register as register_catalog
+    register_catalog(app, server)
+
     @app.get('/api/v1/jobs')
     def jobs():
         after, limit = integer('after_id', 0), integer('limit', 100, 500)
@@ -146,7 +149,11 @@ def install(server):
                 if request.args.get(key):
                     query = query.filter(getattr(Job, key) == request.args[key])
             rows = query.order_by(Job.id).limit(limit+1).all()
-            return jsonify(items=[j.to_dict(include_description=True) for j in rows[:limit]],
+            links = {}
+            if rows:
+                for link, run_id in session.query(TaskJob, SearchTask.run_id).join(SearchTask, TaskJob.task_id == SearchTask.id).filter(TaskJob.job_id.in_([j.id for j in rows[:limit]])).all():
+                    links.setdefault(link.job_id, []).append((link, run_id))
+            return jsonify(items=[j.to_dict(include_description=True, links=links.get(j.id, [])) for j in rows[:limit]],
                 next_after_id=rows[min(limit,len(rows))-1].id if rows else after, has_more=len(rows)>limit)
 
     @app.get('/api/v1/jobs/changes')

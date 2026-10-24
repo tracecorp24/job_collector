@@ -86,7 +86,7 @@
   <a class="skip sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:p-3 focus:bg-[#0A66C2] focus:text-white focus:rounded-lg" href="#main">İlanlara geç</a>
 
   <!-- TOP HEADER (Bespoke Brand Identity & Status Navigation) -->
-  <header class="header sticky top-0 z-30 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md border-b border-black/[0.08] dark:border-white/[0.08]">
+  <header class="header sticky top-0 z-30 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md border-b border-black/[0.08] dark:border-white/[0.08] notranslate" translate="no">
     <div class="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8">
       <div class="h-16 flex items-center justify-between gap-4">
         
@@ -233,7 +233,7 @@
       
       <!-- HERO SEARCH SECTION (Unified Command Bar) -->
       <section class="bg-surface-light dark:bg-surface-dark border-b border-black/[0.07] dark:border-white/[0.08] py-4 shadow-xs">
-        <div class="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 space-y-3.5">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-3.5">
           
           <!-- Unified Command Search Bar -->
           <div class="bg-canvas-light dark:bg-canvas-dark p-1.5 rounded-2xl border border-black/[0.08] dark:border-white/[0.1] shadow-command dark:shadow-command-dark">
@@ -260,29 +260,105 @@
                 </button>
               </div>
 
-              <!-- Nerede: Konum Alanı -->
-              <div class="md:w-80 lg:w-96 flex items-center gap-3 px-4 py-3 min-w-0 relative">
-                <svg class="w-5 h-5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                </svg>
-                <div class="flex-1 min-w-0">
-                  <label for="locationInput" class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted">Nerede / Şehir veya İlçe</label>
-                  <input
-                    id="locationInput"
-                    type="text"
-                    placeholder="Konum ara... (örn. İstanbul)"
-                    class="w-full bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder-ink-muted focus:outline-none truncate pt-0.5 border-0 p-0 shadow-none ring-0"
-                  />
-                  <!-- Gizli ama API için aktif select'ler -->
-                  <select id="location-country" class="sr-only" aria-label="Ülke"><option value="">Tüm ülkeler</option></select>
-                  <select id="location-city" class="sr-only" aria-label="Şehir" hidden disabled><option value="">Önce ülke seçin</option></select>
-                </div>
-                <button id="clearLocationBtn" type="button" class="hidden text-ink-muted hover:text-ink-primary dark:hover:text-white p-1 rounded-md cursor-pointer">
+              <!-- Nerede: 2 Aşamalı Konum Seçici (Ülke -> Şehir Checkbox) -->
+              <div class="md:w-80 lg:w-96 flex items-center min-w-0 relative" id="heroLocationWrapper">
+                
+                <!-- Tetikleyici Buton (Kullanıcı elle yazmaz, tıklar) -->
+                <button
+                  id="heroLocationTriggerBtn"
+                  type="button"
+                  class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors cursor-pointer focus:outline-none"
+                  aria-haspopup="dialog"
+                  aria-expanded="false"
+                >
+                  <svg class="w-5 h-5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  </svg>
+                  <div class="flex-1 min-w-0 pr-6">
+                    <span class="block text-[10px] font-bold uppercase tracking-wider text-ink-muted leading-tight">Nerede / Ülke ve Şehir</span>
+                    <div class="flex items-center gap-1.5 pt-0.5">
+                      <span id="heroLocationActiveText" class="text-sm font-medium text-slate-900 dark:text-white truncate">
+                        Konum seçin (Tümü)
+                      </span>
+                      <span id="heroLocationBadge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-[#0A66C2] text-white shrink-0">
+                        0
+                      </span>
+                    </div>
+                  </div>
+                  <svg id="heroLocationChevron" class="w-4 h-4 text-ink-muted transition-transform duration-150 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                <!-- Temizleme Butonu (Konum seçiliyse görünür) -->
+                <button
+                  id="clearLocationBtn"
+                  type="button"
+                  title="Konum seçimini temizle"
+                  class="hidden absolute right-9 p-1 text-ink-muted hover:text-ink-primary dark:hover:text-white rounded-md cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 z-10"
+                >
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+
+                <!-- Gizli ama API ve state için aktif select'ler -->
+                <select id="location-country" class="sr-only" aria-label="Ülke"><option value="">Tüm ülkeler</option></select>
+                <select id="location-city" class="sr-only" aria-label="Şehir" hidden disabled><option value="">Önce ülke seçin</option></select>
+
+                <!-- 2 Aşamalı Konum Popover Paneli -->
+                <div
+                  id="heroLocationPopover"
+                  class="hidden absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-full sm:w-[380px] rounded-2xl bg-surface-light dark:bg-[#1E242C] shadow-2xl border border-black/10 dark:border-white/10 z-50 p-3.5 space-y-3"
+                  role="dialog"
+                  aria-label="Konum ve Şehir Filtresi"
+                >
+                  <!-- Popover Header -->
+                  <div class="flex items-center justify-between pb-2 border-b border-black/[0.06] dark:border-white/[0.06]">
+                    <div id="heroLocationHeaderLeft" class="flex items-center gap-1.5 min-w-0">
+                      <span class="text-xs font-bold uppercase tracking-wider text-ink-muted">1. Adım: Ülke Seçin</span>
+                    </div>
+                    <button
+                      id="heroLocationResetBtn"
+                      type="button"
+                      class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer shrink-0"
+                    >
+                      Sıfırla
+                    </button>
+                  </div>
+
+                  <!-- Arama Girişi -->
+                  <div class="relative">
+                    <input
+                      id="heroLocationQuickSearch"
+                      type="text"
+                      placeholder="Ülke veya şehir ara..."
+                      class="w-full px-3 py-1.5 pl-8 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-slate-900 dark:text-zinc-100 placeholder-ink-muted focus:outline-none focus:border-[#0A66C2]"
+                    />
+                    <svg class="w-3.5 h-3.5 text-ink-muted absolute left-2.5 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A6.5 6.5 0 1012 18.5a6.5 6.5 0 004.65-1.85z" />
+                    </svg>
+                  </div>
+
+                  <!-- Seçenekler Listesi (1. Adım: Ülke Listesi | 2. Adım: Şehir Checkbox Listesi) -->
+                  <div id="heroLocationOptionsList" class="max-h-60 overflow-y-auto divide-y divide-black/[0.04] dark:divide-white/[0.04] pr-1 space-y-0.5"></div>
+
+                  <!-- Popover Alt Bilgi / Tamam -->
+                  <div class="pt-2 border-t border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between">
+                    <span id="heroLocationFooterSummary" class="text-[11px] text-ink-muted">
+                      0 şehir seçili
+                    </span>
+                    <button
+                      id="heroLocationApplyBtn"
+                      type="button"
+                      class="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white transition-colors cursor-pointer"
+                    >
+                      Tamam
+                    </button>
+                  </div>
+                </div>
+
               </div>
 
               <!-- Akıllı Arama & Arama Butonu -->
@@ -328,47 +404,6 @@
               </button>
 
               <span class="h-4 w-[1px] bg-black/15 dark:bg-white/15 mx-0.5 hidden sm:inline-block"></span>
-
-              <!-- Ülke · Şehir Seçici Popover -->
-              <div class="relative shrink-0" id="countryCityDropdownWrapper">
-                <button
-                  id="countryCityTriggerBtn"
-                  type="button"
-                  class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-surface-light dark:bg-surface-dark text-slate-900 dark:text-zinc-200 border border-black/[0.1] dark:border-white/[0.1] hover:border-black/25 dark:hover:border-white/25 transition-all shadow-2xs cursor-pointer"
-                >
-                  <svg class="w-3.5 h-3.5 text-[#0A66C2] dark:text-[#70B5F9] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                  </svg>
-                  <span id="countryCityActiveText">Ülke · Şehir: Tümü</span>
-                  <span id="countryCityCountBadge" class="hidden px-1.5 py-0.2 rounded-full text-[10px] font-mono font-semibold bg-[#0A66C2] text-white">0</span>
-                  <svg id="countryCityChevron" class="w-3.5 h-3.5 text-ink-muted transition-transform duration-150" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                <!-- Popover Panel -->
-                <div
-                  id="countryCityPopover"
-                  class="hidden absolute left-0 mt-2 w-80 rounded-2xl bg-surface-light dark:bg-[#1E242C] shadow-popover border border-black/10 dark:border-white/10 z-50 p-3.5 space-y-2.5"
-                >
-                  <div class="flex items-center justify-between px-1">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Ülke ve Şehir Seçimi</span>
-                    <button id="clearCountryCityBtn" type="button" class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer">
-                      Sıfırla
-                    </button>
-                  </div>
-                  <div class="relative">
-                    <input
-                      id="countryCityQuickSearch"
-                      type="text"
-                      placeholder="Ülke veya şehir ara... (örn. İstanbul)"
-                      class="w-full px-3 py-1.5 text-xs rounded-lg bg-subtle-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-slate-900 dark:text-zinc-100 placeholder-ink-muted focus:outline-none focus:border-[#0A66C2]"
-                    />
-                  </div>
-                  <div id="countryCityOptionsList" class="max-h-56 overflow-y-auto divide-y divide-black/[0.04] dark:divide-white/[0.04] pr-0.5"></div>
-                </div>
-              </div>
 
               <!-- Hızlı Konum Kısayolu -->
               <button
@@ -462,7 +497,7 @@
       </section>
 
       <!-- MAIN WORKSPACE LAYOUT (Sticky Sidebar + High Density Job Feed) -->
-      <div class="workspace max-w-[1560px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex items-start gap-6">
+      <div class="workspace max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 flex items-start gap-6">
 
         <!-- SOL KENAR ÇUBUĞU (12 Akordiyon Filtre) -->
         <aside id="filter-panel" class="filter-panel w-72 shrink-0 hidden lg:block sticky top-[80px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1" aria-label="İlan filtreleri">
@@ -718,31 +753,81 @@
             <button id="retry-jobs" class="px-3 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white cursor-pointer">Tekrar dene</button>
           </div>
 
-          <!-- İLAN KARTLARI / LİSTE KONTEYNERİ -->
-          <div id="grid" class="job-grid grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4.5"></div>
+          <!-- LINKEDIN TARZI İKİLİ KEŞFET DÜZENİ (MASTER-DETAIL SPLIT LAYOUT) -->
+          <div class="linkedin-job-layout flex flex-col lg:flex-row gap-5 items-start w-full">
 
-          <!-- Boş Durum (Empty State) -->
-          <div id="empty" class="empty hidden bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark p-12 text-center my-4 border border-black/[0.06] dark:border-white/[0.08]">
-            <div class="w-12 h-12 rounded-2xl bg-subtle-light dark:bg-white/5 mx-auto flex items-center justify-center text-ink-muted mb-3">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
+            <!-- SOL SÜTUN: TEK SÜTUN İLAN KARTLARI LİSTESİ -->
+            <div class="job-list-pane w-full lg:w-[410px] xl:w-[450px] shrink-0 flex flex-col min-w-0">
+              
+              <!-- LinkedIn tarzı liste başlık çubuğu -->
+              <div class="linkedin-feed-meta mb-2.5 px-1 flex items-center justify-between text-xs">
+                <div>
+                  <span class="font-bold text-slate-900 dark:text-white">İlan Listesi</span>
+                  <span class="text-ink-muted text-[11px] ml-1.5 hidden sm:inline">Tek sütun akış</span>
+                </div>
+                <span id="feed-sort-badge" class="text-[11px] font-medium text-ink-muted">Önerilen sıralama</span>
+              </div>
+
+              <!-- İLAN KARTLARI / LİSTE KONTEYNERİ (TEK SÜTUN) -->
+              <div id="grid" class="job-grid flex flex-col gap-3 w-full"></div>
+
+              <!-- Boş Durum (Empty State) -->
+              <div id="empty" class="empty hidden bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark p-8 text-center my-4 border border-black/[0.06] dark:border-white/[0.08]">
+                <div class="w-12 h-12 rounded-2xl bg-subtle-light dark:bg-white/5 mx-auto flex items-center justify-center text-ink-muted mb-3">
+                  <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </div>
+                <h3 class="font-display font-bold text-sm text-slate-900 dark:text-white mb-1">Eşleşen ilan bulunamadı</h3>
+                <p class="text-xs text-ink-secondary dark:text-zinc-400 max-w-xs mx-auto mb-3">
+                  Filtreleri sıfırlayarak tüm ilanları tekrar görüntüleyebilirsiniz.
+                </p>
+                <button data-action="reset" type="button" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors cursor-pointer">
+                  Filtreleri Temizle
+                </button>
+              </div>
+
+              <!-- Sayfalama (Pager) -->
+              <nav class="pager flex justify-center items-center gap-3 mt-6 mb-6" id="pager" hidden aria-label="Sonuç sayfaları">
+                <button id="prev" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] transition-colors cursor-pointer">← Önceki</button>
+                <span id="page-info" class="text-xs font-mono font-medium text-ink-secondary dark:text-zinc-300"></span>
+                <button id="next" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] transition-colors cursor-pointer">Sonraki →</button>
+              </nav>
+
             </div>
-            <h3 class="font-display font-bold text-base text-slate-900 dark:text-white mb-1">Eşleşen ilan bulunamadı</h3>
-            <p class="text-xs text-ink-secondary dark:text-zinc-400 max-w-md mx-auto mb-4">
-              Seçtiğiniz arama kriterlerine veya filtrelere uygun aktif bir ilan kalmadı. Filtreleri sıfırlayarak tüm ilanları tekrar görüntüleyebilirsiniz.
-            </p>
-            <button data-action="reset" type="button" class="px-5 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors cursor-pointer">
-              Filtreleri Temizle
-            </button>
-          </div>
 
-          <!-- Sayfalama (Pager) -->
-          <nav class="pager flex justify-center items-center gap-3 mt-8 mb-6" id="pager" hidden aria-label="Sonuç sayfaları">
-            <button id="prev" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] transition-colors cursor-pointer">← Önceki</button>
-            <span id="page-info" class="text-xs font-mono font-medium text-ink-secondary dark:text-zinc-300"></span>
-            <button id="next" class="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-surface-light dark:bg-surface-dark border border-black/10 dark:border-white/10 hover:border-[#0A66C2] transition-colors cursor-pointer">Sonraki →</button>
-          </nav>
+            <!-- SAĞ SÜTUN: SÜREKLİ AÇIK OLAN İLAN PENCERESİ (PERSISTENT DETAIL PANE) -->
+            <div id="persistent-detail-pane" class="persistent-detail hidden lg:flex flex-col flex-1 min-w-0 sticky top-[80px] max-h-[calc(100vh-100px)] overflow-y-auto bg-surface-light dark:bg-surface-dark rounded-2xl border border-black/[0.08] dark:border-white/[0.08] shadow-card dark:shadow-card-dark transition-all">
+              
+              <!-- Sticky Header for Persistent Pane -->
+              <div class="px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between notranslate sticky top-0 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md z-10" translate="no">
+                <div class="flex items-center gap-2 text-xs font-semibold text-ink-muted">
+                  <span class="w-2 h-2 rounded-full bg-[#0A66C2] animate-pulse"></span>
+                  <span id="persistent-category-path">İlan Detayı</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span id="persistent-job-position" class="text-xs font-mono text-ink-muted"></span>
+                  <div class="flex items-center gap-1 border-l border-black/10 dark:border-white/10 pl-2">
+                    <button id="persistent-prev-job" class="p-1 rounded-lg text-ink-muted hover:text-slate-900 dark:hover:text-white hover:bg-subtle-light dark:hover:bg-white/5 cursor-pointer disabled:opacity-30" title="Önceki ilan">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button id="persistent-next-job" class="p-1 rounded-lg text-ink-muted hover:text-slate-900 dark:hover:text-white hover:bg-subtle-light dark:hover:bg-white/5 cursor-pointer disabled:opacity-30" title="Sonraki ilan">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dynamic Detail Content -->
+              <div id="persistent-job-content" class="p-6 sm:p-7 space-y-6">
+                <div class="p-12 text-center text-ink-muted">
+                  <p class="text-sm">İlan detayları yükleniyor…</p>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
 
         </main>
       </div>
@@ -902,7 +987,7 @@
     <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
       <div id="jobDrawerPanel" class="w-screen max-w-2xl bg-surface-light dark:bg-surface-dark shadow-2xl border-l border-black/10 dark:border-white/10 flex flex-col justify-between overflow-y-auto">
         <div class="p-6 sm:p-8 space-y-6">
-          <div class="flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.08] pb-4">
+          <div class="flex items-center justify-between border-b border-black/[0.08] dark:border-white/[0.08] pb-4 notranslate" translate="no">
             <div id="job-dialog-header" class="flex items-center gap-2 text-xs font-medium text-ink-muted">
               <span id="job-category-path">İlan detayı</span>
             </div>
@@ -914,7 +999,7 @@
           </div>
           <div id="job-content" class="space-y-6"></div>
         </div>
-        <div class="job-navigation sticky bottom-0 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md p-4 sm:px-8 border-t border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between gap-3">
+        <div class="job-navigation sticky bottom-0 bg-surface-light/95 dark:bg-surface-dark/95 backdrop-blur-md p-4 sm:px-8 border-t border-black/[0.08] dark:border-white/[0.08] flex items-center justify-between gap-3 notranslate" translate="no">
           <button id="previous-job" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-black/10 dark:border-white/10 hover:border-[#0A66C2] cursor-pointer">← Önceki ilan</button>
           <span id="job-position" class="text-xs font-mono font-medium text-ink-muted"></span>
           <button id="next-job" class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-black/10 dark:border-white/10 hover:border-[#0A66C2] cursor-pointer">Sonraki ilan →</button>

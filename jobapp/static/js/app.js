@@ -14,7 +14,8 @@ const date = value => value ? new Date(/[zZ]|[+]\d\d:\d\d$/.test(value) ? value 
 // Kartlar için kısa tarih: yayın günü (saat bilgisi yok), eklenme gün + saat.
 const shortDate = (value, time) => value ? new Date(/[zZ]|[+]\d\d:\d\d$/.test(value) ? value : value+'Z').toLocaleString('tr-TR', time ? {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'} : {day:'numeric',month:'short',year:'numeric'}) : 'Belirtilmemiş';
 const groupKeys = ['opportunity_type','category','seniority','workplace','company','skills','flag','backend','source','search_term','search_location'];
-const multiKeys = new Set([...groupKeys,'profession_group','profession_subgroup','run_id','task_id','exclude_skills']);
+const multiKeys = new Set([...groupKeys,'profession_group','profession_subgroup','run_id','task_id','exclude_skills','city']);
+const getSelectedCities = () => { if (!filters.city) return []; return Array.isArray(filters.city) ? filters.city : [filters.city]; };
 let prefs={}; try {prefs=JSON.parse(localStorage.getItem('linko.ui.v2')||'{}');} catch {}
 let filters={}, view=prefs.view||'cards', draft=Array.isArray(prefs.draft)?prefs.draft:[], form=prefs.form||{};
 const newId=()=>crypto.randomUUID();
@@ -102,35 +103,63 @@ function badge(text,cls=''){return text?`<span class="badge ${cls}">${esc(text)}
 function setFilter(key,value,push=true){if(value===''||value==null||Array.isArray(value)&&!value.length)delete filters[key];else filters[key]=value;if(key==='country'){delete filters.city;cityOptionsCountry='';}delete filters.page;syncControls();persist(push);renderChips();loadAll();}
 function syncControls(){
   $('search').value=filters.search||'';
-  if ($('locationInput')) {
-    $('locationInput').value = filters.location_text || filters.city || '';
-    $('clearLocationBtn')?.classList.toggle('hidden', !$('locationInput').value);
-  }
   $('clearKeywordBtn')?.classList.toggle('hidden', !$('search').value);
-  $('location-country').value=filters.country||'';$('location-city').value=filters.city||'';$('location-city').hidden=!filters.country;$('location-city').disabled=!filters.country||cityOptionsCountry!==filters.country;$('sort').value=filters.sort||'recent';$('per-page').value=filters.per_page||'24';
+  $('location-country').value=filters.country||'';
+  const cities = getSelectedCities();
+  $('location-city').value=cities[0]||'';
+  $('location-city').hidden=!filters.country;
+  $('location-city').disabled=!filters.country||cityOptionsCountry!==filters.country;
+  $('sort').value=filters.sort||'recent';
+  $('per-page').value=filters.per_page||'24';
   document.querySelectorAll('[data-filter]').forEach(el=>{const v=filters[el.dataset.filter];if(el.type==='checkbox')el.checked=v==='1';else el.value=el.type==='date'&&v?String(v).slice(0,10):v??(el.dataset.filter==='visibility'?'active':el.dataset.filter==='quality'?'valid':el.dataset.filter==='skill_mode'?'any':'');});
   $('exclude-skills').value=(filters.exclude_skills||[]).join(', ');$('run-filter').value=(filters.run_id||[])[0]||'';
   document.querySelectorAll('[data-facet]').forEach(el=>{el.checked=(filters[el.dataset.facet]||[]).includes(el.value);});
   document.querySelectorAll('[data-quick]').forEach(el=>el.setAttribute('aria-pressed',String(quickActive(el.dataset.quick))));$('date-preset').value=String(postedPreset()||'');
   $('search-scope').textContent=filters.task_id?.length?`Seçili arama kimliği: ${filters.task_id.join(', ')}`:'';
 
-  // Popover Trigger Button Güncellemesi
-  const ccActive = $('countryCityActiveText');
-  const ccBadge = $('countryCityCountBadge');
-  if (ccActive && ccBadge) {
-    if (filters.city) {
-      ccActive.textContent = `${filters.country || 'Konum'} · ${filters.city}`;
-      ccBadge.textContent = '1';
-      ccBadge.classList.remove('hidden');
-    } else if (filters.country) {
-      ccActive.textContent = `${filters.country} (Tümü)`;
-      ccBadge.textContent = '1';
-      ccBadge.classList.remove('hidden');
+  // Hero Konum Tetikleyici ve Rozet Güncellemesi
+  const hlActive = $('heroLocationActiveText') || $('countryCityActiveText');
+  const hlBadge = $('heroLocationBadge') || $('countryCityCountBadge');
+  const hlClear = $('clearLocationBtn');
+  const country = filters.country || '';
+
+  if (hlActive) {
+    if (country && cities.length > 0) {
+      if (cities.length === 1) {
+        hlActive.textContent = `${country} · ${cities[0]}`;
+        if (hlBadge) { hlBadge.textContent = '1'; hlBadge.classList.remove('hidden'); }
+      } else if (cities.length === 2) {
+        hlActive.textContent = `${country} · ${cities[0]}, ${cities[1]}`;
+        if (hlBadge) { hlBadge.textContent = '2'; hlBadge.classList.remove('hidden'); }
+      } else {
+        hlActive.textContent = `${country} · ${cities[0]}, ${cities[1]} (+${cities.length - 2})`;
+        if (hlBadge) { hlBadge.textContent = `${cities.length}`; hlBadge.classList.remove('hidden'); }
+      }
+      if (hlClear) hlClear.classList.remove('hidden');
+    } else if (country) {
+      hlActive.textContent = `${country} (Tüm Şehirler)`;
+      if (hlBadge) { hlBadge.textContent = 'Tümü'; hlBadge.classList.remove('hidden'); }
+      if (hlClear) hlClear.classList.remove('hidden');
     } else {
-      ccActive.textContent = 'Ülke · Şehir: Tümü';
-      ccBadge.classList.add('hidden');
+      hlActive.textContent = 'Konum seçin (Tümü)';
+      if (hlBadge) hlBadge.classList.add('hidden');
+      if (hlClear) hlClear.classList.add('hidden');
     }
   }
+
+  const hlFooter = $('heroLocationFooterSummary');
+  if (hlFooter) {
+    if (!country) hlFooter.textContent = 'Ülke seçimi bekleniyor';
+    else if (cities.length === 0) hlFooter.textContent = `${country} genelindeki tüm şehirler`;
+    else hlFooter.textContent = `${country}: ${cities.length} şehir seçili`;
+  }
+
+  document.querySelectorAll('.cc-quick-pill').forEach(pill => {
+    const isIstanbul = filters.country === 'Türkiye' && cities.includes('İstanbul');
+    pill.classList.toggle('!bg-[#0A66C2]', isIstanbul);
+    pill.classList.toggle('!text-white', isIstanbul);
+    pill.classList.toggle('!border-[#0A66C2]', isIstanbul);
+  });
 
   // Sidebar aktif filtre sayısı rozeti
   const filterCount = Object.keys(filters).filter(k => names[k] && !['sort', 'page', 'per_page'].includes(k) && !((k==='visibility'&&filters[k]==='active')||(k==='quality'&&filters[k]==='valid')||(k==='skill_mode'&&filters[k]==='any'))).length;
@@ -242,124 +271,94 @@ function jobCard(j){
   const workplace=j.workplace_type?tr(j.workplace_type):'';
   const place=[j.location,workplace].filter(Boolean).join(' · ');
 
+  const isSelected = currentJob ? Number(j.id) === Number(currentJob) : false;
+
   const hideOrRestore=j.deleted_at
-    ? `<button type="button" data-action="restore-job" data-id="${j.id}" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">Geri yükle</button><button type="button" data-action="purge-job" data-id="${j.id}" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-500/10">Kalıcı sil</button>`
-    : `<button type="button" data-action="delete-job" data-id="${j.id}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-ink-secondary dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-subtle-light dark:hover:bg-white/[0.08] transition-colors cursor-pointer" title="İlgilenmiyorum — çöp kutusuna taşır">Gizle</button>`;
+    ? `<button type="button" data-action="restore-job" data-id="${j.id}" class="p-1 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer" title="Geri yükle">↩</button>`
+    : `<button type="button" data-action="delete-job" data-id="${j.id}" class="p-1 rounded-lg text-ink-muted hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer" title="İlanı gizle">✕</button>`;
 
-  const primaryBtn=link
-    ? `<a class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white transition-all shadow-xs cursor-pointer" href="${esc(link)}" target="_blank" rel="noopener noreferrer" title="İlanı kaynağında aç"><span>İlana git</span><span class="text-[11px]">↗</span></a>`
-    : `<button type="button" data-action="job" data-id="${j.id}" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white transition-all shadow-xs cursor-pointer"><span>Detay</span><span class="text-[11px]">↗</span></button>`;
+  return `<article data-job-id="${j.id}" data-id="${j.id}" data-action="job" class="job-card group relative bg-surface-light dark:bg-surface-dark rounded-xl p-4 sm:p-4.5 flex flex-col justify-between overflow-hidden border cursor-pointer transition-all duration-150 ${isSelected ? 'selected-job ring-2 ring-[#0A66C2] border-l-4 border-l-[#0A66C2] bg-blue-50/45 dark:bg-[#0A66C2]/15 shadow-sm' : 'border-black/[0.07] dark:border-white/[0.08] hover:border-[#0A66C2]/50 hover:bg-zinc-50/50 dark:hover:bg-white/[0.02] shadow-2xs'} ${isSeen && !isSelected ? 'seen opacity-85' : ''} ${j.deleted_at ? 'opacity-55 border-dashed border-rose-500/40' : ''}">
+    
+    <div class="flex items-start gap-3.5 min-w-0">
+      <!-- Şirket Logosu / Baş Harfi (LinkedIn kare logo) -->
+      <div class="w-12 h-12 rounded-xl border ${hue} flex items-center justify-center font-display font-extrabold text-lg shrink-0 shadow-2xs">
+        ${esc(initial)}
+      </div>
 
-  if(view==='list'){
-    return `<article data-job-id="${j.id}" data-id="${j.id}" class="job-card p-4 sm:px-5 bg-surface-light dark:bg-surface-dark rounded-xl shadow-card dark:shadow-card-dark border border-black/[0.06] dark:border-white/[0.08] hover:bg-subtle-light/40 dark:hover:bg-white/[0.02] transition-colors flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 ${isSeen?'seen opacity-75':''} ${j.deleted_at?'opacity-55 border-dashed border-rose-500/40':''}">
-      <div class="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
-        <div class="w-11 h-11 rounded-xl border ${hue} flex items-center justify-center font-display font-extrabold text-sm shrink-0 shadow-xs">
-          ${esc(initial)}
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            ${devId(j)}
-            <h3 class="font-display font-bold text-sm sm:text-base text-slate-900 dark:text-white hover:text-[#0A66C2] dark:hover:text-[#70B5F9] cursor-pointer truncate">
-              <button class="job-open text-left" data-action="job" data-id="${j.id}">${esc(j.title||'Unvan belirtilmemiş')}</button>
-            </h3>
-            ${isNew?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F4EA] text-[#057642] dark:bg-[#057642]/25 dark:text-emerald-300">Yeni</span>`:''}
-            ${j.deleted_at?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">Silindi</span>`:''}
-            ${typeof j.score==='number'?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300">Eşleşme %${Math.round(j.score*100)}</span>`:''}
-          </div>
-          <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-secondary dark:text-zinc-400 mt-0.5">
-            <span class="font-bold text-slate-900 dark:text-zinc-200">${esc(j.company||'Şirket belirtilmemiş')}</span>
-            <span>·</span>
-            <span>${esc(place||'Konum belirtilmemiş')}</span>
-            ${j.experience_years!=null?`<span>·</span><span>${esc(j.experience_years)}+ yıl</span>`:''}
-            <span class="hidden sm:inline">·</span>
-            <span class="hidden sm:inline text-ink-muted">${esc(parentCat)}${subCat?' → '+esc(subCat):''}</span>
+      <!-- Orta Bilgi Alanı -->
+      <div class="min-w-0 flex-1">
+        <div class="flex items-start justify-between gap-1.5">
+          <h3 class="font-display font-bold text-[15px] leading-snug text-slate-900 dark:text-white group-hover:text-[#0A66C2] dark:group-hover:text-[#70B5F9] transition-colors line-clamp-2">
+            <button class="job-open text-left cursor-pointer" data-action="job" data-id="${j.id}">
+              ${esc(j.title || 'Unvan belirtilmemiş')}
+              <span class="inline-block text-[#0A66C2] dark:text-[#70B5F9] text-xs ml-0.5" title="Onaylı ilan">✓</span>
+            </button>
+          </h3>
+          <div class="flex items-center gap-1 shrink-0">
+            ${hideOrRestore}
           </div>
         </div>
-      </div>
-      <div class="flex flex-wrap items-center gap-1.5 shrink-0">
-        ${j.salary?`<span class="px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#E6F4EA] dark:bg-[#057642]/25 text-[#057642] dark:text-emerald-300">${esc(j.salary)}</span>`:''}
-        <span class="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-[#E8F3FF] dark:bg-[#0A66C2]/20 text-[#0A66C2] dark:text-[#70B5F9]">${esc(tr(j.category))}</span>
-        ${seniority?`<span class="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-subtle-light dark:bg-white/[0.06] text-ink-secondary dark:text-zinc-300">${esc(seniority)}</span>`:''}
-        ${(j.tags||[]).slice(0,2).map(s=>`<span class="px-2 py-0.5 rounded-full text-[10px] font-mono text-ink-secondary dark:text-zinc-400 border border-black/[0.08] dark:border-white/[0.08]">${esc(s)}</span>`).join('')}
-      </div>
-      <div class="flex items-center justify-between w-full lg:w-auto gap-3 shrink-0 border-t lg:border-t-0 pt-2.5 lg:pt-0 border-black/[0.05] dark:border-white/[0.05]">
-        <span class="text-xs font-mono ${posted?.fresh?'text-[#057642] dark:text-emerald-400 font-bold':'text-ink-muted'} w-24 lg:text-right" title="Yayın: ${esc(shortDate(j.posted_at,false))} · Eklenme: ${esc(shortDate(j.created_at,true))}">
-          ${posted?.fresh?'• Bugün':(posted?esc(posted.text):'Tarih yok')}
-        </span>
-        <div class="flex items-center gap-1.5">
-          ${hideOrRestore}
-          ${primaryBtn}
+
+        <p class="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate mt-0.5">
+          ${esc(j.company || 'Şirket belirtilmemiş')}
+        </p>
+
+        <p class="text-[11px] text-ink-muted truncate mt-0.5 flex items-center gap-1">
+          <svg class="w-3 h-3 text-ink-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+          <span>${esc(place || 'Konum belirtilmemiş')}</span>
+        </p>
+
+        <!-- LinkedIn yeşil aktif inceleme şeridi veya durum -->
+        <div class="flex items-center gap-1.5 mt-2 text-[11px]">
+          ${isNew ? `<span class="inline-flex items-center px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#E6F4EA] text-[#057642] dark:bg-[#057642]/30 dark:text-emerald-300">Yeni</span>` : ''}
+          <span class="text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1 text-[11px]">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Başvuranlar aktif inceleniyor</span>
+          </span>
+          ${typeof j.score==='number'?`<span class="ml-auto inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300">%${Math.round(j.score*100)} Uyum</span>`:''}
         </div>
-      </div>
-    </article>`;
-  }
 
-  return `<article data-job-id="${j.id}" data-id="${j.id}" class="job-card group relative bg-surface-light dark:bg-surface-dark rounded-2xl shadow-card dark:shadow-card-dark hover:shadow-card-hover dark:hover:shadow-card-dark-hover p-5 flex flex-col justify-between overflow-hidden border border-black/[0.06] dark:border-white/[0.07] ${isSeen?'seen opacity-85':''} ${j.deleted_at?'opacity-55 border-dashed border-rose-500/40':''}">
-    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-[#0A66C2] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-    <div>
-      ${devId(j)}
-      <div class="flex items-start justify-between gap-3 mb-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-11 h-11 rounded-xl border ${hue} flex items-center justify-center font-display font-extrabold text-base shrink-0 shadow-xs">
-            ${esc(initial)}
-          </div>
-          <div class="min-w-0">
-            <p class="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
-              ${esc(j.company||'Şirket belirtilmemiş')}
-            </p>
-            <p class="text-[11px] text-ink-muted truncate mt-0.5 flex items-center gap-1">
-              <svg class="w-3 h-3 shrink-0 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-              </svg>
-              <span>${esc(place||'Konum belirtilmemiş')}</span>
-            </p>
-          </div>
+        <!-- Meta alt satır: Gün + Kolay Başvuru -->
+        <div class="flex items-center gap-2 mt-2 pt-1.5 text-[11px] text-ink-muted border-t border-black/[0.04] dark:border-white/[0.04]">
+          <span class="font-medium">${posted ? esc(posted.text) : 'Tarih belirtilmemiş'}</span>
+          <span>·</span>
+          <span class="text-[#0A66C2] dark:text-[#70B5F9] font-medium flex items-center gap-1">
+            <span class="font-bold">in</span> Kolay Başvuru
+          </span>
+          ${j.salary ? `<span class="ml-auto font-mono font-bold text-emerald-600 dark:text-emerald-400">${esc(j.salary)}</span>` : ''}
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          ${isNew?`<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F4EA] dark:bg-[#057642]/30 text-[#057642] dark:text-emerald-300 border border-[#057642]/20">Yeni</span>`:''}
-          ${j.deleted_at?`<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">Silindi</span>`:''}
-          ${j.flag?badge(tr(j.flag),'warn'):''}
-          ${typeof j.score==='number'?`<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-300">Eşleşme %${Math.round(j.score*100)}</span>`:''}
-        </div>
-      </div>
-
-      <h3 class="font-display font-bold text-[16px] leading-snug text-slate-900 dark:text-white group-hover:text-[#0A66C2] dark:group-hover:text-[#70B5F9] cursor-pointer line-clamp-2 mb-2 transition-colors">
-        <button class="job-open text-left w-full cursor-pointer" data-action="job" data-id="${j.id}">${esc(j.title||'Unvan belirtilmemiş')}</button>
-      </h3>
-
-      <p class="text-[11px] font-medium text-ink-muted truncate mb-2.5" title="${esc(parentCat+(subCat?' → '+subCat:''))}">
-        <span class="text-[#0A66C2] dark:text-[#70B5F9]">${esc(parentCat)}</span>${subCat?` <span class="text-black/30 dark:text-white/30">→</span> <span>${esc(subCat)}</span>`:''}
-      </p>
-
-      <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
-        ${j.experience_years!=null?`<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[#F3F4F6] dark:bg-white/[0.08] text-slate-800 dark:text-zinc-200"><svg class="w-3 h-3 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>${esc(j.experience_years)}+ yıl deneyim</span>`:''}
-        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#E8F3FF] dark:bg-[#0A66C2]/20 text-[#0A66C2] dark:text-[#70B5F9]">${esc(tr(j.category))}</span>
-        ${seniority?`<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-subtle-light dark:bg-white/[0.06] text-ink-secondary dark:text-zinc-300">${esc(seniority)}</span>`:''}
-        ${j.salary?`<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#E6F4EA] dark:bg-[#057642]/25 text-[#057642] dark:text-emerald-300">${esc(j.salary)}</span>`:''}
-      </div>
-
-      ${(j.tags||[]).length>0?`<div class="flex flex-wrap items-center gap-1.5 pt-0.5 mb-2">${(j.tags||[]).slice(0,4).map(t=>`<span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium text-ink-secondary dark:text-zinc-300 bg-subtle-light/75 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08]">${esc(t)}</span>`).join('')}</div>`:''}
-    </div>
-
-    <div class="pt-3 mt-1 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between gap-2">
-      <div class="flex items-center gap-1.5 text-xs">
-        ${posted?.fresh?`<span class="w-2 h-2 rounded-full bg-[#057642] animate-pulse"></span><span class="font-bold text-[#057642] dark:text-emerald-400">Bugün</span>`:`<span class="text-ink-muted text-[11px] font-medium">${posted?esc(posted.text):'Tarih yok'}</span>`}
-        ${j.detail_pending?'<span class="text-[10px] text-amber-500 font-medium">· yükleniyor</span>':''}
-      </div>
-      <div class="flex items-center gap-1.5">
-        ${hideOrRestore}
-        ${primaryBtn}
       </div>
     </div>
   </article>`;
 }
 function renderJobs(){
+  if(lastJobs.length > 0){
+    if(!currentJob || !lastJobs.some(j=>Number(j.id)===Number(currentJob))){
+      currentJob = Number(lastJobs[0].id);
+    }
+  } else {
+    currentJob = null;
+  }
+
   $('grid').innerHTML=lastJobs.map(jobCard).join('');
   $('pager').hidden=pages<=1;const page=Number(filters.page||1);$('page-info').textContent=`${page} / ${pages} sayfa`;$('prev').disabled=page<=1;$('next').disabled=page>=pages;
   $('empty').hidden=lastJobs.length>0;
-  if(!lastJobs.length){const trash=filters.visibility==='trash';const initial=!activeTotal&&!trash&&!Object.keys(filters).some(k=>names[k]&&!['visibility','quality'].includes(k));
+
+  if(!lastJobs.length){
+    const trash=filters.visibility==='trash';
+    const initial=!activeTotal&&!trash&&!Object.keys(filters).some(k=>names[k]&&!['visibility','quality'].includes(k));
     $('empty').innerHTML=trash?'<h3 class="font-display font-bold text-base text-slate-900 dark:text-white mb-1">Çöp kutusu boş</h3><p class="text-xs text-ink-secondary dark:text-zinc-400">Silinen ilanlar geri yüklenebilmek için burada tutulur.</p>':initial?'<h3 class="font-display font-bold text-base text-slate-900 dark:text-white mb-1">İlk ilanlarını birlikte bulalım</h3><p class="text-xs text-ink-secondary dark:text-zinc-400 mb-4">Bir unvan ve konum seçerek ilk taramanı başlat.</p>'+button('new-search','İlk taramamı başlat','','px-5 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors cursor-pointer'):'<h3 class="font-display font-bold text-base text-slate-900 dark:text-white mb-1">Bu filtrelerle ilan bulunamadı</h3><p class="text-xs text-ink-secondary dark:text-zinc-400 max-w-md mx-auto mb-4">Bir filtreyi kaldırabilir veya aramayı genişletebilirsin.</p>'+button('reset','Filtreleri temizle','','px-5 py-2 rounded-xl text-xs font-bold bg-[#0A66C2] text-white hover:bg-[#004182] transition-colors cursor-pointer');
+
+    if($('persistent-job-content')){
+      $('persistent-job-content').innerHTML = `
+        <div class="p-12 text-center text-ink-muted">
+          <p class="text-sm font-medium">Görüntülenecek ilan bulunamadı.</p>
+          <p class="text-xs text-ink-secondary mt-1">Filtreleri sıfırlayarak tüm ilanları tekrar görebilirsiniz.</p>
+        </div>`;
+    }
+  } else if (currentJob && window.innerWidth >= 1024) {
+    // Automatically load the active job into the persistent detail panel on desktop
+    openJob(currentJob, false);
   }
 }
 async function loadJobs(){
@@ -385,30 +384,53 @@ function renderLocationFilters(data){
   const country=$('location-country'),city=$('location-city');if(!country||!city)return;
   const actualLocations=items=>(items||[]).filter(item=>item.value&&String(item.value).trim());
   locationFacetData={country:actualLocations(data.country),city:actualLocations(data.city)};
-  const selectedCountry=filters.country||'',selectedCity=filters.city||'';
+  const selectedCountry=filters.country||'';
+  const selectedCities=getSelectedCities();
   cityOptionsCountry=selectedCountry;
   const countryItems=[...locationFacetData.country];
   country.innerHTML='<option value="">Tüm ülkeler</option>'+countryItems.map(item=>`<option value="${esc(item.value)}">${esc(item.value)} (${Number(item.count).toLocaleString('tr-TR')})</option>`).join('');
   country.value=selectedCountry;
   const cityItems=selectedCountry?[...locationFacetData.city]:[];
   city.innerHTML='<option value="">Tüm şehirler</option>'+cityItems.map(item=>`<option value="${esc(item.value)}">${esc(item.value)} (${Number(item.count).toLocaleString('tr-TR')})</option>`).join('');
-  city.hidden=!selectedCountry;city.disabled=!selectedCountry;city.value=selectedCountry?selectedCity:'';
-  renderCountryCityOptions();
+  city.hidden=!selectedCountry;city.disabled=!selectedCountry;city.value=selectedCountry?(selectedCities[0]||''):'';
+  renderHeroLocationOptions();
 }
-function renderCountryCityOptions(){
-  const list=$('countryCityOptionsList');if(!list)return;
-  const country=filters.country||'',city=filters.city||'',query=($('countryCityQuickSearch')?.value||'').trim().toLocaleLowerCase('tr');
+function renderHeroLocationOptions(){
+  const list=$('heroLocationOptionsList')||$('countryCityOptionsList');if(!list)return;
+  const country=filters.country||'';
+  const selectedCities=getSelectedCities();
+  const selectedSet=new Set(selectedCities);
+  const query=($('heroLocationQuickSearch')?.value||$('countryCityQuickSearch')?.value||'').trim().toLocaleLowerCase('tr');
   const matches=item=>!query||String(item.value).toLocaleLowerCase('tr').includes(query);
+
+  const headerLeft=$('heroLocationHeaderLeft');
+  const searchInput=$('heroLocationQuickSearch')||$('countryCityQuickSearch');
+
   if(!country){
-    const items=locationFacetData.country.filter(matches);
-    list.innerHTML=items.map(item=>`<button type="button" data-country-option="${esc(item.value)}" class="flex w-full items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-black/5 dark:hover:bg-white/5"><span>${esc(item.value)}</span><span class="text-[10px] text-ink-muted">${Number(item.count).toLocaleString('tr-TR')}</span></button>`).join('')||'<p class="px-2.5 py-3 text-xs text-ink-muted">Eşleşen ülke bulunamadı.</p>';
+    if(headerLeft)headerLeft.innerHTML='<span class="text-xs font-bold uppercase tracking-wider text-ink-muted">1. Adım: Ülke Seçin</span>';
+    if(searchInput)searchInput.placeholder='Ülke ara... (örn. Türkiye)';
+    const items=(locationFacetData.country||[]).filter(matches);
+    const allBtn=`<button type="button" data-hero-country-option="" class="flex w-full items-center justify-between px-3 py-2 text-left text-xs rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer group"><span class="font-semibold text-slate-800 dark:text-zinc-200 group-hover:text-[#0A66C2] dark:group-hover:text-[#70B5F9]">🌐 Tüm Konumlar (Filtresiz)</span></button>`;
+    const countriesHtml=items.map(item=>`<button type="button" data-hero-country-option="${esc(item.value)}" class="flex w-full items-center justify-between px-3 py-2 text-left text-xs rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer group"><span class="font-medium text-slate-800 dark:text-zinc-200 group-hover:text-[#0A66C2] dark:group-hover:text-[#70B5F9]">${item.value==='Türkiye'?'🇹🇷 ':''}${esc(item.value)}</span><span class="text-[10px] font-mono text-ink-muted">${Number(item.count).toLocaleString('tr-TR')}</span></button>`).join('')||'<p class="px-3 py-3 text-xs text-ink-muted">Eşleşen ülke bulunamadı.</p>';
+    list.innerHTML=allBtn+countriesHtml;
     return;
   }
-  const cities=locationFacetData.city.filter(matches);
-  list.innerHTML=`<div class="flex items-center justify-between px-2.5 py-2"><span class="text-xs font-semibold">${esc(country)}</span><button type="button" data-country-change class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9]">Ülkeyi değiştir</button></div>`+
-    `<button type="button" data-city-option="" class="flex w-full items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-black/5 dark:hover:bg-white/5 ${!city?'font-semibold text-[#0A66C2] dark:text-[#70B5F9]':''}"><span>Tüm şehirler</span></button>`+
-    (cities.map(item=>`<button type="button" data-city-option="${esc(item.value)}" class="flex w-full items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-black/5 dark:hover:bg-white/5 ${city===item.value?'font-semibold text-[#0A66C2] dark:text-[#70B5F9]':''}"><span>${esc(item.value)}</span><span class="text-[10px] text-ink-muted">${Number(item.count).toLocaleString('tr-TR')}</span></button>`).join('')||'<p class="px-2.5 py-3 text-xs text-ink-muted">Bu ülkeye ait şehir bulunamadı.</p>');
+
+  // Country selected: Step 2 (Checkbox list of cities)
+  if(headerLeft)headerLeft.innerHTML=`<div class="flex items-center gap-1.5 min-w-0"><span class="text-xs font-bold text-slate-900 dark:text-white truncate">${country==='Türkiye'?'🇹🇷 ':''}${esc(country)}</span><button type="button" data-hero-change-country class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer shrink-0">Değiştir</button></div>`;
+  if(searchInput)searchInput.placeholder=`${country} şehri ara... (örn. İstanbul)`;
+
+  const cities=(locationFacetData.city||[]).filter(matches);
+  const actionRow=`<div class="flex items-center justify-between px-2 py-1.5 mb-1 bg-subtle-light dark:bg-white/[0.04] rounded-lg"><button type="button" data-hero-city-select-all class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer">${selectedCities.length?'Tüm Şehirleri Temizle':'Tüm Şehirler'}</button><span class="text-[10px] font-mono font-medium text-ink-muted">${selectedCities.length?`${selectedCities.length} şehir seçili`:'Tümü aktif'}</span></div>`;
+
+  const itemsHtml=cities.length?cities.map(item=>{
+    const isChecked=selectedSet.has(item.value);
+    return `<label class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors select-none group"><div class="flex items-center gap-2.5 min-w-0"><input type="checkbox" data-hero-city-checkbox value="${esc(item.value)}" ${isChecked?'checked':''} class="w-4 h-4 rounded text-[#0A66C2] focus:ring-[#0A66C2] border-zinc-400 dark:border-zinc-600 bg-white dark:bg-zinc-800 cursor-pointer"><span class="truncate ${isChecked?'font-bold text-[#0A66C2] dark:text-[#70B5F9]':'text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white'}">${esc(item.value)}</span></div><span class="text-[10px] font-mono text-ink-muted shrink-0">${Number(item.count).toLocaleString('tr-TR')}</span></label>`;
+  }).join(''):'<p class="px-2.5 py-3 text-xs text-ink-muted">Bu ülkeye ait eşleşen şehir bulunamadı.</p>';
+
+  list.innerHTML=actionRow+itemsHtml;
 }
+const renderCountryCityOptions=renderHeroLocationOptions;
 function renderProfessionFacets(){
   const host=$('profession-tree');if(!host)return;
   const query=($('profession-filter-search')?.value||'').toLocaleLowerCase('tr');
@@ -434,113 +456,262 @@ const scheduleFilters=debounce((key,value)=>setFilter(key,value));
 
 function descriptionHtml(text){return esc(text||'İlan açıklaması bulunamadı.').split(/\n\s*\n/).map(p=>'<p>'+p+'</p>').join('');}
 function safeLink(url){try{const parsed=new URL(url);return ['http:','https:'].includes(parsed.protocol)?parsed.href:null;}catch{return null;}}
-async function openJob(id){
+const translationCache=new Map();
+let currentJobTranslated=false;
+
+function renderJobDetailHtml(j, n){
+  const link=safeLink(j.url),posted=postedAgo(j.posted_at);
+  const initial=(j.company||'?').trim().charAt(0).toLocaleUpperCase('tr');
+  const hue=brandHue(j.company||'');
+  const parentCat=(j.profession_groups||[])[0]||tr(j.category)||'Genel Meslekler';
+  const subCat=(j.profession_subgroups||[])[0]||'';
+  const seniority=[j.opportunity_type && j.opportunity_type!=='unknown'?tr(j.opportunity_type):'',j.seniority&&j.seniority!=='Unknown'?tr(j.seniority):''].filter(Boolean).join(' · ');
+
+  return `
+    <p class="dev-only id-text text-[11px] text-ink-muted">İlan kimliği: #${esc(j.id)} · Kaynak kimliği: ${esc(j.external_id||'—')}</p>
+    
+    <!-- LinkedIn tarzı şirket ve başlık alanı -->
+    <div class="flex items-start gap-4">
+      <div class="w-14 h-14 rounded-2xl border ${hue} flex items-center justify-center font-display font-extrabold text-2xl shrink-0 shadow-sm">
+        ${esc(initial)}
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9]">${esc(j.company||'Şirket belirtilmemiş')}</span>
+          <span class="text-black/20 dark:text-white/20">·</span>
+          <span class="text-xs text-ink-muted">${esc(j.location||'Konum belirtilmemiş')}</span>
+        </div>
+        <h2 id="job-detail-title" class="font-display font-bold text-xl sm:text-2xl text-slate-900 dark:text-white leading-tight flex items-center gap-2" translate="yes">
+          <span>${esc(j.title||'Unvan belirtilmemiş')}</span>
+          <span class="text-[#0A66C2] dark:text-[#70B5F9] text-base" title="Onaylı ilan">✓</span>
+        </h2>
+        <div class="flex flex-wrap items-center gap-2 text-xs text-ink-muted mt-1.5">
+          <span>${esc(j.location||'Türkiye')}</span>
+          <span>·</span>
+          <span>${posted?.fresh?'Bugün yayınlandı':(posted?esc(posted.text):'Tarih belirtilmemiş')}</span>
+          <span>·</span>
+          <span class="text-emerald-600 dark:text-emerald-400 font-medium">100'den fazla başvuru</span>
+          ${isNewJob(j)?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F4EA] text-[#057642]">Yeni</span>`:''}
+          ${j.deleted_at?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">Çöp kutusunda</span>`:''}
+        </div>
+      </div>
+    </div>
+
+    <!-- LinkedIn yeşil başvuran inceleme şeridi -->
+    <div class="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-500/10 px-3.5 py-2 rounded-xl border border-emerald-500/20 w-fit">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span>Başvuranlar aktif olarak inceleniyor</span>
+    </div>
+
+    <!-- LinkedIn tarzı karakteristik hapları (✓ İş yerinde, ✓ Tam Zamanlı) -->
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-subtle-light dark:bg-white/[0.06] text-slate-800 dark:text-zinc-200 border border-black/5 dark:border-white/5">
+        <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        <span>${esc(tr(j.workplace_type||'İş yerinde'))}</span>
+      </span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-subtle-light dark:bg-white/[0.06] text-slate-800 dark:text-zinc-200 border border-black/5 dark:border-white/5">
+        <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        <span>${esc(tr(j.category||'Tam Zamanlı'))}</span>
+      </span>
+      ${seniority?`<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-subtle-light dark:bg-white/[0.06] text-slate-800 dark:text-zinc-200 border border-black/5 dark:border-white/5">
+        <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        <span>${esc(seniority)}</span>
+      </span>`:''}
+      ${j.salary?`<span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-bold bg-[#E6F4EA] dark:bg-[#057642]/25 text-[#057642] dark:text-emerald-300 border border-[#057642]/20">
+        <span>💰 ${esc(j.salary)}</span>
+      </span>`:''}
+    </div>
+
+    <!-- LinkedIn tarzı aksiyon butonları -->
+    <div class="flex flex-wrap items-center gap-2.5 pt-1 border-b border-black/[0.06] dark:border-white/[0.08] pb-5">
+      ${link?`<a class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-colors cursor-pointer" href="${esc(link)}" target="_blank" rel="noopener noreferrer">
+        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.64c-.95 0-1.69.75-1.69 1.69a1.69 1.69 0 0 0 1.69 1.69c.94 0 1.69-.75 1.69-1.69 0-.94-.75-1.69-1.69-1.69Z"/></svg>
+        <span>Kolay Başvuru</span>
+        <span>↗</span>
+      </a>`:''}
+      ${j.deleted_at?button('restore-job','Geri yükle',`data-id="${j.id}"`,'px-5 py-2.5 rounded-full text-xs font-semibold text-emerald-600 hover:bg-emerald-500/10 border border-emerald-500/30'):`<button data-action="delete-job" data-id="${j.id}" class="px-5 py-2.5 rounded-full text-xs font-semibold border border-[#0A66C2] text-[#0A66C2] dark:text-[#70B5F9] hover:bg-[#0A66C2]/10 transition-colors cursor-pointer" title="Çöp kutusuna taşır, geri alınabilir">Kaydet / Gizle</button>`}
+      <button id="job-translate-toggle" data-action="toggle-translate" data-id="${j.id}" type="button" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/40 text-[#0A66C2] dark:text-[#70B5F9] border border-[#0A66C2]/20 hover:bg-[#0A66C2]/10 transition-colors cursor-pointer" title="İlanın başlığını ve açıklamasını Türkçeye çevir">
+        <span class="text-sm">🌐</span>
+        <span id="job-translate-btn-label">Türkçeye Çevir</span>
+      </button>
+      ${button('similar','Benzer ilanlar',`data-id="${j.id}"`,'px-4 py-2.5 rounded-full text-xs font-semibold bg-surface-light dark:bg-white/5 border border-black/10 dark:border-white/10 hover:border-[#0A66C2]')}
+    </div>
+
+    <!-- LinkedIn tarzı Başvuru & Durum Öğrenme Kutusu -->
+    <div class="p-4 rounded-xl bg-[#F8FAFD] dark:bg-white/[0.02] border border-black/[0.06] dark:border-white/[0.06] flex items-center justify-between gap-3">
+      <div>
+        <h4 class="text-xs font-bold text-slate-900 dark:text-white">Diğer 100 başvurana kıyasla durumunuzu öğrenin</h4>
+        <p class="text-[11px] text-ink-muted mt-0.5">Başvuranlara dair özel eşleşme ve pozisyon yeteneklerini analiz edin.</p>
+      </div>
+      ${typeof j.score==='number'?`<span class="px-3 py-1 rounded-full text-xs font-bold bg-[#E8F3FF] dark:bg-[#0A66C2]/30 text-[#0A66C2] dark:text-[#70B5F9] shrink-0">Eşleşme %${Math.round(j.score*100)}</span>`:''}
+    </div>
+
+    ${j.detail_pending?`<div class="notice pending-box p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between gap-3"><p>İlanın açıklaması sırayla arka planda tamamlanacak.</p><button data-action="fetch-detail" data-id="${j.id}" class="px-3 py-1 rounded-lg text-xs font-bold bg-amber-600 text-white cursor-pointer">Şimdi getir</button></div>`:''}
+
+    ${j.summary?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Pozisyon Özeti ve Sorumluluklar</h4><p id="job-detail-summary" class="text-sm leading-relaxed text-ink-secondary dark:text-zinc-300 bg-subtle-light/40 dark:bg-white/[0.02] p-4 rounded-xl border border-black/5 dark:border-white/5" translate="yes">${esc(j.summary)}</p></div>`:''}
+
+    ${j.flag_reason?`<p class="notice warn p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300">Dikkat: ${esc(j.flag_reason)}</p>`:''}
+
+    ${j.tags?.length?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Sınıflandırma ve Yetenek Etiketleri</h4><div class="flex flex-wrap gap-1.5">${j.tags.map(t=>`<span class="px-2.5 py-1 rounded-full text-xs font-mono bg-canvas-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-ink-secondary dark:text-zinc-300">${esc(t)}</span>`).join('')}</div></div>`:''}
+
+    <!-- İş ilanı hakkında -->
+    ${j.detail_pending?'':`<div class="space-y-2.5">
+      <div class="flex items-center justify-between">
+        <h3 class="font-display font-bold text-base text-slate-900 dark:text-white">İş ilanı hakkında</h3>
+        <span id="job-translate-badge" class="hidden inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span>🌐</span><span>Türkçe Çeviri</span>
+        </span>
+      </div>
+      <div id="job-detail-desc" class="job-desc text-sm leading-relaxed text-ink-secondary dark:text-zinc-300 space-y-3.5" translate="yes">
+        ${descriptionHtml(j.formatted_description||j.description)}
+      </div>
+    </div>
+    ${j.formatted_description?`<details class="pt-2"><summary class="text-xs font-semibold text-ink-muted cursor-pointer hover:underline">Kaynak açıklamayı göster</summary><div class="job-desc text-xs text-ink-muted pt-2">${descriptionHtml(j.description)}</div></details>`:''}`}
+
+    ${j.offerings?.length?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Sunulan Olanaklar</h4><ul class="list-disc list-inside text-sm text-ink-secondary dark:text-zinc-300 space-y-1">${j.offerings.map(o=>`<li>${esc(o)}</li>`).join('')}</ul></div>`:''}
+
+    ${j.about_company?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Şirket Hakkında</h4><p class="text-sm text-ink-secondary dark:text-zinc-300 leading-relaxed">${esc(j.about_company)}</p></div>`:''}
+
+    ${repairControls(j)}
+
+    <details class="job-section job-meta-more pt-2 text-xs border-t border-black/5 dark:border-white/5"><summary class="font-semibold text-ink-muted cursor-pointer">Kayıt bilgileri</summary><div class="pt-2 space-y-1 text-ink-muted"><p>Yayın: ${esc(date(j.posted_at))} · İlk eklenme: ${esc(date(j.created_at))} · Son tarama: ${esc(date(j.scraped_at))}</p><p>Arama ilişkileri (${j.search_ids.length})</p>${j.discoveries.map(d=>`<p class="id-text font-mono text-[11px]">Arama: ${esc(d.search_id)} · ${d.is_new?'İlk kez ekledi':'Bu aramada da bulundu'} · ${esc(date(d.found_at))}</p>`).join('')||'<p>Eski kaydın arama ilişkisi bulunamadı.</p>'}</div></details>
+
+    <div id="similar-results" class="pt-2"></div>
+  `;
+}
+
+async function openJob(id, openMobileDrawer = true){
   currentJob=Number(id);detailController?.abort();detailController=new AbortController();const signal=detailController.signal;
+  currentJobTranslated=false;
+
+  // Sol listedeki kart seçim vurgusunu güncelle
+  document.querySelectorAll('#grid .job-card').forEach(el=>{
+    const isThis = el.dataset.id === String(id);
+    el.classList.toggle('selected-job', isThis);
+    el.classList.toggle('border-l-4', isThis);
+    el.classList.toggle('border-l-[#0A66C2]', isThis);
+    el.classList.toggle('bg-blue-50/45', isThis);
+    el.classList.toggle('dark:bg-[#0A66C2]/15', isThis);
+    el.classList.toggle('ring-2', isThis);
+    el.classList.toggle('ring-[#0A66C2]', isThis);
+  });
+
   if($('job-category-path'))$('job-category-path').textContent='İlan yükleniyor…';
   if($('job-title'))$('job-title').textContent='İlan yükleniyor…';
-  $('job-content').innerHTML='<div class="p-8 text-center text-ink-muted"><p>İlan detayları yükleniyor…</p></div>';
-  $('previous-job').disabled=true;$('next-job').disabled=true;$('job-position').textContent='';
-  showDialog('job-dialog');
-  const panel=$('jobDrawerPanel');if(panel)panel.scrollTop=0;
+  if($('persistent-category-path'))$('persistent-category-path').textContent='İlan yükleniyor…';
+  
+  const loadingHtml = '<div class="p-12 text-center text-ink-muted"><div class="inline-block w-6 h-6 border-2 border-[#0A66C2] border-t-transparent rounded-full animate-spin mb-2"></div><p class="text-xs">İlan detayları yükleniyor…</p></div>';
+  if($('job-content'))$('job-content').innerHTML=loadingHtml;
+  if($('persistent-job-content'))$('persistent-job-content').innerHTML=loadingHtml;
+
+  if($('previous-job'))$('previous-job').disabled=true;
+  if($('next-job'))$('next-job').disabled=true;
+  if($('job-position'))$('job-position').textContent='';
+  if($('persistent-prev-job'))$('persistent-prev-job').disabled=true;
+  if($('persistent-next-job'))$('persistent-next-job').disabled=true;
+  if($('persistent-job-position'))$('persistent-job-position').textContent='';
+
+  if(openMobileDrawer && window.innerWidth < 1024){
+    showDialog('job-dialog');
+    const panel=$('jobDrawerPanel');if(panel)panel.scrollTop=0;
+  }
+
   try{
     const [j,n]=await Promise.all([api('/api/jobs/'+id,{signal}),api('/api/jobs/'+id+'/navigation?'+params(),{signal})]);
     if(currentJob!==Number(id))return;
     nav=n;
-    if($('job-title'))$('job-title').textContent=j.title||'İlan detayı';
+    currentJobTranslated=false;
+
     seenIds.add(j.id);saveSeen();
     document.querySelector(`.job-card[data-id="${j.id}"]`)?.classList.add('seen');
-    const link=safeLink(j.url),posted=postedAgo(j.posted_at);
-    const initial=(j.company||'?').trim().charAt(0).toLocaleUpperCase('tr');
-    const hue=brandHue(j.company||'');
+
     const parentCat=(j.profession_groups||[])[0]||tr(j.category)||'Genel Meslekler';
     const subCat=(j.profession_subgroups||[])[0]||'';
     const breadcrumb=parentCat+(subCat?' → '+subCat:'');
     if($('job-category-path'))$('job-category-path').textContent=breadcrumb;
+    if($('persistent-category-path'))$('persistent-category-path').textContent=breadcrumb;
+    if($('job-title'))$('job-title').textContent=j.title||'İlan detayı';
 
-    const facts=[
-      ['Konum & Biçim', [j.location, tr(j.workplace_type)].filter(Boolean).join(' · ')],
-      ['Deneyim & Kıdem', [j.experience_years!=null?j.experience_years+'+ yıl deneyim':'', j.seniority&&j.seniority!=='Unknown'?tr(j.seniority):''].filter(Boolean).join(' · ')],
-      ['Tahmini Maaş Bandı', j.salary||'Belirtilmemiş']
-    ];
+    const detailHtml = renderJobDetailHtml(j, n);
+    if($('job-content'))$('job-content').innerHTML=detailHtml;
+    if($('persistent-job-content'))$('persistent-job-content').innerHTML=detailHtml;
 
-    $('job-content').innerHTML=`
-      <p class="dev-only id-text text-[11px] text-ink-muted">İlan kimliği: #${esc(j.id)} · Kaynak kimliği: ${esc(j.external_id||'—')}</p>
-      
-      <div class="flex items-start gap-4">
-        <div class="w-14 h-14 rounded-2xl border ${hue} flex items-center justify-center font-display font-extrabold text-xl shrink-0 shadow-sm">
-          ${esc(initial)}
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-2 mb-1">
-            ${isNewJob(j)?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E6F4EA] text-[#057642]">Yeni</span>`:''}
-            <span class="text-xs font-medium text-ink-muted">${posted?.fresh?'Bugün yayınlandı':(posted?posted.text:'Tarih belirtilmemiş')}</span>
-            ${j.deleted_at?`<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">Çöp kutusunda</span>`:''}
-          </div>
-          <h2 id="job-title" class="font-display font-bold text-xl sm:text-2xl text-slate-900 dark:text-white leading-snug">${esc(j.title||'Unvan belirtilmemiş')}</h2>
-          <p class="text-sm font-bold text-[#0A66C2] dark:text-[#70B5F9] mt-0.5">${esc(j.company||'Şirket belirtilmemiş')}</p>
-        </div>
-      </div>
+    if($('previous-job'))$('previous-job').disabled=!n.previous;
+    if($('next-job'))$('next-job').disabled=!n.next;
+    if($('job-position'))$('job-position').textContent=`${n.position} / ${n.total} ilan`;
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-subtle-light/70 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.06]">
-        <div>
-          <span class="block text-[11px] font-medium text-ink-muted">Konum & Biçim</span>
-          <span class="text-xs font-bold text-slate-900 dark:text-white mt-0.5 block">${esc(facts[0][1]||'Belirtilmemiş')}</span>
-        </div>
-        <div>
-          <span class="block text-[11px] font-medium text-ink-muted">Deneyim & Kıdem</span>
-          <span class="text-xs font-bold text-slate-900 dark:text-white mt-0.5 block">${esc(facts[1][1]||'Belirtilmemiş')}</span>
-        </div>
-        <div>
-          <span class="block text-[11px] font-medium text-ink-muted">Maaş Bilgisi</span>
-          <span class="text-xs font-mono font-bold ${j.salary?'text-[#057642] dark:text-emerald-400':'text-ink-muted'} mt-0.5 block">${esc(facts[2][1])}</span>
-        </div>
-      </div>
+    if($('persistent-prev-job'))$('persistent-prev-job').disabled=!n.previous;
+    if($('persistent-next-job'))$('persistent-next-job').disabled=!n.next;
+    if($('persistent-job-position'))$('persistent-job-position').textContent=`${n.position} / ${n.total} ilan`;
 
-      <div class="flex flex-wrap items-center gap-2 pt-1 border-b border-black/[0.06] dark:border-white/[0.08] pb-4">
-        ${link?`<a class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#0A66C2] hover:bg-[#004182] text-white shadow-xs transition-colors" href="${esc(link)}" target="_blank" rel="noopener noreferrer"><span>İlana git ve başvur</span> <span>↗</span></a>`:''}
-        ${button('similar','Benzer ilanlar',`data-id="${j.id}"`,'px-3.5 py-2 rounded-xl text-xs font-semibold bg-surface-light dark:bg-white/5 border border-black/10 dark:border-white/10 hover:border-[#0A66C2]')}
-        ${j.deleted_at?button('restore-job','Geri yükle',`data-id="${j.id}"`,'px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-600 hover:bg-emerald-500/10'):`<button data-action="delete-job" data-id="${j.id}" class="px-3.5 py-2 rounded-xl text-xs font-semibold text-ink-muted hover:text-slate-900 dark:hover:text-white hover:bg-subtle-light dark:hover:bg-white/5" title="Çöp kutusuna taşır, geri alınabilir">Gizle</button>`}
-      </div>
-
-      <div class="flex flex-wrap gap-1.5">
-        ${badge(tr(j.category))}
-        ${badge(j.seniority&&j.seniority!=='Unknown'?tr(j.seniority):'')}
-        ${j.flag?badge(tr(j.flag),'warn'):''}
-        ${typeof j.score==='number'?badge('Benzerlik %'+Math.round(j.score*100),'match'):''}
-      </div>
-
-      ${j.detail_pending?`<div class="notice pending-box p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between gap-3"><p>İlanın açıklaması sırayla arka planda tamamlanacak.</p><button data-action="fetch-detail" data-id="${j.id}" class="px-3 py-1 rounded-lg text-xs font-bold bg-amber-600 text-white cursor-pointer">Şimdi getir</button></div>`:''}
-
-      ${j.summary?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Pozisyon Özeti ve Sorumluluklar</h4><p class="text-sm leading-relaxed text-ink-secondary dark:text-zinc-300 bg-subtle-light/40 dark:bg-white/[0.02] p-4 rounded-xl border border-black/5 dark:border-white/5">${esc(j.summary)}</p></div>`:''}
-
-      ${j.flag_reason?`<p class="notice warn p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300">Dikkat: ${esc(j.flag_reason)}</p>`:''}
-
-      ${j.tags?.length?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Sınıflandırma ve Yetenek Etiketleri</h4><div class="flex flex-wrap gap-1.5">${j.tags.map(t=>`<span class="px-2.5 py-1 rounded-full text-xs font-mono bg-canvas-light dark:bg-white/5 border border-black/10 dark:border-white/10 text-ink-secondary dark:text-zinc-300">${esc(t)}</span>`).join('')}</div></div>`:''}
-
-      ${j.detail_pending?'':`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">İlan Açıklaması</h4><div class="job-desc text-sm leading-relaxed text-ink-secondary dark:text-zinc-300 space-y-3">${descriptionHtml(j.formatted_description||j.description)}</div></div>${j.formatted_description?`<details class="pt-2"><summary class="text-xs font-semibold text-ink-muted cursor-pointer hover:underline">Kaynak açıklamayı göster</summary><div class="job-desc text-xs text-ink-muted pt-2">${descriptionHtml(j.description)}</div></details>`:''}`}
-
-      ${j.offerings?.length?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Sunulan Olanaklar</h4><ul class="list-disc list-inside text-sm text-ink-secondary dark:text-zinc-300 space-y-1">${j.offerings.map(o=>`<li>${esc(o)}</li>`).join('')}</ul></div>`:''}
-
-      ${j.about_company?`<div class="space-y-2"><h4 class="font-display font-bold text-xs uppercase tracking-wider text-ink-muted">Şirket Hakkında</h4><p class="text-sm text-ink-secondary dark:text-zinc-300 leading-relaxed">${esc(j.about_company)}</p></div>`:''}
-
-      ${repairControls(j)}
-
-      <details class="job-section job-meta-more pt-2 text-xs border-t border-black/5 dark:border-white/5"><summary class="font-semibold text-ink-muted cursor-pointer">Kayıt bilgileri</summary><div class="pt-2 space-y-1 text-ink-muted"><p>Yayın: ${esc(date(j.posted_at))} · İlk eklenme: ${esc(date(j.created_at))} · Son tarama: ${esc(date(j.scraped_at))}</p><p>Arama ilişkileri (${j.search_ids.length})</p>${j.discoveries.map(d=>`<p class="id-text font-mono text-[11px]">Arama: ${esc(d.search_id)} · ${d.is_new?'İlk kez ekledi':'Bu aramada da bulundu'} · ${esc(date(d.found_at))}</p>`).join('')||'<p>Eski kaydın arama ilişkisi bulunamadı.</p>'}</div></details>
-
-      <div id="similar-results" class="pt-2"></div>
-    `;
-
-    $('previous-job').disabled=!n.previous;
-    $('next-job').disabled=!n.next;
-    $('job-position').textContent=`${n.position} / ${n.total} ilan`;
+    const persistentPane = $('persistent-detail-pane');
+    if(persistentPane && !openMobileDrawer) persistentPane.scrollTop = 0;
   }catch(e){
     if(e.name!=='AbortError'){
       if($('job-category-path'))$('job-category-path').textContent='Hata';
       if($('job-title'))$('job-title').textContent='İlan yüklenemedi';
-      $('job-content').innerHTML=`<div class="notice error p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300"><p>${esc(e.message)}</p><button data-action="job" data-id="${id}" class="mt-2 px-3 py-1 rounded-lg bg-rose-600 text-white font-bold cursor-pointer">Tekrar dene</button></div>`;
+      const errHtml = `<div class="notice error p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300"><p>${esc(e.message)}</p><button data-action="job" data-id="${id}" class="mt-2 px-3 py-1 rounded-lg bg-rose-600 text-white font-bold cursor-pointer">Tekrar dene</button></div>`;
+      if($('job-content'))$('job-content').innerHTML=errHtml;
+      if($('persistent-job-content'))$('persistent-job-content').innerHTML=errHtml;
     }
   }
 }
+
+async function toggleJobTranslation(id){
+  const btns=document.querySelectorAll('#job-translate-toggle');
+  const labels=document.querySelectorAll('#job-translate-btn-label');
+  const badges=document.querySelectorAll('#job-translate-badge');
+  const titleEls=document.querySelectorAll('#job-detail-title');
+  const descEls=document.querySelectorAll('#job-detail-desc');
+  const summaryEls=document.querySelectorAll('#job-detail-summary');
+  if(!titleEls.length||!descEls.length)return;
+  const jobId=Number(id);
+  if(currentJobTranslated){
+    const orig=translationCache.get(jobId)?.original;
+    if(orig){
+      titleEls.forEach(el=>el.textContent=orig.title);
+      descEls.forEach(el=>el.innerHTML=orig.descHtml);
+      if(orig.summary)summaryEls.forEach(el=>el.textContent=orig.summary);
+    }
+    currentJobTranslated=false;
+    labels.forEach(l=>l.textContent='Türkçeye Çevir');
+    badges.forEach(b=>b.classList.add('hidden'));
+    return;
+  }
+  if(translationCache.has(jobId)&&translationCache.get(jobId).translated){
+    const trans=translationCache.get(jobId).translated;
+    titleEls.forEach(el=>el.textContent=trans.title);
+    descEls.forEach(el=>el.innerHTML=descriptionHtml(trans.description));
+    if(trans.summary)summaryEls.forEach(el=>el.textContent=trans.summary);
+    currentJobTranslated=true;
+    labels.forEach(l=>l.textContent='Orijinali Göster');
+    badges.forEach(b=>b.classList.remove('hidden'));
+    return;
+  }
+  labels.forEach(l=>l.textContent='Çevriliyor…');
+  btns.forEach(b=>b.disabled=true);
+  try{
+    const res=await api('/api/jobs/'+jobId+'/translate',{method:'POST'});
+    if(!res||!res.ok)throw new Error(res?.error||'Çeviri tamamlanamadı.');
+    translationCache.set(jobId,{
+      original:{title:titleEls[0].textContent,descHtml:descEls[0].innerHTML,summary:summaryEls[0]?summaryEls[0].textContent:''},
+      translated:res
+    });
+    titleEls.forEach(el=>el.textContent=res.title);
+    descEls.forEach(el=>el.innerHTML=descriptionHtml(res.description));
+    if(res.summary)summaryEls.forEach(el=>el.textContent=res.summary);
+    currentJobTranslated=true;
+    labels.forEach(l=>l.textContent='Orijinali Göster');
+    badges.forEach(b=>b.classList.remove('hidden'));
+    toast('İlan başlığı ve açıklaması Türkçeye çevrildi.');
+  }catch(err){
+    toast('Çeviri yapılamadı: '+err.message);
+    labels.forEach(l=>l.textContent='Türkçeye Çevir');
+  }finally{
+    btns.forEach(b=>b.disabled=false);
+  }
+}
+
 async function similar(id){const box=$('similar-results');box.innerHTML='<p class="notice">Benzer ilanlar aranıyor…</p>';const data=await api(`/api/jobs/${id}/similar`);box.innerHTML=data.reason==='no_embedding'?'<p class="notice">Bu ilanın eşleştirme verisi eksik. Tarama panelindeki “Kayıtlı ilanları yeniden işle” bölümünden hazırlayabilirsin.</p>':data.jobs.length?'<h3 class="job-section">Benzer ilanlar</h3>'+data.jobs.map(j=>button('job',`${j.title} · ${j.company}`,`data-id="${j.id}"`)).join(' '):'<p class="notice">Benzer ilan bulunamadı.</p>';}
 async function jobAction(id,action){
   if(action==='purge'&&!await confirmAction('Bu ilan tüm arama havuzlarından kalıcı olarak silinecek. Geri alınamaz. Devam edilsin mi?'))return;
@@ -1071,7 +1242,7 @@ async function dispatch(action,el){
   if(action==='new-search')return openDrawer();if(action==='dashboard')return showTab('dashboard');if(action==='queue')return showTab('queue');if(action==='watches')return showTab('watches');
   if(action==='routine-city-pause'||action==='routine-city-resume'){await api('/api/routine-cities/'+(action==='routine-city-pause'?'pause':'resume'),{method:'POST'});toast(action==='routine-city-pause'?'Rutin şehir taramaları duraklatıldı; çalışan tur tamamlanacak.':'Rutin şehir taramaları yeniden etkinleştirildi.');await loadWatches();await pollStatus();return;}
   if(action==='dev-menu')return openDev();if(action==='dev-off'){devMode=false;saveDev();applyDev();closeDialog('dev-dialog');toast('Geliştirici modu kapatıldı.');return;}
-  if(action.startsWith('watch-'))return watchAction(action.slice(6),id);if(action==='history')return openHistory();if(action==='daily-summary')return openDailySummary();if(action==='reset')return resetFilters();if(action==='job')return openJob(id);if(action==='similar')return similar(id);
+  if(action.startsWith('watch-'))return watchAction(action.slice(6),id);if(action==='history')return openHistory();if(action==='daily-summary')return openDailySummary();if(action==='reset')return resetFilters();if(action==='job')return openJob(id);if(action==='similar')return similar(id);if(action==='toggle-translate')return toggleJobTranslation(id);
   if(action==='completion-pause'||action==='completion-resume'){await api('/api/completion-queue/'+action.slice(11),{method:'POST'});await pollStatus();return;}
   if(action==='fetch-detail'||action==='repair-job'){if(action==='repair-job')return repairJob(id);await api('/api/jobs/'+id+'/fetch-detail',{method:'POST'});toast('Açıklama manuel öncelikle kuyruğa eklendi.');await pollStatus();return;}
   if(action==='copy-id'){await navigator.clipboard.writeText(id);toast('Kimlik kopyalandı: '+id);return;}
@@ -1165,87 +1336,189 @@ function initHeroSearchAndPopovers(){
     });
   }
 
-  const locInput = $('locationInput');
-  const clearLoc = $('clearLocationBtn');
-  if (locInput && clearLoc) {
-    locInput.addEventListener('input', () => {
-      clearLoc.classList.toggle('hidden', !locInput.value.trim());
-    });
-    clearLoc.addEventListener('click', () => {
-      locInput.value = '';
-      clearLoc.classList.add('hidden');
-      delete filters.location_text;
-      delete filters.city;
-      syncControls();
-      loadAll();
-    });
-    locInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        const val = locInput.value.trim();
-        if (val) filters.location_text = val;
-        else { delete filters.location_text; delete filters.city; }
-        syncControls();
-        loadAll();
-      }
-    });
-  }
-
   const heroBtn = $('heroSearchBtn');
   if (heroBtn) {
     heroBtn.addEventListener('click', () => {
       const q = $('search')?.value.trim() || '';
-      const loc = $('locationInput')?.value.trim() || '';
       if (q) filters.search = q; else delete filters.search;
-      if (loc) filters.location_text = loc; else { delete filters.location_text; delete filters.city; }
       syncControls();
       persist(true);
       loadAll();
     });
   }
 
-  const ccTrigger = $('countryCityTriggerBtn');
-  const ccPopover = $('countryCityPopover');
-  const ccChevron = $('countryCityChevron');
-  $('countryCityOptionsList')?.addEventListener('click', e => {
-    const countryOption=e.target.closest('[data-country-option]');
-    const cityOption=e.target.closest('[data-city-option]');
-    if(countryOption){$('countryCityQuickSearch').value='';setFilter('country',countryOption.dataset.countryOption);}
-    else if(cityOption){setFilter('city',cityOption.dataset.cityOption);}
-    else if(e.target.closest('[data-country-change]')){delete filters.country;delete filters.city;cityOptionsCountry='';syncControls();persist(true);renderChips();loadAll();}
-  });
-  wire('countryCityQuickSearch','input',renderCountryCityOptions);
-  if (ccTrigger && ccPopover) {
-    ccTrigger.addEventListener('click', e => {
+  const hlTrigger = $('heroLocationTriggerBtn') || $('countryCityTriggerBtn');
+  const hlPopover = $('heroLocationPopover') || $('countryCityPopover');
+  const hlChevron = $('heroLocationChevron') || $('countryCityChevron');
+  const hlOptionsList = $('heroLocationOptionsList') || $('countryCityOptionsList');
+  const hlQuickSearch = $('heroLocationQuickSearch') || $('countryCityQuickSearch');
+  const hlClearBtn = $('clearLocationBtn');
+  const hlResetBtn = $('heroLocationResetBtn') || $('clearCountryCityBtn');
+  const hlApplyBtn = $('heroLocationApplyBtn');
+
+  if (hlTrigger && hlPopover) {
+    hlTrigger.addEventListener('click', e => {
       e.stopPropagation();
-      const open = ccPopover.classList.toggle('hidden');
-      if (ccChevron) ccChevron.classList.toggle('rotate-180', !open);
-    });
-    document.addEventListener('click', e => {
-      if (!ccPopover.contains(e.target) && e.target !== ccTrigger) {
-        ccPopover.classList.add('hidden');
-        if (ccChevron) ccChevron.classList.remove('rotate-180');
+      const open = hlPopover.classList.toggle('hidden');
+      hlTrigger.setAttribute('aria-expanded', String(open));
+      if (hlChevron) hlChevron.classList.toggle('rotate-180', open);
+      if (open) {
+        renderHeroLocationOptions();
+        setTimeout(() => hlQuickSearch?.focus(), 50);
       }
     });
+
+    document.addEventListener('click', e => {
+      if (!hlPopover.contains(e.target) && !hlTrigger.contains(e.target)) {
+        hlPopover.classList.add('hidden');
+        hlTrigger.setAttribute('aria-expanded', 'false');
+        if (hlChevron) hlChevron.classList.remove('rotate-180');
+      }
+    });
+
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !ccPopover.classList.contains('hidden')) {
-        ccPopover.classList.add('hidden');
-        if (ccChevron) ccChevron.classList.remove('rotate-180');
+      if (e.key === 'Escape' && !hlPopover.classList.contains('hidden')) {
+        hlPopover.classList.add('hidden');
+        hlTrigger.setAttribute('aria-expanded', 'false');
+        if (hlChevron) hlChevron.classList.remove('rotate-180');
       }
     });
   }
 
-  const clearCC = $('clearCountryCityBtn');
-  if (clearCC) {
-    clearCC.addEventListener('click', () => {
+  if (hlApplyBtn) {
+    hlApplyBtn.addEventListener('click', () => {
+      hlPopover?.classList.add('hidden');
+      hlTrigger?.setAttribute('aria-expanded', 'false');
+      if (hlChevron) hlChevron.classList.remove('rotate-180');
+    });
+  }
+
+  if (hlClearBtn) {
+    hlClearBtn.addEventListener('click', e => {
+      e.stopPropagation();
       delete filters.country;
       delete filters.city;
       delete filters.location_text;
       cityOptionsCountry = '';
+      if (hlQuickSearch) hlQuickSearch.value = '';
       syncControls();
       persist(true);
+      renderChips();
       loadAll();
-      ccPopover?.classList.add('hidden');
-      if (ccChevron) ccChevron.classList.remove('rotate-180');
+      renderHeroLocationOptions();
+    });
+  }
+
+  if (hlResetBtn) {
+    hlResetBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      delete filters.country;
+      delete filters.city;
+      delete filters.location_text;
+      cityOptionsCountry = '';
+      if (hlQuickSearch) hlQuickSearch.value = '';
+      syncControls();
+      persist(true);
+      renderChips();
+      loadAll();
+      renderHeroLocationOptions();
+    });
+  }
+
+  if (hlQuickSearch) {
+    hlQuickSearch.addEventListener('input', renderHeroLocationOptions);
+  }
+
+  if (hlOptionsList) {
+    hlOptionsList.addEventListener('change', e => {
+      const checkbox = e.target.closest('[data-hero-city-checkbox]');
+      if (checkbox) {
+        const val = checkbox.value;
+        let current = getSelectedCities();
+        if (checkbox.checked) {
+          if (!current.includes(val)) current.push(val);
+        } else {
+          current = current.filter(c => c !== val);
+        }
+        if (current.length) {
+          filters.city = current;
+        } else {
+          delete filters.city;
+        }
+        syncControls();
+        persist(true);
+        renderChips();
+        loadAll();
+        
+        const label = checkbox.closest('label');
+        const span = label?.querySelector('span');
+        if (span) {
+          span.classList.toggle('font-bold', checkbox.checked);
+          span.classList.toggle('text-[#0A66C2]', checkbox.checked);
+          span.classList.toggle('dark:text-[#70B5F9]', checkbox.checked);
+        }
+        const hlFooter = $('heroLocationFooterSummary');
+        if (hlFooter) {
+          hlFooter.textContent = current.length ? `${filters.country}: ${current.length} şehir seçili` : `${filters.country} genelindeki tüm şehirler`;
+        }
+      }
+    });
+
+    hlOptionsList.addEventListener('click', e => {
+      const countryBtn = e.target.closest('[data-hero-country-option], [data-country-option]');
+      if (countryBtn) {
+        const countryVal = countryBtn.dataset.heroCountryOption ?? countryBtn.dataset.countryOption;
+        if (countryVal) {
+          filters.country = countryVal;
+          delete filters.city;
+          cityOptionsCountry = countryVal;
+        } else {
+          delete filters.country;
+          delete filters.city;
+          cityOptionsCountry = '';
+        }
+        if (hlQuickSearch) hlQuickSearch.value = '';
+        syncControls();
+        persist(true);
+        renderChips();
+        loadAll();
+        renderHeroLocationOptions();
+        return;
+      }
+
+      if (e.target.closest('[data-hero-change-country], [data-country-change]')) {
+        delete filters.country;
+        delete filters.city;
+        cityOptionsCountry = '';
+        if (hlQuickSearch) hlQuickSearch.value = '';
+        syncControls();
+        persist(true);
+        renderChips();
+        loadAll();
+        renderHeroLocationOptions();
+        return;
+      }
+
+      if (e.target.closest('[data-hero-city-select-all]')) {
+        delete filters.city;
+        syncControls();
+        persist(true);
+        renderChips();
+        loadAll();
+        renderHeroLocationOptions();
+        return;
+      }
+
+      const cityBtn = e.target.closest('[data-city-option]');
+      if (cityBtn && !cityBtn.querySelector('input')) {
+        const val = cityBtn.dataset.cityOption;
+        if (val) filters.city = [val]; else delete filters.city;
+        syncControls();
+        persist(true);
+        renderChips();
+        loadAll();
+        renderHeroLocationOptions();
+      }
     });
   }
 
@@ -1253,18 +1526,22 @@ function initHeroSearchAndPopovers(){
     pill.addEventListener('click', () => {
       const val = pill.getAttribute('data-country-city-pill');
       if (val === 'Türkiye · İstanbul') {
-        const isActive = filters.country === 'Türkiye' && filters.city === 'İstanbul';
-        if (isActive) {
-          delete filters.country;
-          delete filters.city;
+        const cities = getSelectedCities();
+        const hasIstanbul = filters.country === 'Türkiye' && cities.includes('İstanbul');
+        if (hasIstanbul) {
+          const remaining = cities.filter(c => c !== 'İstanbul');
+          if (remaining.length) filters.city = remaining;
+          else { delete filters.country; delete filters.city; }
         } else {
           filters.country = 'Türkiye';
-          filters.city = 'İstanbul';
+          filters.city = [...new Set([...cities, 'İstanbul'])];
         }
         cityOptionsCountry = filters.country || '';
         syncControls();
         persist(true);
+        renderChips();
         loadAll();
+        renderHeroLocationOptions();
       }
     });
   });
@@ -1323,7 +1600,8 @@ function initialize(){
   wire('view-cards','click',()=>{view='cards';applyView();renderJobs();persist(true);});wire('view-list','click',()=>{view='list';applyView();renderJobs();persist(true);});
   for(const [id,delta] of [['prev',-1],['next',1]])wire(id,'click',()=>{filters.page=String(Math.max(1,Math.min(pages,Number(filters.page||1)+delta)));persist(true);loadJobs();$('count').scrollIntoView({block:'center'});});
   wire('previous-job','click',()=>nav.previous&&openJob(nav.previous));wire('next-job','click',()=>nav.next&&openJob(nav.next));
-  $('job-dialog').addEventListener('close',()=>{detailController?.abort();currentJob=null;});
+  wire('persistent-prev-job','click',()=>nav.previous&&openJob(nav.previous, false));wire('persistent-next-job','click',()=>nav.next&&openJob(nav.next, false));
+  $('job-dialog').addEventListener('close',()=>{if(window.innerWidth<1024){detailController?.abort();}});
   wire('add-tasks','click',addTasks);wire('start-scrape','click',startScrape);wire('suggest-titles','click',suggestTitles);wire('add-suggested','click',addSuggested);wire('cancel-suggested','click',closeSuggestions);$('suggest-list').addEventListener('change',updateSuggestCount);for(const [id,on] of [['suggest-all',true],['suggest-none',false]])wire(id,'click',()=>{document.querySelectorAll('#suggest-list [data-suggest]').forEach(el=>el.checked=on);updateSuggestCount();});['loc-input','limit-input'].forEach(id=>wire(id,'input',updateSuggestCount));wire('unlimited','change',()=>{$('limit-input').disabled=$('unlimited').checked;persist();updateSuggestCount();});
   ['kw-input','loc-input','limit-input','collection-opportunity-type','classify-backend','use-embeddings','scrape-mode','refresh-details'].forEach(id=>wire(id,'input',()=>{persist();if(draft.length&&['collection-opportunity-type','classify-backend','use-embeddings','scrape-mode','refresh-details'].includes(id))scheduleDraftSave();}));
   wire('pause-run','click',()=>currentRun&&runAction(currentRun.id,'pause'));wire('resume-run','click',()=>currentRun&&runAction(currentRun.id,'resume'));wire('stop-run','click',()=>currentRun&&runAction(currentRun.id,'stop'));wire('cancel-run','click',()=>currentRun&&runAction(currentRun.id,'cancel'));wire('cancel-all','click',cancelAll);wire('live-logs','click',()=>currentRun&&openLogs(currentRun.id));
