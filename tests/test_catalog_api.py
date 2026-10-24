@@ -19,11 +19,11 @@ class CatalogTests(unittest.TestCase):
         with patch.object(config, 'API_KEY', 'catalog-test-key'):
             return self.client.get(url, headers=headers, **kwargs)
 
-    def seed(self):
+    def seed(self, count=12):
         with self.factory() as session:
             session.add_all([Job(source='linkedin', external_id=str(i), title='Engineer', company='Test',
                 description='Python special-description-word', location_country='Türkiye',
-                location_city='İstanbul', quality_ok=True) for i in range(12)])
+                location_city='İstanbul', quality_ok=True) for i in range(count)])
             session.commit()
 
     def test_compact_catalog_excludes_descriptions_and_refreshes_after_change(self):
@@ -64,3 +64,11 @@ class CatalogTests(unittest.TestCase):
         response = self.get('/api/v1/jobs/detail/linkedin/1')
         self.assertIn('special-description-word', response.json['item']['description'])
         self.assertEqual(self.get('/api/v1/jobs/search-ids?q=doesnotexist').json['ids'], [])
+
+    def test_cold_preview_reads_only_fifty_rows_and_keeps_full_count(self):
+        self.seed(80)
+        response = self.get('/api/v1/jobs/catalog?limit=50')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json['items']), 50)
+        self.assertEqual(response.json['total'], 80)
+        self.assertNotIn('description', response.json['items'][0])

@@ -10,6 +10,8 @@ from .models import Job
 
 _lock = threading.Lock()
 _cache = {}
+_preview_cache = {}
+_preview_lock = threading.Lock()
 FIELDS = ('id', 'source', 'external_id', 'title', 'company', 'location',
           'location_country', 'location_city', 'workplace_type', 'category',
           'seniority', 'tags', 'salary', 'salary_min', 'salary_max',
@@ -30,14 +32,19 @@ def register(app, server):
     @app.get('/api/v1/jobs/catalog')
     def catalog():
         started = time.monotonic()
+        preview = request.args.get('limit') == '50'
         with server.SessionLocal() as session:
             token = revision(session)
-            with _lock:
+            with (_preview_lock if preview else _lock):
                 identity = (server.SessionLocal, token)
-                if _cache.get('identity') != identity:
+                selected_cache = _preview_cache if preview else _cache
+                if selected_cache.get('identity') != identity:
                     columns = [getattr(Job, f) for f in FIELDS]
-                    rows = session.query(*columns).filter(Job.deleted_at.is_(None), Job.quality_ok.is_(True),
-                        func.coalesce(Job.flag, '').notin_(('scam', 'ghost'))).order_by(Job.id.desc()).all()
+                    query = session.query(*columns).filter(Job.deleted_at.is_(None), Job.quality_ok.is_(True),
+                        func.coalesce(Job.flag, '').notin_(('scam', 'ghost')))
+                    total = query.with_entities(func.count(Job.id)).scalar() if preview else None
+                    ordered = query.order_by(Job.id.desc())
+                    rows = ordered.limit(50).all() if preview else ordered.all()
                     items = []
                     for row in rows:
                         item = dict(zip(FIELDS, row))
@@ -49,11 +56,11 @@ def register(app, server):
                         for name in ('posted_at', 'scraped_at'):
                             item[name] = item[name].isoformat() if item[name] else None
                         items.append(item)
-                    payload = json.dumps(dict(items=items, token=token, total=len(items)), ensure_ascii=False,
+                    payload = json.dumps(dict(items=items, token=token, total=total if preview else len(items)), ensure_ascii=False,
                                          separators=(',', ':')).encode()
-                    _cache.clear()
-                    _cache.update(identity=identity, payload=payload, gzip=gzip.compress(payload, compresslevel=5, mtime=0))
-                payload = _cache['gzip'] if 'gzip' in request.accept_encodings else _cache['payload']
+                    selected_cache.clear()
+                    selected_cache.update(identity=identity, payload=payload, gzip=gzip.compress(payload, compresslevel=5, mtime=0))
+                payload = selected_cache['gzip'] if 'gzip' in request.accept_encodings else selected_cache['payload']
         response = Response(payload, mimetype='application/json')
         if 'gzip' in request.accept_encodings: response.headers['Content-Encoding'] = 'gzip'
         response.headers['Vary'] = 'Accept-Encoding'
