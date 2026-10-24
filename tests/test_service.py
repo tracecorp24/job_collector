@@ -32,6 +32,29 @@ class ServiceTests(unittest.TestCase):
         with self.factory() as session:
             self.assertEqual(session.get(Job, job_id).location_country, "Almanya")
 
+    def test_country_enrichment_updates_country_and_city(self):
+        with self.factory() as session:
+            job = Job(source="linkedin", external_id="country-2", title="Frontend Developer",
+                      location="Eindhoven", location_country="Belirtilmemiş", location_city="Belirtilmemiş")
+            session.add(job)
+            session.commit()
+            job_id = job.id
+        with patch.object(country_enrichment, "_infer", return_value={job_id: {"country": "Hollanda", "city": "Eindhoven"}}):
+            country_enrichment._run(server, [job_id], job_id, time.time())
+        with self.factory() as session:
+            saved = session.get(Job, job_id)
+            self.assertEqual(saved.location_country, "Hollanda")
+            self.assertEqual(saved.location_city, "Eindhoven")
+
+    def test_country_enrichment_skips_jobs_without_any_location(self):
+        with self.factory() as session:
+            job = Job(source="linkedin", external_id="country-no-loc", title="Remote Worker",
+                      location="", search_location="", location_country="", location_city="")
+            session.add(job)
+            session.commit()
+            candidates = country_enrichment._missing_country(session.query(Job).filter(Job.id == job.id)).all()
+            self.assertEqual(len(candidates), 0)
+
     def test_stale_autosave_preserves_cancelled_task(self):
         tasks = [dict(id='first',keyword='AI'),dict(id='second',keyword='Backend')]
         ident = self.client.post('/api/queue',json={'tasks':tasks}).json['run_id']

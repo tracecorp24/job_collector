@@ -43,6 +43,7 @@ def tick(server, now=None):
     with runs.lock:
         heartbeat = time.time()
         daily_summary.dispatch(server, now)
+        country_enrichment.dispatch(server, now)
         source = Coordinator().state()
         with server.SessionLocal() as session:
             if server.state.running:

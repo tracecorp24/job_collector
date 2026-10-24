@@ -309,15 +309,24 @@ def _backfill_location_taxonomy():
     from .locations import normalize
     from .models import Setting
 
-    marker = "location_taxonomy_v1"
+    marker = "location_taxonomy_v2"
     with sessionmaker(bind=engine)() as session:
         if session.get(Setting, marker):
             return
         changed = 0
         for job in session.query(Job).yield_per(500):
-            country, city = normalize(job.location or job.search_location)
-            if job.location_country != country or job.location_city != city:
-                job.location_country, job.location_city = country, city
+            country, city = normalize(job.location or "")
+            if (not country or country == "Belirtilmemiş") and job.search_location:
+                s_country, s_city = normalize(job.search_location)
+                if s_country and s_country != "Belirtilmemiş":
+                    country = s_country
+                    if not city or city == "Belirtilmemiş":
+                        city = s_city
+            if country and country != "Belirtilmemiş" and job.location_country != country:
+                job.location_country = country
+                changed += 1
+            if city and city != "Belirtilmemiş" and job.location_city != city:
+                job.location_city = city
                 changed += 1
         session.add(Setting(key=marker, value=json.dumps({"at": datetime.utcnow().isoformat(), "changed": changed})))
         session.commit()
@@ -478,15 +487,19 @@ def upsert_job(session, record: dict) -> tuple[Job, bool]:
     ``(job, created)``.
     """
     record = dict(record)
-    if not record.get("location_country") or not record.get("location_city"):
+    if not record.get("location_country") or not record.get("location_city") or record.get("location_country") == "Belirtilmemiş":
         from .locations import normalize
-        country, city = normalize(record.get("location") or record.get("search_location", ""))
-        record.setdefault("location_country", country)
-        record.setdefault("location_city", city)
-        if not record.get("location_country"):
-            record["location_country"] = country
-        if not record.get("location_city"):
-            record["location_city"] = city
+        country, city = normalize(record.get("location") or "")
+        if (not country or country == "Belirtilmemiş") and record.get("search_location"):
+            s_country, s_city = normalize(record.get("search_location", ""))
+            if s_country and s_country != "Belirtilmemiş":
+                country = s_country
+                if not city or city == "Belirtilmemiş":
+                    city = s_city
+        if not record.get("location_country") or (country and country != "Belirtilmemiş"):
+            record["location_country"] = country or record.get("location_country", "")
+        if not record.get("location_city") or (city and city != "Belirtilmemiş"):
+            record["location_city"] = city or record.get("location_city", "")
     if isinstance(record.get("tags"), (list, tuple)):
         record["tags"] = json.dumps(list(record["tags"]), ensure_ascii=False)
     if isinstance(record.get("offerings"), (list, tuple)):

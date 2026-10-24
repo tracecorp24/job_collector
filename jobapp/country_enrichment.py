@@ -4,10 +4,10 @@ import logging
 import threading
 import time
 
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 
 from . import config, groq_client
-from .locations import normalize_country
+from .locations import normalize, normalize_country
 from .models import Job, Setting
 
 log = logging.getLogger("linko.country_enrichment")
@@ -20,9 +20,23 @@ _last_check = 0.0
 
 
 def _missing_country(query):
-    return query.filter(or_(Job.location_country.is_(None),
-                            func.trim(Job.location_country) == "",
-                            func.lower(func.trim(Job.location_country)).like("belirtilmem%")))
+    """Filter jobs with some location text but missing resolved country or city."""
+    has_text = or_(
+        and_(Job.location.isnot(None), func.trim(Job.location) != "", ~func.lower(func.trim(Job.location)).like("belirtilmem%")),
+        and_(Job.search_location.isnot(None), func.trim(Job.search_location) != "", ~func.lower(func.trim(Job.search_location)).like("belirtilmem%")),
+    )
+    needs_enrichment = or_(
+        Job.location_country.is_(None),
+        func.trim(Job.location_country) == "",
+        func.lower(func.trim(Job.location_country)).like("belirtilmem%"),
+        Job.location_city.is_(None),
+        func.trim(Job.location_city) == "",
+        func.lower(func.trim(Job.location_city)).like("belirtilmem%"),
+    )
+    return query.filter(has_text, needs_enrichment)
+
+
+_missing_location = _missing_country
 
 
 def _job_payload(job):
@@ -38,20 +52,23 @@ def _job_payload(job):
 
 
 def _infer(jobs):
-    """Make one bounded Groq request and return only recognized country values."""
+    """Make one bounded Groq request and return recognized country and city values."""
     messages = [
         {"role": "system", "content": (
-            "You identify the country where a job is located from job data. "
+            "You identify the country and primary canonical city where a job is located from job data. "
             "Use only direct evidence in location, search location, company, title, or description. "
-            "Do not infer a country from the language of the text or the company's nationality. "
-            "For worldwide/remote roles without a specific country, conflicting evidence, or weak evidence, use null. "
-            "Return only JSON: {\"jobs\":[{\"id\": integer, \"country\": string|null}]}. "
-            "Country must be a standard English country name. Include every input id exactly once."
+            "Do not infer location solely from the language of the text or the company's nationality. "
+            "If a city is in Turkey (e.g. Istanbul, Ankara, Izmir, Gebze, Kocaeli, Bursa, etc.), country must be 'Türkiye'. "
+            "For worldwide/fully remote roles without a specific country or city, conflicting evidence, weak evidence, or completely absent location, use null. "
+            "Return only JSON: {\"jobs\":[{\"id\": integer, \"country\": string|null, \"city\": string|null}]}. "
+            "Country must be a standard country name (e.g. 'Türkiye', 'Almanya', 'ABD', 'Hollanda', 'Birleşik Krallık'). "
+            "City must be the primary canonical city name (e.g. 'İstanbul', 'Berlin', 'Londra', 'Amsterdam'). "
+            "Include every input id exactly once."
         )},
         {"role": "user", "content": json.dumps(jobs, ensure_ascii=False)},
     ]
     result = groq_client.chat_json(messages, model=config.GROQ_CLASSIFY_MODEL,
-                                   max_tokens=450, max_wait=12)
+                                   max_tokens=600, max_wait=15)
     inferred = {}
     rows = result.get("jobs", []) if isinstance(result, dict) else []
     for row in rows if isinstance(rows, list) else []:
@@ -61,9 +78,14 @@ def _infer(jobs):
             job_id = int(row.get("id"))
         except (TypeError, ValueError):
             continue
-        country = normalize_country(row.get("country"))
-        if country:
-            inferred[job_id] = country
+        raw_country = row.get("country")
+        raw_city = row.get("city")
+        country = normalize_country(raw_country) if raw_country else ""
+        norm_country, norm_city = normalize(f"{raw_city or ''}, {raw_country or ''}".strip(", "))
+        country = country or (norm_country if norm_country and norm_country != "Belirtilmemiş" else "")
+        city = norm_city if norm_city and norm_city != "Belirtilmemiş" else (str(raw_city).strip() if raw_city else "")
+        if country or city:
+            inferred[job_id] = {"country": country, "city": city}
     return inferred
 
 
@@ -80,13 +102,31 @@ def _run(server, ids, next_cursor, scheduled_at):
             inferred = _infer(payload)
 
         with server.SessionLocal() as session:
-            for job_id, country in inferred.items():
+            for job_id, loc_val in inferred.items():
                 job = session.get(Job, job_id)
-                current_country = (job.location_country or "").strip().casefold() if job else ""
-                if job is None or (current_country and not current_country.startswith("belirtilmem")):
+                if job is None:
                     continue
-                job.location_country = country
-                changed += 1
+                if isinstance(loc_val, dict):
+                    country = loc_val.get("country")
+                    city = loc_val.get("city")
+                elif isinstance(loc_val, tuple):
+                    country, city = loc_val
+                else:
+                    country, city = loc_val, None
+
+                updated = False
+                current_country = (job.location_country or "").strip().casefold()
+                if country and (not current_country or current_country.startswith("belirtilmem")):
+                    job.location_country = country
+                    updated = True
+
+                current_city = (job.location_city or "").strip().casefold()
+                if city and (not current_city or current_city.startswith("belirtilmem") or current_city.startswith("greater ")):
+                    job.location_city = city
+                    updated = True
+
+                if updated:
+                    changed += 1
             state = session.get(Setting, KEY)
             if state is None:
                 state = Setting(key=KEY)
@@ -99,11 +139,11 @@ def _run(server, ids, next_cursor, scheduled_at):
                          last_attempt_at=scheduled_at)
             state.value = json.dumps(saved, ensure_ascii=False)
             session.commit()
-        log.info("Ülke zenginleştirme tamamlandı: aday=%d, güncellenen=%d", len(ids), changed)
+        log.info("Konum zenginleştirme tamamlandı: aday=%d, güncellenen=%d", len(ids), changed)
     except groq_client.GroqError as exc:
-        log.warning("Ülke zenginleştirme AI isteği başarısız oldu; sonraki saat tekrar denenecek: %s", exc)
+        log.warning("Konum zenginleştirme AI isteği başarısız oldu; sonraki saat tekrar denenecek: %s", exc)
     except Exception:
-        log.exception("Ülke zenginleştirme servisi başarısız oldu; sonraki saat tekrar denenecek.")
+        log.exception("Konum zenginleştirme servisi başarısız oldu; sonraki saat tekrar denenecek.")
     finally:
         with _lock:
             _running = False

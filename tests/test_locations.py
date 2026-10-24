@@ -20,6 +20,13 @@ class LocationNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize_country("United States"), "ABD")
         self.assertEqual(normalize_country("Somewhere"), "")
 
+    def test_normalizes_greater_and_localities(self):
+        self.assertEqual(normalize("Greater Istanbul"), ("Türkiye", "İstanbul"))
+        self.assertEqual(normalize("Hadımköy"), ("Türkiye", "İstanbul"))
+        self.assertEqual(normalize("Riva"), ("Türkiye", "İstanbul"))
+        self.assertEqual(normalize("Greater London, United Kingdom"), ("Birleşik Krallık", "Londra"))
+        self.assertEqual(normalize(""), ("Belirtilmemiş", "Belirtilmemiş"))
+
 
 if __name__ == "__main__":
     unittest.main()

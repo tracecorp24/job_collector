@@ -75,7 +75,13 @@ def process_raw(session, raw: dict, classify_backend: str = "rules",
         embedding = embed.embed_text(f"{parsed['title']}\n\n{description}")
         stage("embedding", "finished", available=embedding is not None, duration_ms=round((time.monotonic()-started)*1000))
     salary_parsed = salary.parse_salary(cls.get("salary", ""))
-    location_country, location_city = normalize_location(parsed.get("location") or raw.get("search_location", ""))
+    location_country, location_city = normalize_location(parsed.get("location") or "")
+    if (not location_country or location_country == "Belirtilmemiş") and raw.get("search_location"):
+        s_country, s_city = normalize_location(raw.get("search_location", ""))
+        if s_country and s_country != "Belirtilmemiş":
+            location_country = s_country
+            if not location_city or location_city == "Belirtilmemiş":
+                location_city = s_city
     record = {
         "posted_at": parse_date(raw.get("posted")),
         "experience_years": experience_years(description, parsed["title"], cls),

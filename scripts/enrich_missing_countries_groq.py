@@ -30,17 +30,17 @@ if not GROQ_KEY:
 DB_PATH = ROOT_DIR / "jobapp" / "jobs.db"
 
 def groq_infer_countries(jobs_batch):
-    """Call Groq API (openai/gpt-oss-20b) to infer country from company, city/location, title."""
+    """Call Groq API (openai/gpt-oss-20b) to infer country and city from company, city/location, title."""
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {GROQ_KEY}",
         "Content-Type": "application/json"
     }
     system_prompt = (
-        "You identify the country of job postings based on company, city, location, and title. "
-        "Return standard Turkish or English country names (e.g., 'Türkiye', 'Almanya', 'ABD', 'Hollanda', 'Birleşik Krallık'). "
-        "If a city is in Turkey (e.g. Istanbul, Ankara, Izmir, Gebze, Kocaeli, Bursa), country is 'Türkiye'. "
-        "Output ONLY a JSON object: {\"results\": [{\"id\": <job_id>, \"country\": \"<country_name>\"}]}. "
+        "You identify the country and primary canonical city of job postings based on company, city, location, and title. "
+        "Return standard Turkish country names (e.g., 'Türkiye', 'Almanya', 'ABD', 'Hollanda', 'Birleşik Krallık'). "
+        "If a city is in Turkey (e.g. Istanbul, Ankara, Izmir, Gebze, Kocaeli, Bursa, Hadımköy, etc.), country is 'Türkiye'. "
+        "Output ONLY a JSON object: {\"results\": [{\"id\": <job_id>, \"country\": \"<country_name>\", \"city\": \"<canonical_city>\"}]}. "
         "Do not include explanation or markdown formatting."
     )
     
@@ -71,28 +71,34 @@ def groq_infer_countries(jobs_batch):
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
             parsed = json.loads(content)
             results = parsed.get("results") or parsed.get("jobs") or []
-            return {r["id"]: r["country"] for r in results if "id" in r and "country" in r}
+            return {r["id"]: {"country": r.get("country"), "city": r.get("city")} for r in results if "id" in r}
     except Exception as e:
         print(f"Groq API call error: {e}", file=sys.stderr)
     return {}
 
 def main():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=60)
     cursor = conn.cursor()
+    cursor.execute("PRAGMA busy_timeout = 60000")
     
-    # 1. Fetch all jobs where country is missing or unspecified
+    # 1. Fetch jobs where country/city is missing, excluding those with no location info at all
     cursor.execute("""
         SELECT id, company, location, search_location, title 
         FROM jobs 
-        WHERE location_country IS NULL 
+        WHERE (location_country IS NULL 
            OR trim(location_country) = '' 
            OR lower(trim(location_country)) LIKE 'belirtilmem%'
+           OR location_city IS NULL
+           OR trim(location_city) = ''
+           OR lower(trim(location_city)) LIKE 'belirtilmem%')
+          AND ((location IS NOT NULL AND trim(location) != '' AND lower(trim(location)) NOT LIKE 'belirtilmem%')
+           OR (search_location IS NOT NULL AND trim(search_location) != '' AND lower(trim(search_location)) NOT LIKE 'belirtilmem%'))
     """)
     rows = cursor.fetchall()
-    print(f"Total jobs needing country enrichment: {len(rows)}")
+    print(f"Total jobs needing location enrichment: {len(rows)}")
     
     if not rows:
-        print("All jobs already have country information!")
+        print("All jobs already have location information!")
         conn.close()
         return
 
@@ -102,6 +108,8 @@ def main():
     for row in rows:
         jid, company, loc, sloc, title = row
         country, city = normalize(sloc or loc)
+        if not country or country.startswith("Belirtilmem"):
+            country, city = normalize(loc or sloc)
         
         # If normalizer gave a definitive country (not 'Belirtilmemiş', 'Uzaktan', 'Dünya geneli')
         if country and not country.startswith("Belirtilmem") and country not in ("Dünya geneli", "Uzaktan"):
@@ -129,7 +137,9 @@ def main():
         inferred = groq_infer_countries(batch)
         for job in batch:
             jid = job["id"]
-            country = inferred.get(jid)
+            res = inferred.get(jid) or {}
+            country = res.get("country")
+            city = res.get("city")
             if not country:
                 # Fallback to Türkiye if search_location or location indicates Turkey
                 text = f"{job['search_location']} {job['location']}".lower()
@@ -138,9 +148,10 @@ def main():
                 else:
                     country = "Türkiye" # default for current crawl dataset
             
-            # Canonicalize country name
             canonical_country = normalize_country(country) or country
-            cursor.execute("UPDATE jobs SET location_country = ? WHERE id = ?", (canonical_country, jid))
+            norm_c, norm_city = normalize(f"{city or ''}, {canonical_country}".strip(", "))
+            canonical_city = norm_city if norm_city and not norm_city.startswith("Belirtilmem") else (city or "")
+            cursor.execute("UPDATE jobs SET location_country = ?, location_city = ? WHERE id = ?", (canonical_country, canonical_city, jid))
             groq_updated += 1
             
         conn.commit()

@@ -103,7 +103,7 @@ _TURKISH_PROVINCES = ('Adana Adıyaman Afyonkarahisar Ağrı Amasya Ankara Antal
     'Şırnak Bartın Ardahan Iğdır Yalova Karabük Kilis Osmaniye Düzce').split()
 _TURKISH_LOCALITIES = {_key(city): city for city in _TURKISH_PROVINCES}
 for _parent, _districts in (
-    ('İstanbul', 'Ümraniye Kadıköy Şişli Beşiktaş Ataşehir Sarıyer Pendik Kartal Maltepe Üsküdar Tuzla Esenyurt Kağıthane Beykoz Bağcılar Başakşehir Beylikdüzü Zeytinburnu Fatih Bakırköy Eyüpsultan Sultangazi Sultanbeyli Sancaktepe Çekmeköy Büyükçekmece Küçükçekmece Silivri Çatalca Şile Arnavutköy Güngören Bayrampaşa Gaziosmanpaşa Esenler Avcılar Beyoğlu Bahçelievler Adalar'),
+    ('İstanbul', 'Ümraniye Kadıköy Şişli Beşiktaş Ataşehir Sarıyer Pendik Kartal Maltepe Üsküdar Tuzla Esenyurt Kağıthane Beykoz Bağcılar Başakşehir Beylikdüzü Zeytinburnu Fatih Bakırköy Eyüpsultan Sultangazi Sultanbeyli Sancaktepe Çekmeköy Büyükçekmece Küçükçekmece Silivri Çatalca Şile Arnavutköy Güngören Bayrampaşa Gaziosmanpaşa Esenler Avcılar Beyoğlu Bahçelievler Adalar Hadımköy Riva Kurtköy Göktürk Kilyos'),
     ('Ankara', 'Çankaya Sincan Yenimahalle Keçiören Mamak Etimesgut Gölbaşı Altındağ Polatlı Kahramankazan Pursaklar Şereflikoçhisar Beypazarı Çubuk Elmadağ Güdül Haymana Kalecik Kızılcahamam Nallıhan Akyurt Ayaş Bala'),
     ('İzmir', 'Bornova Konak Karşıyaka Bayraklı Buca Çiğli Gaziemir Torbalı Urla Çeşme Menemen Kemalpaşa Aliağa Karabağlar Balçova Bayındır Bergama Beydağ Dikili Foça Güzelbahçe Karaburun Kınık Kiraz Menderes Narlıdere Ödemiş Seferihisar Selçuk Tire'),
     ('Kocaeli', 'Gebze İzmit Darıca Çayırova Dilovası'),
@@ -114,7 +114,14 @@ for _parent, _districts in (
 
 
 def _turkish_city(parts):
-    return next((_TURKISH_LOCALITIES[_key(part)] for part in parts if _key(part) in _TURKISH_LOCALITIES), '')
+    for part in parts:
+        k = _key(part)
+        if k in _TURKISH_LOCALITIES:
+            return _TURKISH_LOCALITIES[k]
+        k_clean = re.sub(r"^(?:greater|buyuk)\s+", "", k).strip()
+        if k_clean in _TURKISH_LOCALITIES:
+            return _TURKISH_LOCALITIES[k_clean]
+    return ''
 
 
 def normalize_country(value):
@@ -177,8 +184,13 @@ def _city(value):
     value = str(value or "").strip()
     if _key(value) in _CITY_BY_KEY:
         return _CITY_BY_KEY[_key(value)]
-    value = re.sub(r"\s+(?:metropolitan area|metro area|area)$", "", value, flags=re.I)
-    return _CITY_BY_KEY.get(_key(value), value)
+    cleaned = re.sub(r"^(?:greater|büyük)\s+", "", value, flags=re.I).strip()
+    if _key(cleaned) in _CITY_BY_KEY:
+        return _CITY_BY_KEY[_key(cleaned)]
+    cleaned = re.sub(r"\s+(?:metropolitan area|metro area|area|bölgesi|ili|merkez)$", "", cleaned, flags=re.I).strip()
+    if _key(cleaned) in _CITY_BY_KEY:
+        return _CITY_BY_KEY[_key(cleaned)]
+    return _CITY_BY_KEY.get(_key(cleaned), cleaned or value)
 
 
 def normalize(value):
