@@ -8,6 +8,10 @@ class LocationNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize("Istanbul, Türkiye"), ("Türkiye", "İstanbul"))
         self.assertEqual(normalize("London Area, England, United Kingdom"), ("Birleşik Krallık", "Londra"))
         self.assertEqual(normalize("Berlin"), ("Almanya", "Berlin"))
+        self.assertEqual(normalize("Rotterdam"), ("Hollanda", "Rotterdam"))
+        self.assertEqual(normalize("Düsseldorf"), ("Almanya", "Düsseldorf"))
+        self.assertEqual(normalize("Bursa"), ("Türkiye", "Bursa"))
+        self.assertEqual(normalize("Antalya"), ("Türkiye", "Antalya"))
 
     def test_preserves_remote_city_with_its_country(self):
         self.assertEqual(normalize("Remote, Germany"), ("Almanya", "Uzaktan"))

@@ -93,13 +93,30 @@ def _run(server, ids, next_cursor, scheduled_at):
     global _running
     changed = 0
     try:
+        inferred = {}
         with server.SessionLocal() as session:
             jobs = session.query(Job).filter(Job.id.in_(ids)).order_by(Job.id).all()
-            payload = [_job_payload(job) for job in jobs]
-        if not payload:
-            inferred = {}
-        else:
-            inferred = _infer(payload)
+            need_llm = []
+            for job in jobs:
+                # First try immediate rule-based location normalization
+                c, ci = normalize(job.location or "")
+                if (not c or c.startswith("Belirtilmem") or c in ("Dünya geneli", "Uzaktan")) and job.search_location:
+                    sc, sci = normalize(job.search_location or "")
+                    if sc and not sc.startswith("Belirtilmem") and sc not in ("Dünya geneli", "Uzaktan"):
+                        c = sc
+                        if not ci or ci.startswith("Belirtilmem"):
+                            ci = sci
+                if c and not c.startswith("Belirtilmem") and c not in ("Dünya geneli", "Uzaktan"):
+                    inferred[job.id] = {
+                        "country": c,
+                        "city": ci if ci and not ci.startswith("Belirtilmem") else (job.location_city or "")
+                    }
+                else:
+                    need_llm.append(_job_payload(job))
+
+        if need_llm:
+            llm_res = _infer(need_llm)
+            inferred.update(llm_res)
 
         with server.SessionLocal() as session:
             for job_id, loc_val in inferred.items():
