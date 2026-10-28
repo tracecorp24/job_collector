@@ -120,12 +120,11 @@ def api_jobs():
                 semantic_fallback = True
 
         if search and semantic_target is None:
-            like = f"%{search}%"
-            q = q.filter(or_(
-                Job.title.ilike(like),
-                Job.company.ilike(like),
-                Job.tags.ilike(like),
-            ))
+            from . import search_engine
+            country_filter = (request.args.get("country") or "").strip() or None
+            search_clause = search_engine.build_search_filter(Job, search, country=country_filter)
+            if search_clause is not None:
+                q = q.filter(search_clause)
 
         for field, column in (
             ("category", Job.category),

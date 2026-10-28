@@ -102,8 +102,8 @@ function button(action,text,attrs='',cls=''){return `<button data-action="${acti
 function badge(text,cls=''){return text?`<span class="badge ${cls}">${esc(text)}</span>`:'';}
 function setFilter(key,value,push=true){if(value===''||value==null||Array.isArray(value)&&!value.length)delete filters[key];else filters[key]=value;if(key==='country'){delete filters.city;cityOptionsCountry='';}delete filters.page;syncControls();persist(push);renderChips();loadAll();}
 function syncControls(){
-  $('search').value=filters.search||'';
-  $('clearKeywordBtn')?.classList.toggle('hidden', !$('search').value);
+  if(document.activeElement !== $('search')) $('search').value=filters.search||'';
+  $('clearKeywordBtn')?.classList.toggle('hidden', !($('search')?.value || filters.search));
   $('location-country').value=filters.country||'';
   const cities = getSelectedCities();
   $('location-city').value=cities[0]||'';
@@ -1208,10 +1208,12 @@ function renderRoutineCities(data){
   const defaults=[...$('routine-profession-list').querySelectorAll('.tag')].map(node=>node.textContent.trim()).filter(Boolean);
   const professions=Array.isArray(data.professions)&&data.professions.length?data.professions:defaults;
   toggle.dataset.action=data.paused?'routine-city-resume':'routine-city-pause';toggle.textContent=data.paused?'Rutin taramaları sürdür':'Rutin taramaları duraklat';
-  $('routine-city-count').textContent=`${cities.length} şehir · ${professions.length} meslek · günlük`;
+  const countryCount=data.country_count||new Set(cities.map(c=>c.country).filter(Boolean)).size;
+  const countryBadge=countryCount?` · ${countryCount} ülke`:'';
+  $('routine-city-count').textContent=`${cities.length} şehir${countryBadge} · ${professions.length} meslek · günlük`;
   $('routine-profession-count').textContent=`${professions.length} meslek`;
   $('routine-profession-list').innerHTML=professions.map(name=>`<span class="tag">${esc(name)}</span>`).join('');
-  $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri, öncelikleri, ilan hedefleri ve sonraki tarama durumu</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Öncelik</th><th scope="col">Meslek başına ilan hedefi</th><th scope="col">Tarama durumu</th></tr></thead><tbody>${cities.map(city=>{const due=data.paused?'Duraklatıldı':Number(city.next_due_at)<=now?'Sırada':relTime(Number(city.next_due_at)-now);const last=city.last_run;const state=last?`${tr(last.status)} · ${Number(last.new||0)} yeni · ${due}`:due;return `<tr${city.critical?' class="routine-city-critical"':''}><td>${Number(city.order)}</td><th scope="row">${esc(city.city)}</th><td>${city.critical?badge('Kritik · ilk sırada','new'):'Rutin'}</td><td>${Number(city.quota)} ilan</td><td>${esc(state)}</td></tr>`;}).join('')}</tbody></table>`;
+  $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri, ülkeleri, öncelikleri, ilan hedefleri ve sonraki tarama durumu</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Ülke</th><th scope="col">Öncelik</th><th scope="col">Meslek başına ilan hedefi</th><th scope="col">Tarama durumu</th></tr></thead><tbody>${cities.map(city=>{const due=data.paused?'Duraklatıldı':Number(city.next_due_at)<=now?'Sırada':relTime(Number(city.next_due_at)-now);const last=city.last_run;const state=last?`${tr(last.status)} · ${Number(last.new||0)} yeni · ${due}`:due;return `<tr${city.critical?' class="routine-city-critical"':''}><td>${Number(city.order)}</td><th scope="row">${esc(city.city)}</th><td>${esc(city.country||'')}</td><td>${city.critical?badge('Kritik · ilk sırada','new'):'Rutin'}</td><td>${Number(city.quota)} ilan</td><td>${esc(state)}</td></tr>`;}).join('')}</tbody></table>`;
 }
 function watchCard(w,now){
   const last=w.last_run,running=!!last&&!['finished','cancelled','stopped'].includes(last.status);
@@ -1325,14 +1327,26 @@ function setMobileFilters(open){
 function initHeroSearchAndPopovers(){
   const kwInput = $('search');
   const clearKw = $('clearKeywordBtn');
-  if (kwInput && clearKw) {
-    kwInput.addEventListener('input', () => {
-      clearKw.classList.toggle('hidden', !kwInput.value.trim());
-    });
-    clearKw.addEventListener('click', () => {
-      kwInput.value = '';
-      clearKw.classList.add('hidden');
-      setFilter('search', '');
+  if (kwInput) {
+    if (clearKw) {
+      kwInput.addEventListener('input', () => {
+        clearKw.classList.toggle('hidden', !kwInput.value.trim());
+      });
+      clearKw.addEventListener('click', () => {
+        kwInput.value = '';
+        clearKw.classList.add('hidden');
+        setFilter('search', '');
+      });
+    }
+    kwInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const q = kwInput.value.trim();
+        if (q) filters.search = q; else delete filters.search;
+        syncControls();
+        persist(true);
+        loadAll();
+      }
     });
   }
 
@@ -1591,7 +1605,7 @@ function initialize(){
   $('acknowledge-source').onclick=acknowledgeSource;
   for(const [id,value] of Object.entries(form)){if($(id)){if($(id).type==='checkbox')$(id).checked=!!value;else $(id).value=value;}}
   $('limit-input').disabled=$('unlimited').checked;$('task-error').after($('start-scrape'));readLocation();syncControls();renderChips();renderDraft();
-  wire('search','input',debounce(e=>setFilter('search',e.target.value.trim())));wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
+  wire('search','input',debounce(e=>{const val=e.target.value.trim();if((filters.search||'')!==val){if(!val)delete filters.search;else filters.search=val;delete filters.page;persist(true);renderChips();loadAll();}}));wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
   wire('exclude-skills','input',debounce(e=>setFilter('exclude_skills',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))));
   wire('run-filter','change',e=>{delete filters.task_id;setFilter('run_id',e.target.value?[e.target.value]:[]);});
   wire('date-preset','change',e=>setPostedPreset(Number(e.target.value)));

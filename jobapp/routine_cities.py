@@ -11,79 +11,75 @@ from .models import RoutineCitySchedule, SearchRun, SearchTask, Setting
 
 _CITY_ROWS = (
     # Istanbul is deliberately first: it is the critical routine location.
-    ("İstanbul", "Istanbul, Turkey", 150, True),
-    ("Amsterdam", "Amsterdam, Netherlands", 50, False),
-    ("Ankara", "Ankara, Turkey", 50, False),
-    ("Barcelona", "Barcelona, Spain", 50, False),
-    ("Berlin", "Berlin, Germany", 50, False),
-    ("Brüksel", "Brussels, Belgium", 50, False),
-    ("Budapeşte", "Budapest, Hungary", 50, False),
-    ("Bükreş", "Bucharest, Romania", 50, False),
-    ("Cambridge", "Cambridge, England, United Kingdom", 50, False),
-    ("Cenevre", "Geneva, Switzerland", 50, False),
-    ("Dublin", "Dublin, Ireland", 50, False),
-    ("Edinburg", "Edinburgh, Scotland, United Kingdom", 50, False),
-    ("Eindhoven", "Eindhoven, Netherlands", 50, False),
-    ("Frankfurt", "Frankfurt, Germany", 50, False),
-    ("Göteborg", "Gothenburg, Sweden", 50, False),
-    ("Hamburg", "Hamburg, Germany", 50, False),
-    ("Helsinki", "Helsinki, Finland", 50, False),
-    ("İzmir", "Izmir, Turkey", 50, False),
-    ("Kopenhag", "Copenhagen, Denmark", 50, False),
-    ("Köln", "Cologne, Germany", 50, False),
-    ("Krakow", "Krakow, Poland", 50, False),
-    ("Lizbon", "Lisbon, Portugal", 50, False),
-    ("Londra", "London, United Kingdom", 50, False),
-    ("Lozan", "Lausanne, Switzerland", 50, False),
-    ("Lyon", "Lyon, France", 50, False),
-    ("Madrid", "Madrid, Spain", 50, False),
-    ("Milano", "Milan, Italy", 50, False),
-    ("Münih", "Munich, Germany", 50, False),
-    ("Oslo", "Oslo, Norway", 50, False),
-    ("Oxford", "Oxford, England, United Kingdom", 50, False),
-    ("Paris", "Paris, France", 50, False),
-    ("Prag", "Prague, Czechia", 50, False),
-    ("Roma", "Rome, Italy", 50, False),
-    ("Sofya", "Sofia, Bulgaria", 50, False),
-    ("Stockholm", "Stockholm, Sweden", 50, False),
-    ("Stuttgart", "Stuttgart, Germany", 50, False),
-    ("Tallinn", "Tallinn, Estonia", 50, False),
-    ("Torino", "Turin, Italy", 50, False),
-    ("Utrecht", "Utrecht, Netherlands", 50, False),
-    ("Valensiya", "Valencia, Spain", 50, False),
-    ("Varşova", "Warsaw, Poland", 50, False),
-    ("Viyana", "Vienna, Austria", 50, False),
-    ("Wroclaw", "Wroclaw, Poland", 50, False),
-    ("Zürih", "Zurich, Switzerland", 50, False),
+    ("İstanbul", "Türkiye", "Istanbul, Turkey", 50, True),
+    ("Amsterdam", "Hollanda", "Amsterdam, Netherlands", 50, False),
+    ("Ankara", "Türkiye", "Ankara, Turkey", 50, False),
+    ("Barcelona", "İspanya", "Barcelona, Spain", 50, False),
+    ("Berlin", "Almanya", "Berlin, Germany", 50, False),
+    ("Brüksel", "Belçika", "Brussels, Belgium", 50, False),
+    ("Budapeşte", "Macaristan", "Budapest, Hungary", 50, False),
+    ("Bükreş", "Romanya", "Bucharest, Romania", 50, False),
+    ("Cambridge", "Birleşik Krallık", "Cambridge, England, United Kingdom", 50, False),
+    ("Cenevre", "İsviçre", "Geneva, Switzerland", 50, False),
+    ("Dublin", "İrlanda", "Dublin, Ireland", 50, False),
+    ("Edinburg", "Birleşik Krallık", "Edinburgh, Scotland, United Kingdom", 50, False),
+    ("Eindhoven", "Hollanda", "Eindhoven, Netherlands", 50, False),
+    ("Frankfurt", "Almanya", "Frankfurt, Germany", 50, False),
+    ("Göteborg", "İsveç", "Gothenburg, Sweden", 50, False),
+    ("Hamburg", "Almanya", "Hamburg, Germany", 50, False),
+    ("Helsinki", "Finlandiya", "Helsinki, Finland", 50, False),
+    ("İzmir", "Türkiye", "Izmir, Turkey", 50, False),
+    ("Kopenhag", "Danimarka", "Copenhagen, Denmark", 50, False),
+    ("Köln", "Almanya", "Cologne, Germany", 50, False),
+    ("Krakow", "Polonya", "Krakow, Poland", 50, False),
+    ("Lizbon", "Portekiz", "Lisbon, Portugal", 50, False),
+    ("Londra", "Birleşik Krallık", "London, United Kingdom", 50, False),
+    ("Lozan", "İsviçre", "Lausanne, Switzerland", 50, False),
+    ("Lyon", "Fransa", "Lyon, France", 50, False),
+    ("Madrid", "İspanya", "Madrid, Spain", 50, False),
+    ("Milano", "İtalya", "Milan, Italy", 50, False),
+    ("Münih", "Almanya", "Munich, Germany", 50, False),
+    ("Oslo", "Norveç", "Oslo, Norway", 50, False),
+    ("Oxford", "Birleşik Krallık", "Oxford, England, United Kingdom", 50, False),
+    ("Paris", "Fransa", "Paris, France", 50, False),
+    ("Prag", "Çekya", "Prague, Czechia", 50, False),
+    ("Roma", "İtalya", "Rome, Italy", 50, False),
+    ("Sofya", "Bulgaristan", "Sofia, Bulgaria", 50, False),
+    ("Stockholm", "İsveç", "Stockholm, Sweden", 50, False),
+    ("Stuttgart", "Almanya", "Stuttgart, Germany", 50, False),
+    ("Tallinn", "Estonya", "Tallinn, Estonia", 50, False),
+    ("Torino", "İtalya", "Turin, Italy", 50, False),
+    ("Utrecht", "Hollanda", "Utrecht, Netherlands", 50, False),
+    ("Valensiya", "İspanya", "Valencia, Spain", 50, False),
+    ("Varşova", "Polonya", "Warsaw, Poland", 50, False),
+    ("Viyana", "Avusturya", "Vienna, Austria", 50, False),
+    ("Wroclaw", "Polonya", "Wroclaw, Poland", 50, False),
+    ("Zürih", "İsviçre", "Zurich, Switzerland", 50, False),
 )
 
 ROUTINE_PROFESSIONS = (
     "Yapay Zeka Mühendisliği",
     "Yazılım Mühendisliği",
-    "Bilgisayar Mühendisliği",
     "Makine Mühendisliği",
     "Elektrik-Elektronik Mühendisliği",
     "Elektrik Güç ve Tesisat Mühendisliği",
     "Mekatronik Mühendisliği",
     "Veri Mühendisliği",
-    "Siber Güvenlik Mühendisliği",
     "Endüstri Mühendisliği",
     "Havacılık ve Uzay Mühendisliği",
-    "Kimya Mühendisliği",
-    "Bulut Bilişim Mühendisliği",
     "Robotik Mühendisliği",
-    "DevOps Mühendisliği",
 )
 
 ROUTINE_CITIES = tuple(
     {
         "order": index,
         "city": city,
+        "country": country,
         "location": location,
         "quota": quota,
         "critical": critical,
     }
-    for index, (city, location, quota, critical) in enumerate(_CITY_ROWS, start=1)
+    for index, (city, country, location, quota, critical) in enumerate(_CITY_ROWS, start=1)
 )
 
 CITY_COUNT = len(ROUTINE_CITIES)
@@ -127,7 +123,7 @@ def _city_snapshot(session, city, row, now):
 
 
 def dispatch(session, now, source):
-    """Queue one due city batch; the shared supervisor runs its 15 tasks serially."""
+    """Queue one due city batch; the shared supervisor runs its 10 tasks serially."""
     if source.get("paused") or is_paused(session):
         return None
     rows = _ensure_schedules(session)
@@ -148,7 +144,7 @@ def dispatch(session, now, source):
         run_id = runs.identifier()
         options = dict(
             kind="scrape", queue_layer="routine", service_managed=True,
-            routine_city=city["city"], routine_city_order=city["order"],
+            routine_city=city["city"], routine_country=city.get("country", ""), routine_city_order=city["order"],
             classify_backend="groq" if config.GROQ_API_KEY else "rules",
             use_embeddings=False, mode="incremental", refresh_details=False,
             posted_within=7 * 86400, sort_recent=True, stop_when_known=True,
@@ -166,13 +162,14 @@ def dispatch(session, now, source):
             audit.record(session, run_id, task_id, "task_queued", {
                 "keyword": profession, "location": city["location"],
                 "limit": city["quota"], "package": task.package,
+                "city": city["city"], "country": city.get("country", ""),
             })
         row.last_run_id = run_id
         row.last_dispatched_at = now
         row.next_due_at = now + row.interval_seconds
         row.updated_at = datetime.utcnow()
         audit.record(session, run_id, None, "routine_city_run_created", {
-            "city": city["city"], "location": city["location"],
+            "city": city["city"], "country": city.get("country", ""), "location": city["location"],
             "order": city["order"], "critical": city["critical"],
             "profession_count": PROFESSION_COUNT, "quota": city["quota"],
             "next_due_at": row.next_due_at,
@@ -191,7 +188,9 @@ def install(server):
             session.commit()
             paused = is_paused(session)
             cities = [_city_snapshot(session, city, rows[city["city"]], now) for city in ROUTINE_CITIES]
+            country_count = len({city["country"] for city in ROUTINE_CITIES if city.get("country")})
             return jsonify(cities=cities, total=len(cities), default_quota=50,
+                           country_count=country_count,
                            professions=list(ROUTINE_PROFESSIONS), profession_count=PROFESSION_COUNT,
                            interval_seconds=ROUTINE_INTERVAL_SECONDS, paused=paused, now=now)
 

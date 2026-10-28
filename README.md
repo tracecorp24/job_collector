@@ -1,6 +1,15 @@
-# Linko Scrapper Light
+# Linko Scrapper Light & NextStep Ekosistemi
+
+> **Genel Bakış:** Bu proje, hesapsız LinkedIn iş ilanı toplayıcısı (**Linko / Job Collector**) ile toplanan verileri tüketip kullanıcılara AI destekli CV ve kariyer platformu sunan **NextStep AI** uygulamasının birlikte çalıştığı entegre bir ekosistemdir.
+> 
+> - **Job Collector (`.`):** LinkedIn ilanlarını kazır, temizler ve `https://job.ai-org.online` üzerinden API sunar (`tracecorp24/job_collector`).
+> - **NextStep AI (`./next_step`):** Canlı API'den ilanları çekerek CV hazırlama, mülakat simülasyonu ve kariyer takibi sunar (`tracecorp24/next_step_v2`).
+> - **CI/CD & Otomasyon:** GitHub Actions ile otomatik VPS deploy (`deploy.yml`), canlı site hata takibi (`incidents.yml`) ve uptime izleme (`uptime.yml`).
+
+---
 
 ### Üç katmanlı görev kuyruğu
+
 
 Tek toplayıcı, hazır işleri şu sırayla çalıştırır:
 
@@ -10,7 +19,7 @@ Tek toplayıcı, hazır işleri şu sırayla çalıştırır:
    Önce alınmış veri kaydedilir, ardından yeni detay istenir.
 3. **Rutin taramalar:** Kayıtlı şehir × meslek listeleri ve zamanlanmış tekrarlar.
 
-Rutin tarama havuzu 44 şehir ve 15 mühendislik mesleğinin şehir başına günlük taramasını oluşturur. İstanbul ilk sırada ve kritik önceliktedir; meslek başına 150 ilan hedefi vardır. Diğer şehirlerde meslek başına hedef 50 ilandır. Son 7 gündeki ilanlar en yeniden eskiye taranır; kaynak hız sınırı ve öncelikli kuyruk uygulanır. Şehirlerin durumu ve hedefleri İş alarmları ekranında ve `GET /api/routine-cities` uç noktasında görüntülenir. Rutin şehir taramaları aynı ekrandan duraklatılıp sürdürülebilir; “Tüm kuyruğu iptal et” bu taramaları da duraklatır.
+Rutin tarama havuzu 44 şehir (22 ülke) ve 10 mühendislik mesleğinin şehir başına günlük taramasını oluşturur. İstanbul ilk sırada ve kritik önceliktedir; tüm şehirlerde meslek başına hedef 50 ilandır. Son 7 gündeki ilanlar en yeniden eskiye taranır; kaynak hız sınırı ve öncelikli kuyruk uygulanır. Şehirlerin ülkeleri, durumları ve hedefleri İş alarmları ekranında ve `GET /api/routine-cities` uç noktasında görüntülenir. Rutin şehir taramaları aynı ekrandan duraklatılıp sürdürülebilir; “Tüm kuyruğu iptal et” bu taramaları da duraklatır.
 
 Daha yüksek öncelikli hazır iş geldiğinde alt katman güvenli noktada sırayı bırakır;
 devam noktası ve elde edilen ilanlar korunur. Kullanıcının duraklattığı işler otomatik başlamaz.

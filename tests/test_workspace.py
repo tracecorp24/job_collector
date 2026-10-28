@@ -100,7 +100,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         self.assertIn('Yapay Zeka Mühendisliği', html)
-        self.assertIn('DevOps Mühendisliği', html)
+        self.assertIn('Robotik Mühendisliği', html)
 
     def test_discovery_ids_survive_later_searches(self):
         first,_,_=self.scrape([response(card(31)),response(DETAIL)],1)

@@ -169,15 +169,11 @@ def filtered(session, args, omit=None):
         q = q.filter(or_(contains(Job.location, loc_val), contains(Job.search_location, loc_val)))
     text = args.get("search", "").strip()
     if text and args.get("semantic") not in ("1", "true"):
-        term_groups = expand_search_terms(text)
-        if term_groups:
-            cols = (Job.title, Job.company, Job.description, Job.tags)
-            group_conds = []
-            for group in term_groups:
-                group_conds.append(or_(*(or_(*(contains(col, syn) for col in cols)) for syn in group)))
-            q = q.filter(and_(*group_conds))
-        else:
-            q = q.filter(or_(*(contains(col, text) for col in (Job.title, Job.company, Job.description, Job.tags))))
+        from . import search_engine
+        country_filter = (args.get("country") or "").strip() or None
+        search_clause = search_engine.build_search_filter(Job, text, country=country_filter)
+        if search_clause is not None:
+            q = q.filter(search_clause)
     if args.get("phrase", "").strip():
         q = q.filter(or_(contains(Job.title, args["phrase"]), contains(Job.description, args["phrase"])))
     for term in args.get("exclude", "").split(","):

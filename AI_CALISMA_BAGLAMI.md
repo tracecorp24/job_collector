@@ -1,6 +1,21 @@
 # Ajanlar için kısa çalışma bağlamı
 
-Güncelleme: 20 Ekim 2026. İlk inceleme üretim `f3d6819` sürümünü kapsıyordu.
+## Güncel Durum ve Sistem Özeti (28 Ekim 2026)
+- **İki Projeli Ekosistem:**
+  1. **Job Collector (Linko Scrapper Light — `.`)**: `tracecorp24/job_collector`, `main` dalında (`9a893fe`). Hesapsız LinkedIn kazıma, veri zenginleştirme ve API sunumu. Canlı: `https://job.ai-org.online`.
+  2. **NextStep AI (`./next_step`)**: `tracecorp24/next_step_v2`, `main` dalında (`eef734f`). AI CV hazırlama, ATS analizi, mülakat simülasyonu ve kariyer platformu. İlanları Job Collector API'sinden (`/api/v1/jobs`) dinamik alır. Canlı: `https://nextstep.ai-org.online`.
+- **Canlı İletişim & GitHub Actions:**
+  - `deploy.yml`: Her `main` push'unda testler geçerse VPS'e (`38.45.81.29`) otomatik deploy.
+  - `incidents.yml`: Canlı sitedeki hataları GitHub Issues ile senkronize eder.
+  - `uptime.yml`: Her 15 dakikada bir `/healthz` probe eder, kesintide otomatik issue açar.
+  - `claude.yml`: GitHub Issue/PR içinde `@claude` çağrısıyla çalışır.
+- **Detaylı Ajan Kılavuzu:** Proje mimarisi ve çalıştırma yönergeleri için kök dizindeki [`CLAUDE.md`](file:///c:/Users/eminf/Desktop/job_collector/linko%20scrapper%20light/CLAUDE.md) dosyasını inceleyin.
+
+---
+
+## Tarihsel Bağlam (20 Ekim 2026)
+
+İlk inceleme üretim `f3d6819` sürümünü kapsıyordu.
 Toplama uygulamasının kaynak dalı `improve/reliable-collection-plan`.
 Arayüzle birleşik çalışma `integrate/ui-and-reliable-collection-20261020` dalında.
 İlk birleşik sürüm `d1df247`, 20 Ekim kullanıcı onayıyla canlıya alındı; GitHub test
@@ -8,6 +23,7 @@ ve deploy işleri başarılı, `/healthz` HTTP 200 ve aynı sürümü bildirdi.
 Eşzamanlı başka Codex çalışıyor: önce
 `ENTEGRASYON_NOTLARI_2026-10-20.md` dosyasındaki dal ve klasör sahipliğini oku.
 Sonra aşağıdaki uygulama durumu ve tarihsel kanıtlarla devam et.
+
 
 ## Önce oku
 
