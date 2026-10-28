@@ -26,9 +26,20 @@ async function openDetails(locator){if(!await locator.evaluate(node=>node.open))
       const url=new URL(request.url());
       return url.pathname==='/api/jobs'&&url.searchParams.get('search')==='Python'&&url.searchParams.get('semantic')==='1';
     });
+    const searchRequests=[];
+    page.on('request',request=>{
+      const url=new URL(request.url());
+      if(['/api/jobs','/api/facets'].includes(url.pathname)&&url.searchParams.get('search')==='Python')searchRequests.push(url.pathname);
+    });
     await page.locator('#search').fill('Python');
+    await page.locator('#search').press('Enter');
     await automaticSearch;
     await page.waitForFunction(()=>document.querySelector('#count').textContent.startsWith('20 ilan'));
+    await page.waitForTimeout(450);
+    assert.deepEqual([...searchRequests].sort(),['/api/facets','/api/jobs'],'Enter bekleyen debounce ile çift arama yapmamalı');
+    await page.locator('#search').press('Enter');
+    await page.waitForTimeout(450);
+    assert.equal(searchRequests.length,2,'Değişmeyen sorguda Enter tekrar istek göndermemeli');
     // Older links cannot disable automatic smart search.
     const oldLinkSearch=page.waitForRequest(request=>{
       const url=new URL(request.url());

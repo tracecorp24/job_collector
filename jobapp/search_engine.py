@@ -7,11 +7,16 @@ from collections import OrderedDict
 import hashlib
 import json
 import logging
+import os
 import re
 import threading
-import urllib.parse
-import urllib.request
-from sqlalchemy import or_, and_, func
+import time
+
+import requests
+from sqlalchemy import or_, and_
+from .search_text import search_fold, folded_column, contains, install_sqlite_search
+
+install_sqlite_search()
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +24,13 @@ log = logging.getLogger(__name__)
 _TRANSLATE_CACHE = OrderedDict()
 _CACHE_LOCK = threading.Lock()
 _MAX_CACHE = 512
-_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl={target}&dt=t&q={text}"
+_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single"
+TRANSLATE_ENABLED = os.environ.get("JOBAPP_TRANSLATE", "0").strip().lower() in ("1", "true", "yes", "on")
+_FAILURE_TTL = 600
+_CIRCUIT_SECONDS = 60
+_TRANSLATE_RETRY_AT = 0.0
+_TRANSLATE_INFLIGHT = set()
+_HTTP_LOCAL = threading.local()
 
 # Genel unvan aileleri (yalnızca kullanıcı spesifik meslek yerine genel kelimeyi girdiğinde eşleşir)
 GENERAL_ROLES = {
@@ -148,58 +159,64 @@ JOB_SKILL_EQUIVALENTS = [
 ]
 
 
-def search_fold(text: str) -> str:
-    """Türkçe ve uluslararası karakterleri arama için katlar/küçültür."""
-    if not text:
-        return ""
-    text = str(text).replace("İ", "i").replace("I", "ı").lower()
-    mapping = {
-        "ç": "c", "ğ": "g", "ı": "i", "ö": "o", "ş": "s", "ü": "u",
-        "ä": "a", "é": "e", "è": "e", "ê": "e", "ë": "e", "à": "a", "â": "a",
-        "î": "i", "ï": "i", "ô": "o", "û": "u", "ù": "u", "ß": "ss",
-    }
-    for k, v in mapping.items():
-        text = text.replace(k, v)
-    text = re.sub(r"[^\w\s+#.-]", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def folded_column(col):
-    """SQLAlchemy sütununu Türkçe karakterlerden arındırıp küçültür."""
-    for a, b in (("İ", "i"), ("ı", "i"), ("Ş", "s"), ("ş", "s"), ("Ğ", "g"), ("ğ", "g"),
-                 ("Ü", "u"), ("ü", "u"), ("Ö", "o"), ("ö", "o"), ("Ç", "c"), ("ç", "c")):
-        col = func.replace(col, a, b)
-    return func.lower(col)
+def _translation_session():
+    # Session çerezleri ve ayarları HTTP worker thread'leri arasında paylaşılmaz.
+    if not hasattr(_HTTP_LOCAL, "session"):
+        _HTTP_LOCAL.session = requests.Session()
+    return _HTTP_LOCAL.session
 
 
 def translate_query(text: str, target: str = "en", timeout: float = 2.5) -> str:
-    """Metni hızlı ve ücretsiz Google Translate servisi üzerinden hedef dile çevirir."""
+    """İsteğe bağlı çeviri; varsayılan kapalı, hatalarda yerel arama korunur."""
+    global _TRANSLATE_RETRY_AT
     text = (text or "").strip()
-    if not text or len(text) > 400:
+    if not TRANSLATE_ENABLED or len(text) < 3 or len(text) > 400:
         return text
     key = (target, hashlib.sha256(text.encode("utf-8")).hexdigest())
+    now = time.monotonic()
     with _CACHE_LOCK:
-        if key in _TRANSLATE_CACHE:
-            _TRANSLATE_CACHE.move_to_end(key)
-            return _TRANSLATE_CACHE[key]
-    url = _TRANSLATE_URL.format(target=urllib.parse.quote(target), text=urllib.parse.quote(text))
-    req = urllib.request.Request(url, headers={
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    })
+        cached = _TRANSLATE_CACHE.get(key)
+        if cached is not None:
+            expires_at, result = cached
+            if now < expires_at:
+                _TRANSLATE_CACHE.move_to_end(key)
+                return result
+            del _TRANSLATE_CACHE[key]
+        if now < _TRANSLATE_RETRY_AT or key in _TRANSLATE_INFLIGHT:
+            return text
+        _TRANSLATE_INFLIGHT.add(key)
+    result, failed = text, True
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read(50000).decode("utf-8"))
-        if isinstance(data, list) and data and isinstance(data[0], list):
-            res = "".join(seg[0] for seg in data[0] if seg and isinstance(seg[0], str)).strip()
-            if res:
-                with _CACHE_LOCK:
-                    _TRANSLATE_CACHE[key] = res
-                    while len(_TRANSLATE_CACHE) > _MAX_CACHE:
-                        _TRANSLATE_CACHE.popitem(last=False)
-                return res
-    except Exception as e:
-        log.debug("Arama çevirisi zaman aşımı veya hata: %s", e)
-    return text
+        with _translation_session().get(_TRANSLATE_URL, params={
+                "client": "gtx", "sl": "auto", "tl": target, "dt": "t", "q": text,
+                }, timeout=timeout, stream=True) as response:
+            response.raise_for_status()
+            payload = response.raw.read(50001, decode_content=True)
+        if len(payload) > 50000:
+            raise ValueError("Çeviri yanıtı sınırı aşıldı.")
+        data = json.loads(payload.decode("utf-8"))
+        if not isinstance(data, list) or not data or not isinstance(data[0], list):
+            raise ValueError("Geçersiz çeviri yanıtı.")
+        result = "".join(segment[0] for segment in data[0]
+                         if isinstance(segment, list) and segment and isinstance(segment[0], str)).strip()
+        if not result:
+            raise ValueError("Boş çeviri yanıtı.")
+        failed = False
+    except Exception as exc:
+        result = text
+        # Sorguyu, URL'yi ve sağlayıcı yanıtını loga taşıma.
+        log.warning("Arama çevirisi kullanılamadı (%s); yerel arama korunuyor.", type(exc).__name__)
+    finally:
+        with _CACHE_LOCK:
+            now = time.monotonic()
+            _TRANSLATE_CACHE[key] = (now + _FAILURE_TTL if failed else float("inf"), result)
+            _TRANSLATE_CACHE.move_to_end(key)
+            while len(_TRANSLATE_CACHE) > _MAX_CACHE:
+                _TRANSLATE_CACHE.popitem(last=False)
+            if failed:
+                _TRANSLATE_RETRY_AT = max(_TRANSLATE_RETRY_AT, now + _CIRCUIT_SECONDS)
+            _TRANSLATE_INFLIGHT.discard(key)
+    return result
 
 
 def expand_search_terms(search_query: str, country: str = None) -> list[str]:
@@ -313,23 +330,23 @@ def build_search_filter(model_cls, search_text: str, country: str = None):
 
     or_conditions = []
     # 1. Ham sorgu şirket adı, başlık, açıklama ve etiketlerde aranır
-    or_conditions.append(folded_column(model_cls.company).like(f"%{f_raw}%"))
-    or_conditions.append(folded_column(model_cls.title).like(f"%{f_raw}%"))
-    or_conditions.append(folded_column(model_cls.tags).like(f"%{f_raw}%"))
-    or_conditions.append(folded_column(model_cls.description).like(f"%{f_raw}%"))
+    or_conditions.append(contains(model_cls.company, f_raw))
+    or_conditions.append(contains(model_cls.title, f_raw))
+    or_conditions.append(contains(model_cls.tags, f_raw))
+    or_conditions.append(contains(model_cls.description, f_raw))
 
     # 2. Çok dilli eşdeğer terimler başlık ve etiketlerde aranır
     for term in terms:
         f_term = search_fold(term)
         if not f_term or f_term == f_raw:
             continue
-        or_conditions.append(folded_column(model_cls.title).like(f"%{f_term}%"))
-        or_conditions.append(folded_column(model_cls.tags).like(f"%{f_term}%"))
+        or_conditions.append(contains(model_cls.title, f_term))
+        or_conditions.append(contains(model_cls.tags, f_term))
 
         # Çok kelimeli ise (örn. 'mechanical engineer'), kelimelerin tamamının başlıkta yer alması
         tokens = [tk for tk in f_term.split() if len(tk) >= 3]
         if len(tokens) > 1:
-            or_conditions.append(and_(*[folded_column(model_cls.title).like(f"%{tk}%") for tk in tokens]))
+            or_conditions.append(and_(*[contains(model_cls.title, tk) for tk in tokens]))
 
     return or_(*or_conditions)
 

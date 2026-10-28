@@ -63,6 +63,17 @@ Arayüzde kaynak beklemesi, hata sonrası yeniden deneme ve istekler arasındaki
 beklemeler geri sayımla gösterilir. `/healthz` DB ve otonom yönetici sağlığını
 ölçer (200/503); kaynak 429 beklemesi servis arızası sayılmaz.
 
+## Arama sorgusu çevirisi
+
+Arayüz araması Google çevirisini varsayılan olarak kullanmaz; statik çok dilli
+meslek/yetenek eşanlamlıları çalışmaya devam eder. İsteğe bağlı açmak için servis
+ortamına `JOBAPP_TRANSLATE=1` ekleyip yeniden başlatın. Açıkken ilk çeviri HTTP
+isteğini bekletebilir. Üç karakterden kısa sorgular gönderilmez; başarısız çeviri
+10 dakika önbelleklenir ve hata sonrası yeni sorgular için 60 saniye dış çağrı
+yapılmaz. Aynı sorgu/dil için eşzamanlı ikinci çağrı beklemeden özgün sorguya
+döner. Bu ayar ilan detayının kullanıcı tarafından istenen çevirisini ve toplama
+sorgularının Groq ile yerelleştirilmesini değiştirmez.
+
 ## API v1
 
 Tüm isteklerde `Authorization: Bearer ANAHTAR` gerekir. JSON kullanılır.

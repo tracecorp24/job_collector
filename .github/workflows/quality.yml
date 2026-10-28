@@ -31,6 +31,8 @@ jobs:
         run: python -m ruff check jobapp tests run.py run_accountless.py serve_service.py
       - name: Hata durumlarında davranış ve log gizliliği
         run: python -m unittest discover -s tests -p test_fallback_logging.py
+      - name: Arama gecikmesi, Unicode ve LIKE regresyonları
+        run: python -m unittest discover -s tests -p test_search_safety.py
       - name: JavaScript sözdizimini kontrol et
         run: |
           node --check jobapp/static/js/app.js

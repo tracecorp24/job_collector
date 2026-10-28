@@ -4,6 +4,7 @@ from datetime import timedelta
 from sqlalchemy import and_, or_, func, exists, select
 from .models import Job, TaskJob, SearchTask
 from .db import parse_date
+from . import search_text
 
 FIELDS = {name: getattr(Job, column) for name, column in {
     "opportunity_type": "opportunity_type",
@@ -16,14 +17,11 @@ FIELDS = {name: getattr(Job, column) for name, column in {
 
 
 def folded(column):
-    for a, b in (("İ", "i"), ("ı", "i"), ("Ş", "s"), ("ş", "s"), ("Ğ", "g"), ("ğ", "g"),
-                 ("Ü", "u"), ("ü", "u"), ("Ö", "o"), ("ö", "o"), ("Ç", "c"), ("ç", "c")):
-        column = func.replace(column, a, b)
-    return func.lower(column)
+    return search_text.folded_column(column)
 
 
 def fold(value):
-    return str(value).translate(str.maketrans("İıŞşĞğÜüÖöÇç", "iissgguuoocc")).lower()
+    return search_text.search_fold(value)
 
 
 CROSS_LINGUAL_SYNONYMS = {
@@ -104,8 +102,7 @@ def expand_search_terms(text):
 
 
 def contains(column, value):
-    value = fold(value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return folded(column).like("%" + value + "%", escape="\\")
+    return search_text.contains(column, value)
 
 
 

@@ -1,7 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const debounce = (fn, ms=350) => { let timer; return (...args) => {clearTimeout(timer); timer=setTimeout(()=>fn(...args),ms);}; };
+const debounce = (fn, ms=350) => { let timer; const pending=(...args)=>{clearTimeout(timer);timer=setTimeout(()=>fn(...args),ms);};pending.cancel=()=>clearTimeout(timer);return pending; };
 const names = {category:'Genel kategori',seniority:'Kıdem',workplace:'Çalışma biçimi',location:'Konum',location_text:'Konum',company:'Şirket',skills:'Yetenek',flag:'İlan değerlendirmesi',backend:'Analiz yöntemi',source:'Kaynak',search_term:'Aranan unvan',search_location:'Aranan konum',search:'Arama',semantic:'Anlama göre arama',title:'Unvanda',description:'Açıklamada',company_text:'Şirket adında',phrase:'Tam ifade',exclude:'Hariç kelimeler',exclude_skills:'Hariç yetenekler',skill_mode:'Yetenek koşulu',salary_min:'En az maaş',salary_max:'En çok maaş',currency:'Para birimi',period:'Maaş dönemi',has_salary:'Maaş bilgisi',experience_min:'En az deneyim',experience_max:'En çok deneyim',experience_missing:'Deneyim bilinmiyor',run_id:'Çalışma',task_id:'Arama',discovery:'Bulunma türü',has_description:'Açıklama',has_summary:'Özet',has_embedding:'Eşleştirme verisi',quality:'Ayrıştırma kalitesi',visibility:'Görünürlük',posted_from:'Yayın başlangıcı',posted_to:'Yayın bitişi',posted_missing:'Yayın tarihi bilinmiyor',created_from:'İlk eklenme başlangıcı',created_to:'İlk eklenme bitişi',scraped_from:'Son tarama başlangıcı',scraped_to:'Son tarama bitişi'};
 const translations = {Engineering:'Mühendislik / Yazılım',Data:'Veri ve yapay zekâ',Design:'Tasarım',Product:'Ürün',Finance:'Finans',Sales:'Satış',Marketing:'Pazarlama',HR:'İnsan kaynakları',Operations:'Operasyon',Other:'Diğer',Intern:'Stajyer',Junior:'Başlangıç',Mid:'Orta seviye',Senior:'Kıdemli',Lead:'Lider',Manager:'Yönetici',Unknown:'Belirtilmemiş',Remote:'Uzaktan',Hybrid:'Hibrit',Onsite:'Ofiste',Office:'Ofiste',rules:'Hızlı analiz',local:'Yerel yapay zekâ',llm:'Bulut yapay zekâ',claude:'Bulut yapay zekâ',groq:'Groq yapay zekâ',scam:'Şüpheli ilan',ghost:'Aktifliği şüpheli',clean:'İşaretlenmemiş',__missing__:'Belirtilmemiş',queued:'Bekliyor',running:'Çalışıyor',pausing:'Duraklatılıyor',paused:'Duraklatıldı',stopping:'Durduruluyor',stopped:'Durduruldu',cancelling:'İptal ediliyor',cancelled:'İptal edildi',finished:'Tamamlandı',error:'Hata oluştu',active:'Aktif',trash:'Çöp kutusu',all:'Tümü',any:'Herhangi biri',valid:'Geçerli',invalid:'Eksik ayrıştırılan',new:'İlk kez eklenenler',month:'Aylık',year:'Yıllık',hour:'Saatlik'};
 names.opportunity_type='Fırsat türü';
@@ -453,6 +453,14 @@ async function loadNewCount(){
 function markAllSeen(){if(filters.created_from===seen.mark)delete filters.created_from;seen.mark=new Date().toISOString();saveSeen();syncControls();renderChips();persist(true);loadAll();toast('Tüm ilanlar görüldü sayıldı. Bundan sonra eklenenler “yeni” olarak işaretlenir.');}
 function resetFilters(){filters={};syncControls();renderChips();persist(true);loadAll();}
 const scheduleFilters=debounce((key,value)=>setFilter(key,value));
+function applySearch(){
+  const value=$('search').value.trim();
+  if((filters.search||'')===value)return;
+  if(value)filters.search=value;else delete filters.search;
+  delete filters.page;syncControls();persist(true);renderChips();loadAll();
+}
+const scheduleSearch=debounce(applySearch);
+function submitSearch(){scheduleSearch.cancel();applySearch();}
 
 function descriptionHtml(text){return esc(text||'İlan açıklaması bulunamadı.').split(/\n\s*\n/).map(p=>'<p>'+p+'</p>').join('');}
 function safeLink(url){try{const parsed=new URL(url);return ['http:','https:'].includes(parsed.protocol)?parsed.href:null;}catch{return null;}}
@@ -1334,6 +1342,7 @@ function initHeroSearchAndPopovers(){
       });
       clearKw.addEventListener('click', () => {
         kwInput.value = '';
+        scheduleSearch.cancel();
         clearKw.classList.add('hidden');
         setFilter('search', '');
       });
@@ -1341,11 +1350,7 @@ function initHeroSearchAndPopovers(){
     kwInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const q = kwInput.value.trim();
-        if (q) filters.search = q; else delete filters.search;
-        syncControls();
-        persist(true);
-        loadAll();
+        submitSearch();
       }
     });
   }
@@ -1353,11 +1358,7 @@ function initHeroSearchAndPopovers(){
   const heroBtn = $('heroSearchBtn');
   if (heroBtn) {
     heroBtn.addEventListener('click', () => {
-      const q = $('search')?.value.trim() || '';
-      if (q) filters.search = q; else delete filters.search;
-      syncControls();
-      persist(true);
-      loadAll();
+      submitSearch();
     });
   }
 
@@ -1605,7 +1606,7 @@ function initialize(){
   $('acknowledge-source').onclick=acknowledgeSource;
   for(const [id,value] of Object.entries(form)){if($(id)){if($(id).type==='checkbox')$(id).checked=!!value;else $(id).value=value;}}
   $('limit-input').disabled=$('unlimited').checked;$('task-error').after($('start-scrape'));readLocation();syncControls();renderChips();renderDraft();
-  wire('search','input',debounce(e=>{const val=e.target.value.trim();if((filters.search||'')!==val){if(!val)delete filters.search;else filters.search=val;delete filters.page;persist(true);renderChips();loadAll();}}));wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
+  wire('search','input',scheduleSearch);wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
   wire('exclude-skills','input',debounce(e=>setFilter('exclude_skills',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))));
   wire('run-filter','change',e=>{delete filters.task_id;setFilter('run_id',e.target.value?[e.target.value]:[]);});
   wire('date-preset','change',e=>setPostedPreset(Number(e.target.value)));

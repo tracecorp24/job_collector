@@ -14,6 +14,9 @@ from sqlalchemy.orm import sessionmaker
 
 from . import config
 from .models import Base, Job
+from .search_text import install_sqlite_search
+
+install_sqlite_search()
 
 # check_same_thread=False: the Flask SSE thread and the scrape worker thread
 # both touch the DB. Each uses its own short-lived session.
