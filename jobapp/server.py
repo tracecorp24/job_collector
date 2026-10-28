@@ -19,6 +19,7 @@ can run at a time.
 """
 
 import json
+import logging
 import queue
 from collections import deque
 import threading
@@ -33,6 +34,7 @@ from .db import SessionLocal, init_db
 from .models import Job
 
 app = Flask(__name__)
+log = logging.getLogger(__name__)
 
 
 # --- Scrape run state (single run at a time) -------------------------------
@@ -571,6 +573,8 @@ def api_searches():
     from pathlib import Path
     out_dir = Path(config.ACCOUNTLESS_OUTPUT_DIR)
     results = []
+    skipped = 0
+    first_failure = None
     if out_dir.exists():
         for p in out_dir.iterdir():
             if p.is_dir():
@@ -583,8 +587,14 @@ def api_searches():
                         data["hasLog"] = (p / "search.log").exists()
                         if not data.get("deletedAt"):
                             results.append(data)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        skipped += 1
+                        if first_failure is None:
+                            first_failure = (p.name, type(exc).__name__)
+    if skipped:
+        # Bozuk dosya içeriğini yazmadan, istek başına tek özet bırak.
+        log.warning("Arama geçmişinde %d kayıt okunamadı; ilk klasör=%s, hata türü=%s.",
+                    skipped, *first_failure)
     results.sort(key=lambda x: x.get("startedAt", ""), reverse=True)
     return jsonify({"searches": results, "total": len(results)})
 

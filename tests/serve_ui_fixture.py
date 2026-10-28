@@ -14,13 +14,15 @@ os.environ['JOBAPP_OPEN_BROWSER'] = '0'
 os.environ['JOBAPP_REQUEST_INTERVAL'] = '0'
 from datetime import datetime, timedelta
 from flask import jsonify
-from jobapp import server, db, embed
+from jobapp import server, db, embed, search_engine
 from jobapp.locations import normalize as normalize_location
 from jobapp.models import Job, SearchRun, SearchTask, TaskJob, SearchEvent, Watch
 
 app = server.create_app()
 # Search fallback is deterministic and never contacts a local model service.
 embed.embed_text = lambda text: None
+# UI testi çeviri hizmetlerinin erişilebilirliğine bağlı kalmasın.
+search_engine.translate_query = lambda text, **kwargs: text
 with db.SessionLocal() as session:
     for model in (TaskJob, SearchEvent, SearchTask, SearchRun, Job, Watch):
         session.query(model).delete()

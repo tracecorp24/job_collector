@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Yalnızca geliştirme/CI; üretim requirements.txt dosyasına eklenmez.
+ruff==0.17.1

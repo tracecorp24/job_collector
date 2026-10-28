@@ -94,6 +94,17 @@ Web sunucusu aynı anda tek tarama/yeniden işleme çalıştırır. Üretimde me
 
 `tests/ui_smoke.cjs`, Playwright kurulu ortamda izole `.qa/ui.db` üzerinde arama, filtreleme, geçmiş ilişkileri, gezinme, geri alma, kayıtlı kuyruk ve telefon yerleşimini doğrular. Gerçek veritabanına ve LinkedIn'e erişmez. Playwright farklı bir yerde kuruluysa `LINKO_PLAYWRIGHT` ortam değişkeni modül dizinine ayarlanabilir.
 
+Hata odaklı statik kontroller için geliştirme bağımlılıklarını kurun:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m ruff check jobapp tests run.py run_accountless.py serve_service.py
+```
+
+`.github/workflows/quality.yml`, pull request'lerde ve `main` güncellemelerinde Ruff, JavaScript sözdizimi ve izole Playwright testini çalıştırır; ekran görüntülerini 7 gün saklar. Arayüz testinde sorgu çevirisi ve embedding çağrıları taklit edilir. Bu iş akışı canlıya dağıtım yapmaz; mevcut deploy iş akışı ayrı çalışır.
+
+Claude sınıflandırması isteğe bağlıdır: `python -m pip install anthropic` ile paketi kurup `ANTHROPIC_API_KEY` ortam değişkenini ayarlayın. Paket veya anahtar yoksa kural tabanlı sonuç korunur ve aynı eksik ayar için süreç başına bir uyarı yazılır. Sağlayıcı/yanıt hatalarında da kural sonucu korunur; loga yalnızca hata türü yazılır.
+
 Yeni API uçları: `GET /api/runs`, `GET/PATCH /api/runs/<id>`, `POST /api/runs/<id>/<resume|pause|cancel|delete|restore|purge>`, `GET /api/runs/<id>/logs`, `GET /api/runs/<id>/logs/download`, `POST /api/trash/jobs`, `GET /api/jobs/<id>/navigation`. Eski ilan silme uçları artık çöp kutusuna taşır.
 
 Linko Scrapper Light; LinkedIn üzerinden **hiçbir kullanıcı hesabı, oturum çerezi (cookie), Chrome veya Selenium/WebDriver bağımlılığı gerektirmeden** tamamen kamuya açık (public guest) arayüzler üzerinden iş ilanı toplayan, ayrıştıran, zenginleştiren ve çift yönlü (veritabanı + frontend uyumlu JSON havuzu) saklayan hafif ve taşınabilir bir ilan yönetim platformudur.
