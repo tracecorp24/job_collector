@@ -92,9 +92,9 @@ def run_probe(intervals=None, requests_per_step=15, jitter=0.15):
                     total_successful += 1
                     print(f"  [{req_idx:02d}/{requests_per_step}] HTTP 200 OK | Yanıt: {dur}s | Beklenen: {actual_wait:.1f}s")
                 elif status in (429, 401, 403, 999):
-                    print(f"\n  [!!! DEVRE KESİCİ DEVREDE !!!]")
+                    print("\n  [!!! DEVRE KESİCİ DEVREDE !!!]")
                     print(f"  İstek #{req_idx} HTTP {status} aldı! (Retry-After: {retry_after})")
-                    print(f"  IP koruması için test anında durduruldu.")
+                    print("  IP koruması için test anında durduruldu.")
                     print("=" * 70)
                     print(f"SONUÇ: Güvenli tavan diz-noktası: {clean_floor:.1f} saniyedir.")
                     print(f"       {interval:.1f}s aralıkta WAF penceresi doldu (HTTP {status}).")
@@ -115,7 +115,7 @@ def run_probe(intervals=None, requests_per_step=15, jitter=0.15):
         print(f"  -> Kademe {interval:.1f}s başarıyla tamamlandı ({step_successes}/{requests_per_step} başarılı).")
 
     print("\n" + "=" * 70)
-    print(f"TEBRİKLER: Tüm kademeler başarıyla tamamlandı!")
+    print("TEBRİKLER: Tüm kademeler başarıyla tamamlandı!")
     print(f"En düşük temiz taban: {clean_floor:.1f} saniyedir. Toplam başarılı: {total_successful}")
     print("=" * 70)
     return {"safe_floor": clean_floor, "broken_at": None, "total_successful": total_successful}

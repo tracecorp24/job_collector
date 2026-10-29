@@ -170,7 +170,7 @@ def main():
     iso = analyze_endpoint_isolation(conn)
     print("\n[1] ENDPOINT İZOLASYONU TEST BULGULARI:")
     print(f"  - Toplam İncelenen Olay: {iso['total_events']}")
-    print(f"  - 429 Sonrası İlk İstek Geçişleri:")
+    print("  - 429 Sonrası İlk İstek Geçişleri:")
     for c in iso["cascades"][:10]:
         pause_note = " (Arada pause beklemesi oldu)" if c["had_pause_between"] else " (BEKLEMEDEN)"
         print(f"    * {c['from_type'].upper()} (429) ---> {c['to_type'].upper()} ({c['to_status']}){pause_note}")

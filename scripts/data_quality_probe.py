@@ -247,7 +247,7 @@ def main():
 
     # 2. Sayfalama ve Tekrarlayan ID Analizi
     pagination = probe_pagination_and_duplicates(conn)
-    print(f"\n[2] SAYFALAMA VE TEKRARLAYAN ID ANALİZİ:")
+    print("\n[2] SAYFALAMA VE TEKRARLAYAN ID ANALİZİ:")
     print(f"  - Toplam Sayfa Sonuç Olayı: {pagination['total_page_events']}")
     print(f"  - Sayfa Başına Ortalama Kart: {pagination['average_cards_per_page']}")
     print(f"  - Kart Sayısı Dağılımı: {pagination['card_distribution']}")
@@ -262,7 +262,7 @@ def main():
 
     # 3. DOM ve JSON-LD İncelemesi
     dom = probe_dom_and_jsonld()
-    print(f"\n[3] KAYITLI HTML ÖRNEKLERİNDE DOM VE JSON-LD İNCELEMESİ:")
+    print("\n[3] KAYITLI HTML ÖRNEKLERİNDE DOM VE JSON-LD İNCELEMESİ:")
     print(f"  - İncelenen 200 OK Yanıt Sayısı: {dom.get('responses_checked')}")
     print(f"  - Bu örneklerde bulunan application/ld+json script sayısı: {dom.get('jsonld_count')}")
     print(f"  - Sayfalarda Bulunan Script Türleri: {dom.get('script_types')}")
@@ -274,7 +274,7 @@ def main():
 
     # 4. Kayıtlı HTTP durum kodları
     velocity = probe_velocity_and_429(conn)
-    print(f"\n[4] KAYITLI İSTEKLERİN HTTP DURUM KODLARI:")
+    print("\n[4] KAYITLI İSTEKLERİN HTTP DURUM KODLARI:")
     print(f"  - Toplam İstek: {velocity['total_http_requests']}")
     print(f"  - Durum Dağılımı: {velocity['status_distribution']}")
     print(f"  - 429 Oranı: %{round(velocity['total_429_count'] / velocity['total_http_requests'] * 100, 2) if velocity['total_http_requests'] else 0}")
