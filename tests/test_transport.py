@@ -1,5 +1,4 @@
 """Persistent request policy, cache invalidation and safe resume behavior."""
-import json
 import threading
 import time
 import unittest

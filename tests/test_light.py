@@ -1,6 +1,5 @@
 """Full Light job board regression tests using temporary data and mocked HTTP."""
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -8,15 +7,29 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from flask.testing import FlaskClient
 
 import requests
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from jobapp import config, db, embed, pipeline, server
+from jobapp import config, db, pipeline, server
 from jobapp.models import Job
 from jobapp.scraper.accountless import AccountlessScraper
 from jobapp.transport import close_shared_http_transport
+
+
+class AuthorizedTestClient(FlaskClient):
+    """Eski UI testleri Caddy'nin anahtar ve Origin aktarımını taklit eder."""
+    def open(self, *args, **kwargs):
+        path = args[0] if args and isinstance(args[0], str) else kwargs.get("path", "")
+        headers = dict(kwargs.get("headers") or {})
+        if not path.startswith("/api/v1/"):
+            headers.setdefault("Authorization", "Bearer " + config.ADMIN_KEY)
+        if kwargs.get("method", "GET") not in ("GET", "HEAD", "OPTIONS"):
+            headers.setdefault("Origin", "http://localhost")
+        kwargs["headers"] = headers
+        return super().open(*args, **kwargs)
 
 
 def response(html="", status=200, **headers):
@@ -47,6 +60,9 @@ class FullLightTests(unittest.TestCase):
         self.addCleanup(self.engine.dispose)
         self.factory = sessionmaker(bind=self.engine)
         for item in (patch.object(db, "engine", self.engine),
+                     patch.object(config, "ADMIN_KEY", "test-admin-key"),
+                     patch.object(config, "API_KEY", "test-reader-key"),
+                     patch.object(server.app, "test_client_class", AuthorizedTestClient),
                      patch.object(pipeline, "SessionLocal", self.factory),
                      patch.object(server, "SessionLocal", self.factory),
                      patch.object(config, "ACCOUNTLESS_OUTPUT_DIR", str(Path(self.tmp.name) / "searches")),
@@ -56,6 +72,8 @@ class FullLightTests(unittest.TestCase):
                      patch.object(server.state, "running", False)):
             item.start()
             self.addCleanup(item.stop)
+        from jobapp import http_security
+        http_security._buckets.clear()
         self.client = server.create_app().test_client()
         self.addCleanup(close_shared_http_transport, server.state)
 

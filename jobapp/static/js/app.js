@@ -111,8 +111,8 @@ function syncControls(){
   $('location-city').disabled=!filters.country||cityOptionsCountry!==filters.country;
   $('sort').value=filters.sort||'recent';
   $('per-page').value=filters.per_page||'24';
-  document.querySelectorAll('[data-filter]').forEach(el=>{const v=filters[el.dataset.filter];if(el.type==='checkbox')el.checked=v==='1';else el.value=el.type==='date'&&v?String(v).slice(0,10):v??(el.dataset.filter==='visibility'?'active':el.dataset.filter==='quality'?'valid':el.dataset.filter==='skill_mode'?'any':'');});
-  $('exclude-skills').value=(filters.exclude_skills||[]).join(', ');$('run-filter').value=(filters.run_id||[])[0]||'';
+  document.querySelectorAll('[data-filter]').forEach(el=>{if(document.activeElement===el)return;const v=filters[el.dataset.filter];if(el.type==='checkbox')el.checked=v==='1';else el.value=el.type==='date'&&v?String(v).slice(0,10):v??(el.dataset.filter==='visibility'?'active':el.dataset.filter==='quality'?'valid':el.dataset.filter==='skill_mode'?'any':'');});
+  if(document.activeElement !== $('exclude-skills')) $('exclude-skills').value=(filters.exclude_skills||[]).join(', ');$('run-filter').value=(filters.run_id||[])[0]||'';
   document.querySelectorAll('[data-facet]').forEach(el=>{el.checked=(filters[el.dataset.facet]||[]).includes(el.value);});
   document.querySelectorAll('[data-quick]').forEach(el=>el.setAttribute('aria-pressed',String(quickActive(el.dataset.quick))));$('date-preset').value=String(postedPreset()||'');
   $('search-scope').textContent=filters.task_id?.length?`Seçili arama kimliği: ${filters.task_id.join(', ')}`:'';
@@ -1607,7 +1607,7 @@ function initialize(){
   for(const [id,value] of Object.entries(form)){if($(id)){if($(id).type==='checkbox')$(id).checked=!!value;else $(id).value=value;}}
   $('limit-input').disabled=$('unlimited').checked;$('task-error').after($('start-scrape'));readLocation();syncControls();renderChips();renderDraft();
   wire('search','input',scheduleSearch);wire('location-country','change',e=>setFilter('country',e.target.value));wire('location-city','change',e=>setFilter('city',e.target.value));wire('sort','change',e=>setFilter('sort',e.target.value));wire('per-page','change',e=>setFilter('per_page',e.target.value));
-  wire('exclude-skills','input',debounce(e=>setFilter('exclude_skills',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))));
+  wire('exclude-skills','input',debounce(e=>setFilter('exclude_skills',e.target.value.split(',').map(v=>v.trim()).filter(Boolean))));wire('exclude-skills','blur',()=>{$('exclude-skills').value=(filters.exclude_skills||[]).join(', ');});
   wire('run-filter','change',e=>{delete filters.task_id;setFilter('run_id',e.target.value?[e.target.value]:[]);});
   wire('date-preset','change',e=>setPostedPreset(Number(e.target.value)));
   wire('new-only','click',()=>setFilter('created_from',filters.created_from===seen.mark?'':seen.mark));wire('new-mark','click',markAllSeen);

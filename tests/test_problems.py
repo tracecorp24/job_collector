@@ -2,13 +2,13 @@
 import json
 import time
 import unittest
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 from sqlalchemy import text
 import test_light
 from jobapp import config, logstore, problems, service
-from jobapp.models import Incident, SearchEvent, SearchRun, Setting
+from jobapp.models import Incident, SearchEvent, SearchRun
 from jobapp.transport import Coordinator
 
 ADMIN = {"Authorization": "Bearer admin-anahtari-123"}

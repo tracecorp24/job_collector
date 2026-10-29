@@ -1,72 +1,70 @@
 #!/usr/bin/env bash
-# VPS'te /usr/local/bin/linko-deploy olarak kurulur. GitHub Actions'ın anahtarı
-# authorized_keys içinde command= ile yalnızca bu scripte bağlıdır.
+# Doğrulanmış VACUUM INTO kopyası; başarısızlıkta önceki kod + DB'ye dönüş.
 set -euo pipefail
 exec 9>/run/linko-deploy.lock
 flock -n 9 || { echo "Başka bir deploy sürüyor."; exit 1; }
-
 APP=/opt/linko
 DATA=/var/lib/linko
+SAFETY=/usr/local/lib/linko-deploy-safety.py
+SMOKE=/usr/local/lib/linko-deploy-smoke.py
 BACKUPS=$DATA/backups
-
 mkdir -p "$BACKUPS"
-# Uygulama o an yazıyorsa kilit açılana kadar 30 sn bekle ("database is locked" ile deploy durmasın).
-sqlite3 -cmd ".timeout 30000" "$DATA/jobs.db" ".backup '$BACKUPS/jobs-$(date +%Y%m%d-%H%M%S).db'"
-ls -1t "$BACKUPS"/jobs-*.db | tail -n +11 | xargs -r rm -f
-chown -R linko:linko "$BACKUPS"
-
-# Hangi sürümün canlıda olduğu uygulamaya ve hata kayıtlarına bu dosyadan yansır (linko kullanıcısı git'i okuyamaz).
-write_version() {
-    python3 - "$DATA" "$(git rev-parse HEAD)" "$(git log -1 --format=%s)" <<'PY'
-import json, os, sys, time
-data, sha, subject = sys.argv[1:4]
-info = {"sha": sha[:7], "full_sha": sha, "subject": subject, "deployed_at": time.time()}
-tmp = os.path.join(data, "version.json.tmp")
-with open(tmp, "w", encoding="utf-8") as file:
-    json.dump(info, file, ensure_ascii=False)
-os.replace(tmp, os.path.join(data, "version.json"))
-with open(os.path.join(data, "deploy_history.jsonl"), "a", encoding="utf-8") as file:
-    file.write(json.dumps(info, ensure_ascii=False) + chr(10))
-PY
-    chown linko:linko "$DATA/version.json" "$DATA/deploy_history.jsonl"
-}
-
-# İşletim betikleri /usr/local/bin ve systemd altında kopya durur; depodaki sürümleri değiştiyse
-# başarılı deploy'un sonunda kurulur (elle install-ops.sh unutulunca düzeltmeler canlıya ulaşmıyordu).
-sync_ops() {
-    local changed=0 name
-    for name in linko-deploy linko-backup linko-spool linko-spool-stop; do
-        cmp -s "$APP/deploy/$name.sh" "/usr/local/bin/$name" || changed=1
-    done
-    cmp -s "$APP/deploy/linko.service" /etc/systemd/system/linko.service || changed=1
-    [ "$changed" = 1 ] || return 0
-    bash "$APP/deploy/install-ops.sh" || echo "Uyarı: işletim betikleri kurulamadı; elle install-ops.sh çalıştırın." >&2
-}
-
 cd "$APP"
 PREV=$(git rev-parse HEAD)
 git fetch -q origin main
-git reset -q --hard origin/main
-write_version
-.venv/bin/pip install -q -r requirements.txt
-systemctl restart linko
-
-for _ in $(seq 1 12); do
-    sleep 5
-    if curl -fsS http://127.0.0.1:8016/healthz >/dev/null 2>&1; then
-        echo "Deploy tamam: $(git log -1 --format='%h %s')"
-        sync_ops
-        exit 0
+NEXT=$(git rev-parse origin/main)
+STAMP=$(date -u +%Y%m%dT%H%M%S)
+SNAPSHOT="$BACKUPS/jobs-$STAMP-$PREV.db"
+python3 "$SAFETY" snapshot --database "$DATA/jobs.db" --destination "$SNAPSHOT" --sha "$PREV"
+chown linko:linko "$SNAPSHOT" "$SNAPSHOT.json"
+write_version() {
+    python3 - "$DATA" "$(git rev-parse HEAD)" <<'PY'
+import json, os, sys, time
+data, sha = sys.argv[1:]
+info = {'sha': sha[:7], 'full_sha': sha, 'deployed_at': time.time()}
+temporary = os.path.join(data, 'version.json.tmp')
+with open(temporary, 'w', encoding='utf-8') as output:
+    json.dump(info, output)
+os.replace(temporary, os.path.join(data, 'version.json'))
+with open(os.path.join(data, 'deploy_history.jsonl'), 'a', encoding='utf-8') as output:
+    output.write(json.dumps(info) + '\n')
+PY
+    chown linko:linko "$DATA/version.json" "$DATA/deploy_history.jsonl"
+}
+rollback() {
+    trap - ERR
+    set +e
+    echo "Deploy başarısız; önceki SHA ve DB geri yükleniyor: $PREV" >&2
+    systemctl stop linko
+    git reset -q --hard "$PREV"
+    if ! python3 "$SAFETY" restore --backup "$SNAPSHOT" --database "$DATA/jobs.db"; then
+        echo "DB geri yüklenemedi; servis kapalı bırakıldı. Yedek: $SNAPSHOT" >&2
+        exit 1
     fi
-done
-
-echo "Sağlık kontrolü başarısız, $PREV sürümüne geri dönülüyor." >&2
-journalctl -u linko -n 30 --no-pager >&2 || true
-# Geri alma uygulamaya hata kaydı olarak ulaşsın (başlık sabit: tekrarlar tek kayıtta sayılır).
-/usr/local/bin/linko-spool deploy error "Deploy geri alındı"     "Başarısız sürüm: $(git rev-parse --short HEAD), geri dönülen: ${PREV:0:7}
-$(journalctl -u linko -n 30 --no-pager 2>&1)" || true
-git reset -q --hard "$PREV"
+    chown linko:linko "$DATA/jobs.db"
+    .venv/bin/python -m pip install -q -r requirements.txt
+    write_version
+    systemctl start linko
+    /usr/local/bin/linko-spool deploy error "Deploy geri alındı" "Önceki kod ve DB geri yüklendi: $PREV" || true
+    exit 1
+}
+trap rollback ERR
+systemctl stop linko
+git reset -q --hard "$NEXT"
+.venv/bin/python -m pip install -q -r requirements.txt
 write_version
-.venv/bin/pip install -q -r requirements.txt
-systemctl restart linko
-exit 1
+systemctl start linko
+healthy=0
+deadline=$((SECONDS + 30))
+while (( SECONDS < deadline )); do
+    if curl -fsS --max-time 2 http://127.0.0.1:8016/healthz >/dev/null 2>&1; then
+        healthy=1
+        break
+    fi
+    sleep 1
+done
+(( healthy == 1 ))
+python3 "$SMOKE" --sha "$NEXT"
+trap - ERR
+bash "$APP/deploy/install-ops.sh"
+echo "Deploy tamam: $NEXT; doğrulanmış geri alma kopyası: $SNAPSHOT"

@@ -50,7 +50,8 @@ def request(method, url, token, body=None):
     data = json.dumps(body).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={
         "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json",
-        "Content-Type": "application/json", "User-Agent": "linko-incident-sync"})
+        "Content-Type": "application/json", "User-Agent": "linko-incident-sync",
+        "Origin": urllib.parse.urlsplit(url)._replace(path='', query='', fragment='').geturl()})
     try:
         with urllib.request.urlopen(req, timeout=60) as response:
             raw = response.read()

@@ -6,13 +6,19 @@
 # Servisi yeniden başlatmaz; bir sonraki deploy yeni servis tanımını uygular.
 set -euo pipefail
 SRC=/opt/linko/deploy
+install -d -m 755 /usr/local/lib
 # Geçici dosyaya yazıp yeniden adlandırır: o an çalışan linko-deploy kendi dosyası değişirken bozulmaz.
 put() { install -m "$1" -o root -g root "$2" "$3.new" && mv -f "$3.new" "$3"; }
 for name in linko-deploy linko-backup linko-spool linko-spool-stop; do
     bash -n "$SRC/$name.sh"
     put 755 "$SRC/$name.sh" "/usr/local/bin/$name"
 done
+put 644 "$SRC/safety.py" /usr/local/lib/linko-deploy-safety.py
+put 644 "$SRC/smoke.py" /usr/local/lib/linko-deploy-smoke.py
 put 644 "$SRC/linko.service" /etc/systemd/system/linko.service
+put 644 "$SRC/linko-worker.service" /etc/systemd/system/linko-worker.service
 install -d -o linko -g linko /var/lib/linko/spool
 systemctl daemon-reload
-echo "Kuruldu: linko-deploy, linko-backup, linko-spool, linko-spool-stop, linko.service"
+cd /opt/linko
+.venv/bin/python -m deploy.caddy_proxy --sse
+echo "Kuruldu: linko-deploy, linko-backup, linko-spool, linko-spool-stop, linko.service, linko-worker.service"

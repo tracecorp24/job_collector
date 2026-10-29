@@ -1,0 +1,33 @@
+# Referans yapılandırma: mevcut hesabı canlıda deploy/caddy_proxy.py korur.
+# Anahtar ve Basic Auth değerleri repoya yazılmaz.
+job.ai-org.online {
+    @protected not path /api/v1/* /healthz
+    basic_auth @protected {
+        {$LINKO_BASIC_USER} {$LINKO_BASIC_HASH}
+    }
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+    @events path /events
+    handle @events {
+        reverse_proxy 127.0.0.1:8018 {
+            header_up Authorization "Bearer {$JOBAPP_ADMIN_KEY}"
+            header_up X-Real-IP {remote_host}
+            flush_interval -1
+        }
+    }
+    @api path /api/v1/*
+    handle @api {
+        reverse_proxy 127.0.0.1:8016 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8016 {
+            header_up Authorization "Bearer {$JOBAPP_ADMIN_KEY}"
+            header_up X-Real-IP {remote_host}
+        }
+    }
+}

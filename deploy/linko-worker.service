@@ -1,0 +1,20 @@
+[Unit]
+Description=Linko autonomous job collector worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=linko
+WorkingDirectory=/opt/linko
+EnvironmentFile=/etc/linko.env
+ExecStart=/opt/linko/.venv/bin/python -B /opt/linko/worker.py
+Restart=on-failure
+ExecStopPost=+/usr/local/bin/linko-spool-stop "$SERVICE_RESULT" "$EXIT_CODE" "$EXIT_STATUS"
+RestartSec=10
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

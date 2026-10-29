@@ -70,6 +70,19 @@ ROUTINE_PROFESSIONS = (
     "Robotik Mühendisliği",
 )
 
+ROUTINE_PROFESSION_KEYWORDS_INTL = {
+    "Yapay Zeka Mühendisliği": "Artificial Intelligence Engineer",
+    "Yazılım Mühendisliği": "Software Engineer",
+    "Makine Mühendisliği": "Mechanical Engineer",
+    "Elektrik-Elektronik Mühendisliği": "Electrical Engineer",
+    "Elektrik Güç ve Tesisat Mühendisliği": "Power Systems Engineer",
+    "Mekatronik Mühendisliği": "Mechatronics Engineer",
+    "Veri Mühendisliği": "Data Engineer",
+    "Endüstri Mühendisliği": "Industrial Engineer",
+    "Havacılık ve Uzay Mühendisliği": "Aerospace Engineer",
+    "Robotik Mühendisliği": "Robotics Engineer",
+}
+
 ROUTINE_CITIES = tuple(
     {
         "order": index,
@@ -150,17 +163,19 @@ def dispatch(session, now, source):
             posted_within=7 * 86400, sort_recent=True, stop_when_known=True,
         )
         session.add(SearchRun(id=run_id, options=json.dumps(options, ensure_ascii=False)))
+        is_turkey = city.get("country") == "Türkiye"
         for position, profession in enumerate(ROUTINE_PROFESSIONS):
             task_id = runs.identifier()
+            keyword = profession if is_turkey else ROUTINE_PROFESSION_KEYWORDS_INTL.get(profession, profession)
             task = SearchTask(
                 id=task_id, run_id=run_id, position=position,
-                keyword=profession, location=city["location"], limit=city["quota"],
+                keyword=keyword, location=city["location"], limit=city["quota"],
                 package=f"Rutin · {city['city']}", profession_group="Mühendislik",
                 profession_code=f"routine-engineering-{position + 1}",
             )
             session.add(task)
             audit.record(session, run_id, task_id, "task_queued", {
-                "keyword": profession, "location": city["location"],
+                "keyword": keyword, "location": city["location"],
                 "limit": city["quota"], "package": task.package,
                 "city": city["city"], "country": city.get("country", ""),
             })

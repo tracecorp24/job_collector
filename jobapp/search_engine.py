@@ -14,7 +14,7 @@ import time
 
 import requests
 from sqlalchemy import or_, and_
-from .search_text import search_fold, folded_column, contains, install_sqlite_search
+from .search_text import search_fold, folded_column, contains, install_sqlite_search  # noqa: F401
 
 install_sqlite_search()
 
@@ -350,10 +350,3 @@ def build_search_filter(model_cls, search_text: str, country: str = None):
 
     return or_(*or_conditions)
 
-
-def apply_search_filter(query, model_cls, search_text: str, country: str = None):
-    """Sorguya çok dilli arama filtresini uygular."""
-    clause = build_search_filter(model_cls, search_text, country=country)
-    if clause is not None:
-        return query.filter(clause)
-    return query

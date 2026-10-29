@@ -1,5 +1,4 @@
 """Versioned service API and transactional SQLite change stream."""
-import hmac
 import json
 import time
 from flask import jsonify, request
@@ -89,26 +88,8 @@ def install(server):
 
     @app.before_request
     def authorize():
-        if request.path == '/healthz':
-            return None
-        origin = request.headers.get('Origin')
-        if request.method not in ('GET','HEAD','OPTIONS') and origin:
-            from urllib.parse import urlsplit
-            if urlsplit(origin).netloc != request.host:
-                return jsonify(error='Bu kaynaktan yönetim isteği kabul edilmiyor.'),403
-        versioned = request.path.startswith('/api/v1/')
-        external = request.remote_addr not in ('127.0.0.1', '::1', None)
-        if not versioned and not external:
-            return None
-        if not (versioned or request.path.startswith('/api/') or request.path == '/events'):
-            return None
-        supplied = request.headers.get('Authorization', '').removeprefix('Bearer ')
-        allowed = [config.ADMIN_KEY] if request.method != 'GET' or not versioned else [config.API_KEY, config.ADMIN_KEY]
-        if request.path.startswith(('/api/v1/logs', '/api/v1/incidents')):
-            # Log anahtarı yalnızca bu uçlarda geçer; başka hiçbir yönetim ucunda kabul edilmez.
-            allowed = allowed + [config.LOG_KEY]
-        if not any(key and hmac.compare_digest(supplied, key) for key in allowed):
-            return jsonify(error='Geçerli Bearer anahtarı gerekli.', code='unauthorized'), 401
+        from .http_security import authorize as check_request
+        return check_request()
 
     @app.get('/healthz')
     def health():

@@ -20,7 +20,7 @@ if not GROQ_API_KEY:
     for _candidate in [os.path.join(ROOT_DIR, ".env"), os.path.join(ROOT_DIR, "SIFRELER.txt")]:
         if os.path.exists(_candidate):
             try:
-                with open(_candidate, "r", encoding="utf-8") as _f:
+                with open(_candidate, encoding="utf-8") as _f:
                     for _line in _f:
                         if _line.strip().startswith("GROQ_API_KEY="):
                             GROQ_API_KEY = _line.split("=", 1)[1].strip().strip('"\'')

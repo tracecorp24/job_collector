@@ -4,8 +4,8 @@ import unittest
 
 import test_light
 import test_workspace
-from jobapp import locations, routine_cities, server
-from jobapp.models import RoutineCitySchedule, SearchRun, SearchTask
+from jobapp import locations, routine_cities
+from jobapp.models import SearchRun, SearchTask
 
 
 class RoutineCitiesTests(unittest.TestCase):
@@ -68,6 +68,29 @@ class RoutineCitiesTests(unittest.TestCase):
 
             tasks = session.query(SearchTask).filter_by(run_id=run_id).all()
             self.assertEqual(len(tasks), len(routine_cities.ROUTINE_PROFESSIONS))
+            # Türkiye şehri Türkçe anahtar kelimelerle taranır
+            self.assertEqual(tasks[1].keyword, "Yazılım Mühendisliği")
+
+    def test_foreign_city_dispatches_with_international_keywords(self):
+        with self.factory() as session:
+            schedules = routine_cities._ensure_schedules(session)
+            for row in schedules.values():
+                row.next_due_at = 999999
+            schedules["Amsterdam"].next_due_at = 500
+            session.commit()
+
+            run_id = routine_cities.dispatch(session, now=1000, source={"paused": False})
+            self.assertIsNotNone(run_id)
+
+            run = session.get(SearchRun, run_id)
+            options = json.loads(run.options)
+            self.assertEqual(options["routine_city"], "Amsterdam")
+            self.assertEqual(options["routine_country"], "Hollanda")
+
+            tasks = session.query(SearchTask).filter_by(run_id=run_id).order_by(SearchTask.position).all()
+            # Yabancı şehir için LinkedIn İngilizce meslek terimleriyle aranır
+            self.assertEqual(tasks[1].keyword, "Software Engineer")
+            self.assertEqual(tasks[2].keyword, "Mechanical Engineer")
 
 
 if __name__ == "__main__":

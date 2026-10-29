@@ -9,9 +9,8 @@ from sqlalchemy import text
 import test_light
 import test_workspace
 from test_light import response, card, DETAIL
-from jobapp import config, db, pipeline, server, service, runs, country_enrichment
+from jobapp import config, pipeline, server, service, runs, country_enrichment
 from jobapp.models import Job, SearchRun, SearchTask
-from jobapp.transport import Coordinator
 
 
 class ServiceTests(unittest.TestCase):

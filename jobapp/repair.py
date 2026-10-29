@@ -17,7 +17,7 @@ from sqlalchemy.dialects.sqlite import insert
 
 from . import config, runs, skills, audit
 from .models import Job, RepairTask, TaskJob, SearchTask, Setting
-from .transport import Coordinator, SourcePaused, fingerprint
+from .transport import SourcePaused, fingerprint
 
 SOURCE_FIELDS = ("description", "title", "company", "location")
 DERIVED_FIELDS = ("tags", "experience_years", "workplace_type", "category", "seniority")

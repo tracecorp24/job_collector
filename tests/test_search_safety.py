@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine, literal, select
 
 import test_light
-from jobapp import filters, search_engine as search, search_text
+from jobapp import filters, search_engine as search
 from jobapp.models import Job
 
 

@@ -9,10 +9,8 @@ kontrolü tespiti aynen uygulanır. Tarama başlarsa bekleyen istek bırakılır
 """
 import json
 import logging
-import threading
-import time
 from sqlalchemy import text
-from . import audit, config
+from . import audit
 from .models import Job, SearchRun
 from .transport import Coordinator, SourcePaused, fingerprint
 

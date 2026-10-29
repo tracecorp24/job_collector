@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 import test_light
 from jobapp import config, logstore
-from jobapp.models import AppLog, Incident, SearchEvent
+from jobapp.models import Incident, SearchEvent
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import incident_sync  # noqa: E402

@@ -9,7 +9,7 @@ import test_light
 import test_workspace
 from test_light import response, card, DETAIL
 from jobapp import pipeline, runs, server
-from jobapp.models import SearchRun, SearchTask, SearchEvent
+from jobapp.models import SearchRun, SearchTask
 
 
 class QueueControlTests(unittest.TestCase):

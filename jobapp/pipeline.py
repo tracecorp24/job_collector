@@ -14,7 +14,7 @@ from . import config, parse, salary, skills
 from .classify import classify_job
 from .db import SessionLocal, init_db, upsert_job, parse_date
 from .locations import normalize as normalize_location
-from .models import Job, SearchRun, SearchTask, TaskJob, SearchEvent
+from .models import Job, SearchRun, SearchTask, TaskJob
 from . import audit
 from .transport import SourcePaused, fingerprint
 from .runs import transition

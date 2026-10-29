@@ -361,7 +361,7 @@ def _upgrade_history():
     with sessionmaker(bind=engine)() as session:
         if session.get(Setting, "ux_schema_v2"):
             return
-        for job in session.query(Job).all():
+        for job in session.query(Job).yield_per(500):
             try:
                 raw = json.loads(job.raw or "{}")
                 job.posted_at = parse_date(raw.get("posted"))

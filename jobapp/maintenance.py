@@ -6,7 +6,6 @@ Değişiklik akışı tüketicisi bu süreden daha uzun ara verirse `after=0` il
 """
 import json
 import logging
-import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path

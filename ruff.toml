@@ -1,5 +1,32 @@
 target-version = "py310"
 
 [lint]
-# İlk aşamada yalnızca hata odaklı kontroller; biçimlendirme değişmez.
-select = ["E9", "F63", "F7", "F82"]
+select = ["E", "F", "W", "B", "UP", "S"]
+ignore = [
+    "E501",  # line too long
+    "E402",  # module import not at top of file
+    "E701",  # multiple statements on one line (colon)
+    "E702",  # multiple statements on one line (semicolon)
+    "E731",  # do not assign a lambda expression
+    "E741",  # ambiguous variable name
+    "F841",  # local variable assigned but never used
+    "B023",  # function uses loop variable
+    "B904",  # raise without from inside except
+    "B905",  # zip without explicit strict
+    "B007",  # unused loop control variable
+    "S110",  # try-except-pass
+    "S310",  # suspicious url open usage
+    "S311",  # pseudo-random generators
+    "S324",  # hashlib md5/sha1 usage in non-security contexts
+    "S603",  # subprocess call without shell=True
+    "S607",  # partial executable path
+    "S608",  # possible SQL injection vector through string-based query
+    "S104",  # possible binding to all interfaces
+    "UP006", # deprecated type annotation
+    "UP015", # redundant open modes
+    "UP035", # deprecated imports
+    "UP045", # non-pep604 annotation
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["S101"]

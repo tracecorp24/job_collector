@@ -3,7 +3,6 @@
 import argparse
 import json
 import os
-import sys
 
 from jobapp import config
 from jobapp.pipeline import run_scrape

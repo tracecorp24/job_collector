@@ -14,11 +14,24 @@ os.environ['JOBAPP_OPEN_BROWSER'] = '0'
 os.environ['JOBAPP_REQUEST_INTERVAL'] = '0'
 from datetime import datetime, timedelta
 from flask import jsonify
-from jobapp import server, db, embed, search_engine
+from jobapp import server, db, embed, search_engine, config
 from jobapp.locations import normalize as normalize_location
 from jobapp.models import Job, SearchRun, SearchTask, TaskJob, SearchEvent, Watch
 
 app = server.create_app()
+config.API_KEY = "ui-fixture-reader"
+config.ADMIN_KEY = "ui-fixture-admin"
+original_wsgi = app.wsgi_app
+
+
+def fixture_proxy(environ, start_response):
+    environ.setdefault('HTTP_AUTHORIZATION', 'Bearer ' + config.ADMIN_KEY)
+    if environ.get('REQUEST_METHOD') not in ('GET', 'HEAD', 'OPTIONS'):
+        environ.setdefault('HTTP_ORIGIN', 'http://' + environ.get('HTTP_HOST', 'localhost'))
+    return original_wsgi(environ, start_response)
+
+
+app.wsgi_app = fixture_proxy
 # Search fallback is deterministic and never contacts a local model service.
 embed.embed_text = lambda text: None
 # UI testi çeviri hizmetlerinin erişilebilirliğine bağlı kalmasın.

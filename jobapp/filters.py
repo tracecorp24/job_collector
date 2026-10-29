@@ -1,5 +1,4 @@
 """Shared SQL filters used by listings, navigation, trash and contextual facets."""
-import json
 from datetime import timedelta
 from sqlalchemy import and_, or_, func, exists, select
 from .models import Job, TaskJob, SearchTask
@@ -22,83 +21,6 @@ def folded(column):
 
 def fold(value):
     return search_text.search_fold(value)
-
-
-CROSS_LINGUAL_SYNONYMS = {
-    "ai": ["ai", "yapay zeka", "artificial intelligence"],
-    "yapay zeka": ["ai", "yapay zeka", "artificial intelligence"],
-    "artificial intelligence": ["ai", "yapay zeka", "artificial intelligence"],
-    "ml": ["ml", "makine ogrenmesi", "machine learning"],
-    "makine ogrenmesi": ["ml", "makine ogrenmesi", "machine learning"],
-    "machine learning": ["ml", "makine ogrenmesi", "machine learning"],
-    "dl": ["dl", "derin ogrenme", "deep learning"],
-    "derin ogrenme": ["dl", "derin ogrenme", "deep learning"],
-    "deep learning": ["dl", "derin ogrenme", "deep learning"],
-    "nlp": ["nlp", "dogal dil isleme", "natural language processing"],
-    "natural language processing": ["nlp", "dogal dil isleme", "natural language processing"],
-    "cv": ["cv", "bilgisayarli goru", "computer vision"],
-    "computer vision": ["cv", "bilgisayarli goru", "computer vision"],
-    "yazilim muhendisi": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
-    "yazilim gelistirici": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
-    "software engineer": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
-    "software developer": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
-    "softwareentwickler": ["software engineer", "software developer", "yazilim muhendisi", "yazilim gelistirici", "softwareentwickler"],
-    "veri bilimci": ["data scientist", "veri bilimci", "veri bilimcisi", "datenwissenschaftler"],
-    "data scientist": ["data scientist", "veri bilimci", "veri bilimcisi", "datenwissenschaftler"],
-    "veri analisti": ["data analyst", "veri analisti", "datenanalyst"],
-    "data analyst": ["data analyst", "veri analisti", "datenanalyst"],
-    "frontend": ["frontend", "front-end", "front end", "on yuz"],
-    "front-end": ["frontend", "front-end", "front end", "on yuz"],
-    "front end": ["frontend", "front-end", "front end", "on yuz"],
-    "backend": ["backend", "back-end", "back end", "arka yuz"],
-    "back-end": ["backend", "back-end", "back end", "arka yuz"],
-    "back end": ["backend", "back-end", "back end", "arka yuz"],
-    "fullstack": ["fullstack", "full stack", "full-stack"],
-    "full stack": ["fullstack", "full stack", "full-stack"],
-    "full-stack": ["fullstack", "full stack", "full-stack"],
-    "urun yoneticisi": ["product manager", "urun yoneticisi", "urun muduru"],
-    "product manager": ["product manager", "urun yoneticisi", "urun muduru"],
-    "stajyer": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
-    "staj": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
-    "intern": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
-    "internship": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
-    "werkstudent": ["intern", "internship", "stajyer", "staj", "werkstudent", "praktikant"],
-    "qa": ["qa", "quality assurance", "test muhendisi", "test engineer", "kalite guvence"],
-    "test muhendisi": ["qa", "quality assurance", "test muhendisi", "test engineer", "kalite guvence"],
-    "quality assurance": ["qa", "quality assurance", "test muhendisi", "test engineer", "kalite guvence"],
-    "devops": ["devops", "cloud engineer", "sre", "site reliability engineer"],
-    "engineer": ["engineer", "muhendis"],
-    "muhendis": ["engineer", "muhendis"],
-    "developer": ["developer", "gelistirici", "entwickler"],
-    "gelistirici": ["developer", "gelistirici", "entwickler"],
-    "uzaktan": ["uzaktan", "evden", "remote", "homeoffice"],
-    "remote": ["uzaktan", "evden", "remote", "homeoffice"]
-}
-
-
-def expand_search_terms(text):
-    text_folded = fold(text).strip()
-    if not text_folded:
-        return []
-    if text_folded in CROSS_LINGUAL_SYNONYMS:
-        return [CROSS_LINGUAL_SYNONYMS[text_folded]]
-    tokens = text_folded.split()
-    groups = []
-    i = 0
-    while i < len(tokens):
-        if i + 1 < len(tokens):
-            pair = f"{tokens[i]} {tokens[i+1]}"
-            if pair in CROSS_LINGUAL_SYNONYMS:
-                groups.append(CROSS_LINGUAL_SYNONYMS[pair])
-                i += 2
-                continue
-        tok = tokens[i]
-        if tok in CROSS_LINGUAL_SYNONYMS:
-            groups.append(CROSS_LINGUAL_SYNONYMS[tok])
-        else:
-            groups.append([tok])
-        i += 1
-    return groups
 
 
 def contains(column, value):
@@ -154,16 +76,56 @@ def filtered(session, args, omit=None):
             elif key in ("profession_group", "profession_subgroup"):
                 array = func.json_each(col).table_valued("value").alias("facet_" + key)
                 conditions.append(exists(select(1).select_from(array).where(folded(array.c.value) == fold(v))))
+            elif key == "country":
+                from . import locations
+                norm = locations.normalize_country(v)
+                if norm:
+                    conditions.append(or_(col == v, col == norm))
+                else:
+                    conditions.append(col == v)
             else:
                 conditions.append(col == v)
         q = q.filter(or_(*conditions))
-    columns = {"title": Job.title, "description": Job.description, "company_text": Job.company}
+    columns = {"description": Job.description, "company_text": Job.company}
     for key, col in columns.items():
         if args.get(key, "").strip():
             q = q.filter(contains(col, args[key].strip()))
+    if args.get("title", "").strip():
+        from . import search_engine
+        title_val = args["title"].strip()
+        country_filter = (args.get("country") or "").strip() or None
+        expanded_terms = search_engine.expand_search_terms(title_val, country=country_filter)
+        f_raw = search_engine.search_fold(title_val)
+        title_conds = [search_engine.contains(Job.title, f_raw)]
+        for term in expanded_terms:
+            f_term = search_engine.search_fold(term)
+            if f_term and f_term != f_raw:
+                title_conds.append(search_engine.contains(Job.title, f_term))
+                tokens = [tk for tk in f_term.split() if len(tk) >= 3]
+                if len(tokens) > 1:
+                    title_conds.append(and_(*[search_engine.contains(Job.title, tk) for tk in tokens]))
+        q = q.filter(or_(*title_conds))
     if args.get("location_text", "").strip():
+        from . import locations
         loc_val = args["location_text"].strip()
-        q = q.filter(or_(contains(Job.location, loc_val), contains(Job.search_location, loc_val)))
+        norm_country = locations.normalize_country(loc_val)
+        norm_city = locations._city(loc_val)
+        norm_pair = locations.normalize(loc_val)
+        loc_conditions = [
+            contains(Job.location, loc_val),
+            contains(Job.search_location, loc_val),
+            contains(Job.location_country, loc_val),
+            contains(Job.location_city, loc_val),
+        ]
+        if norm_country:
+            loc_conditions.append(Job.location_country == norm_country)
+            loc_conditions.append(contains(Job.location, norm_country))
+        if norm_city and norm_city != loc_val:
+            loc_conditions.append(Job.location_city == norm_city)
+            loc_conditions.append(contains(Job.location, norm_city))
+        if norm_pair[0] != "Belirtilmemiş" and norm_pair[1] != "Belirtilmemiş":
+            loc_conditions.append(and_(Job.location_country == norm_pair[0], Job.location_city == norm_pair[1]))
+        q = q.filter(or_(*loc_conditions))
     text = args.get("search", "").strip()
     if text and args.get("semantic") not in ("1", "true"):
         from . import search_engine

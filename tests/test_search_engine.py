@@ -9,6 +9,11 @@ class SearchEngineTests(unittest.TestCase):
         self.assertEqual(search_fold("Kıdemli Yazılım Mühendisi"), "kidemli yazilim muhendisi")
         self.assertEqual(search_fold("Örnek Şirket Çözümleri"), "ornek sirket cozumleri")
 
+    def test_search_fold_handles_european_accents(self):
+        self.assertEqual(search_fold("Geschäftsführer"), "geschaftsfuhrer")
+        self.assertEqual(search_fold("Großbritannien"), "grossbritannien")
+        self.assertEqual(search_fold("München"), "munchen")
+
     def test_expand_search_terms_for_mechanical_engineer(self):
         terms = expand_search_terms("makine mühendisi")
         terms_lower = [t.lower() for t in terms]

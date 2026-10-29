@@ -1,5 +1,4 @@
 """Panel sekmesi: /api/dashboard ölçümleri, kapsamı ve arayüz bağlantıları."""
-import json
 import time
 import unittest
 from datetime import datetime, timedelta

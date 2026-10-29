@@ -55,7 +55,7 @@ def import_all(job_list_dir: str = None) -> dict:
     for path in files:
         stats["files"] += 1
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 records = json.load(f)
         except (json.JSONDecodeError, OSError) as e:
             print(f"[skip] {os.path.basename(path)}: {e}")

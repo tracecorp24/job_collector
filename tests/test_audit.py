@@ -6,7 +6,7 @@ import test_light
 import test_workspace
 from test_light import response, card, DETAIL
 from jobapp import audit, server, config, embed
-from jobapp.models import SearchEvent, SearchTask, Job
+from jobapp.models import SearchEvent, Job
 
 
 class AuditTests(unittest.TestCase):

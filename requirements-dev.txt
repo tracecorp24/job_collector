@@ -2,3 +2,4 @@
 
 # Yalnızca geliştirme/CI; üretim requirements.txt dosyasına eklenmez.
 ruff==0.17.1
+pip-audit>=2.8.0

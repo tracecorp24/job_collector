@@ -1,6 +1,5 @@
 """Behavioral tests for filters, discovery provenance, resume, logs and trash."""
 import json
-import threading
 import unittest
 from contextlib import closing
 from datetime import datetime, timedelta
@@ -11,7 +10,7 @@ from sqlalchemy import text
 import test_light
 from test_light import card, response, DETAIL
 from jobapp import db, pipeline, server, runs
-from jobapp.models import Job, SearchRun, SearchTask, TaskJob, SearchEvent, Setting
+from jobapp.models import Job, SearchRun, SearchTask, TaskJob, Setting
 
 
 class WorkspaceTests(unittest.TestCase):

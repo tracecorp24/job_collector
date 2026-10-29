@@ -6,7 +6,7 @@ from unittest.mock import patch
 from sqlalchemy import event
 import test_light
 import test_workspace
-from jobapp import server, config
+from jobapp import config
 from jobapp.models import Job
 
 

@@ -23,11 +23,10 @@ import logging
 import queue
 from collections import deque
 import threading
-import time
 from datetime import datetime
 
 from flask import Flask, Response, jsonify, render_template, request
-from sqlalchemy import distinct, func, or_
+from sqlalchemy import distinct, func
 
 from . import config
 from .db import SessionLocal, init_db
@@ -52,6 +51,7 @@ class ScrapeState:
         self.sequence = 0
         self.messages = deque(maxlen=1000)
         self.condition = threading.Condition()
+        self.shutdown_event = threading.Event()
         # Process-owned public-source connection pool; each run borrows it serially.
         self.source_transport = None
         self.source_transport_lock = threading.Lock()
@@ -545,7 +545,7 @@ def events():
         initial_cursor = state.sequence
     def stream():
         cursor = initial_cursor
-        while True:
+        while not state.shutdown_event.is_set():
             with state.condition:
                 messages = [event for event in state.messages if event["id"] > cursor]
                 if not messages:
@@ -581,7 +581,7 @@ def api_searches():
                 meta_file = p / "search.json"
                 if meta_file.exists():
                     try:
-                        with open(meta_file, "r", encoding="utf-8") as f:
+                        with open(meta_file, encoding="utf-8") as f:
                             data = json.load(f)
                         data["folder"] = p.name
                         data["hasLog"] = (p / "search.log").exists()
@@ -657,3 +657,5 @@ from .logs_api import install as install_logs_api
 install_logs_api(sys.modules[__name__])
 from .dashboard import install as install_dashboard
 install_dashboard(sys.modules[__name__])
+from .metrics import install as install_metrics
+install_metrics(app, sys.modules[__name__])

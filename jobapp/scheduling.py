@@ -60,7 +60,6 @@ def routine_page_pending(session, run_id):
 
 def yield_to(server, session, incoming):
     """Request a safe checkpoint; never interrupt or start a second worker."""
-    from . import runs
     current = active_layer(server, session)
     if current is None or LAYERS.index(current) <= LAYERS.index(incoming):
         return False

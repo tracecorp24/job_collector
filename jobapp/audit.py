@@ -5,7 +5,6 @@ from collections import Counter
 from datetime import datetime, timezone
 from sqlalchemy import func
 from . import config
-from . import config
 from .models import SearchEvent, SearchRun, SearchTask, TaskJob, Job
 
 VERSION = "audit.v1"

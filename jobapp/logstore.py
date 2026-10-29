@@ -65,7 +65,7 @@ def fingerprint(logger, message, key=None):
     first = key or ((message or "").splitlines()[0] if message else "")
     text = re.sub(r"\b[0-9a-f]{8,}\b", "<id>", first.lower())
     text = re.sub(r"\d+(\.\d+)?", "<n>", text)
-    return hashlib.sha256(f"{logger}|{text}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{logger}|{text}".encode()).hexdigest()
 
 
 def _history(incident, event, **data):

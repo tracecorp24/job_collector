@@ -1,7 +1,6 @@
 """Kural tabanlı çıkarım: deneyim şart cümlesinden, kıdem tam kelimeden; eski kayıtlar ağ isteği olmadan düzelir."""
 import json
 import unittest
-from unittest.mock import patch
 
 import test_light
 from jobapp import db, pipeline, skills

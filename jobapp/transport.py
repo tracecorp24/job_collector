@@ -308,6 +308,8 @@ class Coordinator:
                  "floor":max(config.MIN_REQUEST_INTERVAL, row["interval_floor"]*.95) if stable else row["interval_floor"]})
 
     def pause(self, reason, status_code=None, retry_after=None, hard=False, violation=True, minimum=None, retry_after_is_local=False):
+        from .metrics import source_status
+        source_status(status_code)
         now = self.clock()
         requested = retry_after_seconds(retry_after, now)
         with self.transaction() as connection:

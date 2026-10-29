@@ -31,6 +31,21 @@ sqlite3 "$TMP" "PRAGMA integrity_check;" | grep -qx ok || { echo "Bütünlük ko
 gzip -9 -c "$TMP" > "jobs-$STAMP.db.gz"
 ls -1 jobs-*.db.gz | sort | head -n -"$KEEP" | xargs -r rm -f
 
+# Aylık doğrulama (ayın 1'i): sıkıştırılmış yedeği geçici dizine aç ve bütünlük kontrolü yap.
+if [ "$(date -u +%d)" = "01" ]; then
+    RESTORE_TMP=$(mktemp /tmp/linko-verify.XXXXXX.db)
+    gunzip -c "jobs-$STAMP.db.gz" > "$RESTORE_TMP"
+    sqlite3 "$RESTORE_TMP" "PRAGMA integrity_check;" | grep -qx ok || {
+        rm -f "$RESTORE_TMP"
+        echo "Aylık yedek açma ve bütünlük doğrulama başarısız!" >&2
+        status false "Aylık yedek açma ve bütünlük doğrulama başarısız"
+        alert "Aylık yedek açma ve bütünlük doğrulama başarısız"
+        exit 1
+    }
+    rm -f "$RESTORE_TMP"
+    echo "Aylık yedek açma ve bütünlük kontrolü başarılı."
+fi
+
 cat > README.md <<EOF
 # Linko veritabanı yedekleri
 
