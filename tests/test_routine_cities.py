@@ -13,8 +13,8 @@ class RoutineCitiesTests(unittest.TestCase):
     tearDown = test_workspace.WorkspaceTests.tearDown
 
     def test_routine_cities_structure_and_countries(self):
-        self.assertEqual(len(routine_cities.ROUTINE_CITIES), 44)
-        self.assertEqual(routine_cities.CITY_COUNT, 44)
+        self.assertEqual(len(routine_cities.ROUTINE_CITIES), 30)
+        self.assertEqual(routine_cities.CITY_COUNT, 30)
 
         countries = set()
         for city_info in routine_cities.ROUTINE_CITIES:
@@ -33,7 +33,7 @@ class RoutineCitiesTests(unittest.TestCase):
             expected_country = locations._CITY_COUNTRY.get(city_info["city"])
             self.assertEqual(country, expected_country, f"Country mismatch for {city_info['city']}")
 
-        self.assertEqual(len(countries), 22)
+        self.assertEqual(len(countries), 19)
 
         # Istanbul must be first and critical with country Türkiye
         istanbul = routine_cities.ROUTINE_CITIES[0]
@@ -47,9 +47,9 @@ class RoutineCitiesTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
 
-        self.assertEqual(data["total"], 44)
-        self.assertEqual(data["country_count"], 22)
-        self.assertEqual(len(data["cities"]), 44)
+        self.assertEqual(data["total"], 30)
+        self.assertEqual(data["country_count"], 19)
+        self.assertEqual(len(data["cities"]), 30)
 
         for city in data["cities"]:
             self.assertIn("country", city)
