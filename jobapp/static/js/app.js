@@ -1067,7 +1067,7 @@ function connectEvents(){
   source.onmessage=event=>{let ev;try{ev=JSON.parse(event.data);}catch{return;}const d=ev.data||{};
     if(['waiting','shared_rate_wait'].includes(ev.type)){waitingUntil=Date.now()+d.seconds*1000;waitReason=d.reason;renderWait();refreshStatus();}
     if(ev.type==='job'){waitingUntil=0;if(!lastJobs.length){debounce(loadAll,1000)();}else{refreshNewCount();}refreshStatus();}
-    if(['task_start','task_done','job_progress','run_finished','finished','error','source_paused','task_control'].includes(ev.type)){refreshStatus();}
+    if(['task_start','task_done','job_progress','run_finished','finished','error','source_paused','task_control'].includes(ev.type)){refreshStatus();if(!$('view-watches').hidden&&['task_start','task_done'].includes(ev.type))debounce(loadWatches,1500)();}
     if(ev.type==='run_finished'){if(!$('view-watches').hidden)loadWatches();if(Dash.visible())Dash.load(true);currentRun=d;renderRun();refreshNewCount();loadRunOptions();if($('history-dialog').open)loadHistory();toast(`Çalışma ${tr(d.status).toLocaleLowerCase('tr')}: ${d.stats.new||0} yeni, ${d.stats.updated||0} güncellenen ilan.`,()=>{showResults('run_id',d.id);},'Sonuçları gör');}
     if(ev.type==='notice'||ev.type==='error'){toast(d.msg||'İşlem tamamlanamadı. Sonuçlar korundu.',()=>showTab('queue'),'Ayrıntılar',true);}
     if(ev.type==='log'&&busy&&!currentRun)$('maintenance-status').textContent=localLogMessage(d.msg);
@@ -1287,10 +1287,41 @@ function renderRoutineCities(data){
   toggle.dataset.action=data.paused?'routine-city-resume':'routine-city-pause';toggle.textContent=data.paused?'Rutin taramaları sürdür':'Rutin taramaları duraklat';
   const countryCount=data.country_count||new Set(cities.map(c=>c.country).filter(Boolean)).size;
   const countryBadge=countryCount?` · ${countryCount} ülke`:'';
-  $('routine-city-count').textContent=`${cities.length} şehir${countryBadge} · ${professions.length} meslek · günlük`;
+  const activeCityFromRun=currentRun?.tasks?.[0]?.package?.startsWith('Rutin · ')
+    ? currentRun.tasks[0].package.replace('Rutin · ', '').trim()
+    : null;
+  const activeCity=data.active_city||cities.find(c=>c.is_active||(c.last_run&&!['finished','cancelled','stopped'].includes(c.last_run.status))||(activeCityFromRun&&c.city===activeCityFromRun))?.city;
+  const activePill=activeCity?` · <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>İşlemde: ${esc(activeCity)}</span>`:'';
+  $('routine-city-count').innerHTML=`${cities.length} şehir${countryBadge} · ${professions.length} meslek · günlük${activePill}`;
   $('routine-profession-count').textContent=`${professions.length} meslek`;
   $('routine-profession-list').innerHTML=professions.map(name=>`<span class="tag">${esc(name)}</span>`).join('');
-  $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri, ülkeleri, öncelikleri, ilan hedefleri ve sonraki tarama durumu</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Ülke</th><th scope="col">Öncelik</th><th scope="col">Meslek başına ilan hedefi</th><th scope="col">Tarama durumu</th></tr></thead><tbody>${cities.map(city=>{const due=data.paused?'Duraklatıldı':Number(city.next_due_at)<=now?'Sırada':relTime(Number(city.next_due_at)-now);const last=city.last_run;const state=last?`${tr(last.status)} · ${Number(last.new||0)} yeni · ${due}`:due;return `<tr${city.critical?' class="routine-city-critical"':''}><td>${Number(city.order)}</td><th scope="row">${esc(city.city)}</th><td>${esc(city.country||'')}</td><td>${city.critical?badge('Kritik · ilk sırada','new'):'Rutin'}</td><td>${Number(city.quota)} ilan</td><td>${esc(state)}</td></tr>`;}).join('')}</tbody></table>`;
+  $('routine-city-list').innerHTML=`<table class="routine-city-table"><caption class="sr-only">Rutin arama şehirleri, ülkeleri, öncelikleri, ilan hedefleri ve sonraki tarama durumu</caption><thead><tr><th scope="col">Sıra</th><th scope="col">Şehir</th><th scope="col">Ülke</th><th scope="col">Öncelik</th><th scope="col">Meslek başına ilan hedefi</th><th scope="col">Tarama durumu</th></tr></thead><tbody>${cities.map(city=>{
+    const isCurrentlyActive=Boolean(city.is_active||(activeCityFromRun&&city.city===activeCityFromRun)||(city.last_run&&!['finished','cancelled','stopped'].includes(city.last_run.status)));
+    const due=data.paused?'Duraklatıldı':Number(city.next_due_at)<=now?'Sırada':relTime(Number(city.next_due_at)-now);
+    const last=city.last_run;
+    let stateHtml;
+    if(isCurrentlyActive){
+      stateHtml=`<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#0A66C2] text-white shadow-xs">
+        <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+        Şu an taranıyor · ${Number(last?.new||0)} yeni
+      </span>`;
+    }else{
+      stateHtml=last?`${esc(tr(last.status))} · ${Number(last.new||0)} yeni · ${esc(due)}`:esc(due);
+    }
+    const rowClass=isCurrentlyActive?'routine-city-active':(city.critical?'routine-city-critical':'');
+    const nameHtml=isCurrentlyActive
+      ?`<span class="inline-flex items-center gap-2 font-bold text-[#0A66C2] dark:text-[#70B5F9]">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0A66C2] opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#0A66C2]"></span>
+          </span>
+          ${esc(city.city)}
+          <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#0A66C2]/15 text-[#0A66C2] dark:text-[#70B5F9] border border-[#0A66C2]/20 uppercase">İşlemde</span>
+        </span>`
+      :esc(city.city);
+    const priorityHtml=isCurrentlyActive?badge('İşlemde','new'):(city.critical?badge('Kritik · ilk sırada','new'):'Rutin');
+    return `<tr${rowClass?` class="${rowClass}"`:''}><td>${Number(city.order)}</td><th scope="row">${nameHtml}</th><td>${esc(city.country||'')}</td><td>${priorityHtml}</td><td>${Number(city.quota)} ilan</td><td>${stateHtml}</td></tr>`;
+  }).join('')}</tbody></table>`;
 }
 function watchCard(w,now){
   const last=w.last_run,running=!!last&&!['finished','cancelled','stopped'].includes(last.status);

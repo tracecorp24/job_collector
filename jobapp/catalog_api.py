@@ -64,7 +64,10 @@ def register(app, server):
         if 'gzip' in request.accept_encodings: response.headers['Content-Encoding'] = 'gzip'
         response.headers['Vary'] = 'Accept-Encoding'
         response.headers['Server-Timing'] = f'catalog;dur={(time.monotonic()-started)*1000:.1f}'
-        return response
+        etag = f'catalog-{token}-{"preview" if preview else "all"}{"-gzip" if "gzip" in request.accept_encodings else ""}'
+        response.set_etag(etag)
+        response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
+        return response.make_conditional(request)
 
     @app.get('/api/v1/jobs/detail/<source>/<external_id>')
     def detail(source, external_id):

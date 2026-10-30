@@ -234,6 +234,17 @@ class FullLightTests(unittest.TestCase):
         self.assertIn("Istanbul", result["output_folders"][0])
         self.assertIn("Germany", result["output_folders"][1])
 
+    def test_gzip_compression_for_large_json_responses(self):
+        import gzip
+        r_raw = self.client.get("/api/facets")
+        self.assertEqual(r_raw.status_code, 200)
+        self.assertNotIn("Content-Encoding", r_raw.headers)
+        r_gz = self.client.get("/api/facets", headers={"Accept-Encoding": "gzip"})
+        self.assertEqual(r_gz.status_code, 200)
+        if len(r_raw.data) > 1024:
+            self.assertEqual(r_gz.headers.get("Content-Encoding"), "gzip")
+            self.assertEqual(gzip.decompress(r_gz.data), r_raw.data)
+
 
 if __name__ == "__main__":
     unittest.main()

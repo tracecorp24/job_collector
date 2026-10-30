@@ -36,6 +36,25 @@ app = Flask(__name__)
 log = logging.getLogger(__name__)
 
 
+@app.after_request
+def compress_response(response):
+    if (
+        response.status_code < 300
+        and not response.is_streamed
+        and not response.direct_passthrough
+        and 'gzip' in request.accept_encodings
+        and 'Content-Encoding' not in response.headers
+        and (response.mimetype or '').startswith(('application/json', 'text/html', 'text/css', 'application/javascript'))
+        and len(response.data) > 1024
+    ):
+        import gzip
+        response.data = gzip.compress(response.data, compresslevel=5)
+        response.headers['Content-Encoding'] = 'gzip'
+        response.headers['Vary'] = 'Accept-Encoding'
+        response.headers['Content-Length'] = len(response.data)
+    return response
+
+
 # --- Scrape run state (single run at a time) -------------------------------
 
 class ScrapeState:

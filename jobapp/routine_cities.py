@@ -130,10 +130,12 @@ def _ensure_schedules(session):
     return rows
 
 
-def _city_snapshot(session, city, row, now):
+def _city_snapshot(session, city, row, now, active_run_id=None):
     last = session.get(SearchRun, row.last_run_id) if row.last_run_id else None
     last_info = None
+    is_active = False
     if last and not last.deleted_at:
+        is_active = (last.status not in ("finished", "cancelled", "stopped")) or (bool(active_run_id) and last.id == active_run_id)
         last_info = {
             "id": last.id,
             "status": last.status,
@@ -141,7 +143,7 @@ def _city_snapshot(session, city, row, now):
             "new": json.loads(last.stats or "{}").get("new", 0),
         }
     return dict(city, enabled=True, interval_seconds=row.interval_seconds,
-                next_due_at=row.next_due_at, last_run=last_info)
+                next_due_at=row.next_due_at, last_run=last_info, is_active=is_active)
 
 
 def dispatch(session, now, source):
@@ -212,10 +214,12 @@ def install(server):
             rows = _ensure_schedules(session)
             session.commit()
             paused = is_paused(session)
-            cities = [_city_snapshot(session, city, rows[city["city"]], now) for city in ROUTINE_CITIES]
+            active_run_id = server.state.run_id if getattr(server, "state", None) and getattr(server.state, "running", False) else None
+            cities = [_city_snapshot(session, city, rows[city["city"]], now, active_run_id=active_run_id) for city in ROUTINE_CITIES]
             country_count = len({city["country"] for city in ROUTINE_CITIES if city.get("country")})
+            active_city = next((c["city"] for c in cities if c.get("is_active")), None)
             resp = jsonify(cities=cities, total=len(cities), default_quota=25,
-                           country_count=country_count,
+                           country_count=country_count, active_city=active_city,
                            professions=list(ROUTINE_PROFESSIONS), profession_count=PROFESSION_COUNT,
                            interval_seconds=ROUTINE_INTERVAL_SECONDS, paused=paused, now=now)
             resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'

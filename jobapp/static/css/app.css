@@ -380,6 +380,21 @@ html.dark .toast {
 .routine-city-critical th {
   color: #0A66C2;
 }
+.routine-city-active {
+  background: rgba(10, 102, 194, 0.12) !important;
+  box-shadow: inset 4px 0 0 #0A66C2;
+}
+.routine-city-active th {
+  color: #0A66C2 !important;
+  font-weight: 700;
+}
+.dark .routine-city-active {
+  background: rgba(10, 102, 194, 0.22) !important;
+  box-shadow: inset 4px 0 0 #70B5F9;
+}
+.dark .routine-city-active th {
+  color: #70B5F9 !important;
+}
 
 /* İşlem Kayıtları ve Kod Blokları */
 .id-text {

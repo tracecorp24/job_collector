@@ -62,6 +62,7 @@ class RoutineCitiesTests(unittest.TestCase):
         for city in data["cities"]:
             self.assertIn("country", city)
             self.assertTrue(bool(city["country"]))
+            self.assertIn("is_active", city)
             self.assertEqual(city["country"], locations._CITY_COUNTRY.get(city["city"]))
 
     def test_dispatch_includes_country_in_run_options_and_tasks(self):
@@ -99,6 +100,15 @@ class RoutineCitiesTests(unittest.TestCase):
             # Yabancı şehir için LinkedIn İngilizce meslek terimleriyle aranır
             self.assertEqual(tasks[1].keyword, "Software Engineer")
             self.assertEqual(tasks[2].keyword, "Mechanical Engineer")
+
+
+    def test_active_city_detected_when_run_in_progress(self):
+        with self.factory() as session:
+            run_id = routine_cities.dispatch(session, now=1000, source={"paused": False})
+            self.assertIsNotNone(run_id)
+            schedules = routine_cities._ensure_schedules(session)
+            snapshot = routine_cities._city_snapshot(session, routine_cities.ROUTINE_CITIES[0], schedules["İstanbul"], now=1000)
+            self.assertTrue(snapshot["is_active"])
 
 
 if __name__ == "__main__":
