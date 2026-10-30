@@ -1,8 +1,6 @@
 import unittest
 from unittest.mock import patch
 from jobapp import server, config
-from jobapp.db import SessionLocal
-from jobapp.models import Job
 
 
 class CompanyFilterTests(unittest.TestCase):
