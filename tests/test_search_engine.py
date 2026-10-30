@@ -15,11 +15,12 @@ class SearchEngineTests(unittest.TestCase):
         self.assertEqual(search_fold("München"), "munchen")
 
     def test_expand_search_terms_for_mechanical_engineer(self):
-        terms = expand_search_terms("makine mühendisi")
-        terms_lower = [t.lower() for t in terms]
-        self.assertIn("makine mühendisi", terms)
-        self.assertTrue(any("mechanical engineer" in t for t in terms_lower))
-        self.assertTrue(any("maschinenbauingenieur" in t for t in terms_lower))
+        for query in ["makine mühendisi", "makina mühendisi", "makine mühendis", "makina mühendis"]:
+            terms = expand_search_terms(query)
+            terms_lower = [t.lower() for t in terms]
+            self.assertIn(query, terms)
+            self.assertTrue(any("mechanical engineer" in t for t in terms_lower), f"Failed for {query}")
+            self.assertTrue(any("maschinenbauingenieur" in t for t in terms_lower), f"Failed for {query}")
 
     def test_expand_search_terms_for_software_engineer(self):
         terms = expand_search_terms("yazılım mühendisi")
@@ -46,6 +47,16 @@ class SearchEngineTests(unittest.TestCase):
 
         bio_terms = [t.lower() for t in expand_search_terms("moleküler biyoloji")]
         self.assertTrue(any("molecular biology" in t or "molecular biologist" in t for t in bio_terms))
+
+    def test_professions_classify_engineering_variants(self):
+        from jobapp.professions import classify
+        self.assertEqual(classify("Makine Mühendisi")["profession_code"], "mechanical_engineering")
+        self.assertEqual(classify("Makina Mühendisi")["profession_code"], "mechanical_engineering")
+        self.assertEqual(classify("Makine Mühendis")["profession_code"], "mechanical_engineering")
+        self.assertEqual(classify("Makina Mühendis")["profession_code"], "mechanical_engineering")
+        self.assertEqual(classify("Bilgisayar Mühendisi")["profession_code"], "software_engineering")
+        self.assertEqual(classify("Yazılım Mühendis")["profession_code"], "software_engineering")
+        self.assertEqual(classify("Elektrik Mühendis")["profession_code"], "electrical_engineering")
 
     def test_build_search_filter_returns_valid_clause(self):
         clause = build_search_filter(Job, "makine mühendisi")

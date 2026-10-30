@@ -5,7 +5,6 @@ import threading
 import time
 from flask import Response, jsonify, request
 from sqlalchemy import func, text
-from werkzeug.datastructures import MultiDict
 from .models import Job
 
 _lock = threading.Lock()
