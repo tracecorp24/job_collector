@@ -214,10 +214,12 @@ def install(server):
             paused = is_paused(session)
             cities = [_city_snapshot(session, city, rows[city["city"]], now) for city in ROUTINE_CITIES]
             country_count = len({city["country"] for city in ROUTINE_CITIES if city.get("country")})
-            return jsonify(cities=cities, total=len(cities), default_quota=25,
+            resp = jsonify(cities=cities, total=len(cities), default_quota=25,
                            country_count=country_count,
                            professions=list(ROUTINE_PROFESSIONS), profession_count=PROFESSION_COUNT,
                            interval_seconds=ROUTINE_INTERVAL_SECONDS, paused=paused, now=now)
+            resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            return resp
 
     @server.app.post("/api/routine-cities/<action>")
     def control_routine_cities(action):
