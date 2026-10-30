@@ -403,7 +403,8 @@ html.dark .toast {
 
 @media (max-width: 640px) {
   /* Konum Popover: Mobilde ekranın altından açılan modern Bottom-Sheet */
-  #heroLocationPopover {
+  #heroLocationPopover,
+  #heroCompanyPopover {
     position: fixed !important;
     left: 0 !important;
     right: 0 !important;
@@ -416,7 +417,8 @@ html.dark .toast {
     padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 16px)) !important;
     z-index: 9999 !important;
   }
-  #heroLocationOptionsList {
+  #heroLocationOptionsList,
+  #heroCompanyOptionsList {
     max-height: 48vh !important;
   }
 

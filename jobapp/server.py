@@ -328,6 +328,7 @@ def api_facets():
             "seniority": counts(Job.seniority),
             "workplace": counts(Job.workplace_type),
             "flag": counts(Job.flag),
+            "company": counts(Job.company),
             "companies": companies,
             "missing_embeddings": base.filter(Job.embedding.is_(None)).count(),
             "not_locally_classified": base.filter(Job.classified_by != "local").count(),

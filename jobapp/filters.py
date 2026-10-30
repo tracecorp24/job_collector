@@ -83,6 +83,8 @@ def filtered(session, args, omit=None):
                     conditions.append(or_(col == v, col == norm))
                 else:
                     conditions.append(col == v)
+            elif key == "company":
+                conditions.append(or_(col == v, folded(col) == fold(v)))
             else:
                 conditions.append(col == v)
         q = q.filter(or_(*conditions))

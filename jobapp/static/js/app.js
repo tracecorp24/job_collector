@@ -20,7 +20,8 @@ let prefs={}; try {prefs=JSON.parse(localStorage.getItem('linko.ui.v2')||'{}');}
 let filters={}, view=prefs.view||'cards', draft=Array.isArray(prefs.draft)?prefs.draft:[], form=prefs.form||{};
 const newId=()=>crypto.randomUUID();
 draft=draft.map(t=>({...t,id:t.id||newId()}));
-let groqAvailable=false,professionFacets={},cityOptionsCountry='',locationFacetData={country:[],city:[]};
+let groqAvailable=false,professionFacets={},cityOptionsCountry='',locationFacetData={country:[],city:[]},companyFacetData=[];
+const getSelectedCompanies = () => { if (!filters.company) return []; return Array.isArray(filters.company) ? filters.company : [filters.company]; };
 let draftRunId=prefs.draftRunId||null, draftSaveChain=Promise.resolve(), draftSaveTimer, queueStarting=false;
 let lastJobs=[], total=0, activeTotal=0, pages=0, currentRun=null, historyRuns=[], selectedHistory=new Set(), busy=false;
 let listController, facetController, detailController, requestSerial=0, facetSerial=0;
@@ -116,6 +117,37 @@ function syncControls(){
   document.querySelectorAll('[data-facet]').forEach(el=>{el.checked=(filters[el.dataset.facet]||[]).includes(el.value);});
   document.querySelectorAll('[data-quick]').forEach(el=>el.setAttribute('aria-pressed',String(quickActive(el.dataset.quick))));$('date-preset').value=String(postedPreset()||'');
   $('search-scope').textContent=filters.task_id?.length?`Seçili arama kimliği: ${filters.task_id.join(', ')}`:'';
+
+  // Hero Şirket Tetikleyici ve Rozet Güncellemesi
+  const hcActive = $('heroCompanyActiveText');
+  const hcBadge = $('heroCompanyBadge');
+  const hcClear = $('clearCompanyBtn');
+  const selectedCompanies = getSelectedCompanies();
+
+  if (hcActive) {
+    if (selectedCompanies.length === 1) {
+      hcActive.textContent = selectedCompanies[0];
+      if (hcBadge) { hcBadge.textContent = '1'; hcBadge.classList.remove('hidden'); }
+      if (hcClear) hcClear.classList.remove('hidden');
+    } else if (selectedCompanies.length === 2) {
+      hcActive.textContent = `${selectedCompanies[0]}, ${selectedCompanies[1]}`;
+      if (hcBadge) { hcBadge.textContent = '2'; hcBadge.classList.remove('hidden'); }
+      if (hcClear) hcClear.classList.remove('hidden');
+    } else if (selectedCompanies.length > 2) {
+      hcActive.textContent = `${selectedCompanies[0]} (+${selectedCompanies.length - 1})`;
+      if (hcBadge) { hcBadge.textContent = `${selectedCompanies.length}`; hcBadge.classList.remove('hidden'); }
+      if (hcClear) hcClear.classList.remove('hidden');
+    } else {
+      hcActive.textContent = 'Şirket seçin (Tümü)';
+      if (hcBadge) hcBadge.classList.add('hidden');
+      if (hcClear) hcClear.classList.add('hidden');
+    }
+  }
+
+  const hcFooter = $('heroCompanyFooterSummary');
+  if (hcFooter) {
+    hcFooter.textContent = selectedCompanies.length ? `${selectedCompanies.length} şirket seçili` : 'Tüm şirketler aktif';
+  }
 
   // Hero Konum Tetikleyici ve Rozet Güncellemesi
   const hlActive = $('heroLocationActiveText') || $('countryCityActiveText');
@@ -372,6 +404,8 @@ async function loadFacets(){
   facetController?.abort();facetController=new AbortController();const serial=++facetSerial;
   try{const data=await api('/api/facets?'+params(),{signal:facetController.signal});if(serial!==facetSerial)return;activeTotal=data.active_total;professionFacets=data;renderProfessionFacets();
     renderLocationFilters(data);
+    if(data.company)companyFacetData=data.company;else if(data.companies)companyFacetData=data.companies.map(c=>({value:c,count:0}));
+    renderHeroCompanyOptions();
     for(const key of groupKeys){const box=$('facet-'+key);const query=box.querySelector('.facet-search').value.toLocaleLowerCase('tr');const items=[...(data[key]||[])];for(const value of filters[key]||[])if(!items.some(i=>i.value===value))items.push({value,count:0});
       box.querySelector('.facet-options').innerHTML=items.map(item=>`<label class="check" ${tr(item.value).toLocaleLowerCase('tr').includes(query)?'':'hidden'}><input type="checkbox" data-facet="${key}" value="${esc(item.value)}" ${(filters[key]||[]).includes(item.value)?'checked':''}><span class="facet-name">${esc(tr(item.value))}</span><small>${item.count}</small></label>`).join('')||'<p class="help">Seçenek bulunamadı.</p>';facetCollapse(box);
     }
@@ -395,6 +429,40 @@ function renderLocationFilters(data){
   city.hidden=!selectedCountry;city.disabled=!selectedCountry;city.value=selectedCountry?(selectedCities[0]||''):'';
   renderHeroLocationOptions();
 }
+function renderHeroCompanyOptions(){
+  const list=$('heroCompanyOptionsList');if(!list)return;
+  const selectedCompanies=getSelectedCompanies();
+  const selectedSet=new Set(selectedCompanies);
+  const query=($('heroCompanyQuickSearch')?.value||'').trim().toLocaleLowerCase('tr');
+  const matches=item=>!query||String(item.value).toLocaleLowerCase('tr').includes(query);
+  const items=companyFacetData.filter(matches);
+
+  const allBtn=`<div class="flex items-center justify-between px-2 py-1.5 mb-1 bg-subtle-light dark:bg-white/[0.04] rounded-lg">
+    <button type="button" data-hero-company-clear class="text-[11px] font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline cursor-pointer">
+      ${selectedCompanies.length?'Tüm Şirketleri Temizle':'🌐 Tüm Şirketler (Filtresiz)'}
+    </button>
+    <span class="text-[10px] font-mono font-medium text-ink-muted">
+      ${selectedCompanies.length?`${selectedCompanies.length} seçili`:'Filtresiz'}
+    </span>
+  </div>`;
+
+  const itemsHtml=items.length?items.map(item=>{
+    const isChecked=selectedSet.has(item.value);
+    const initial=(item.value||'?').trim().charAt(0).toLocaleUpperCase('tr');
+    const hue=brandHue(item.value||'');
+    return `<label class="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors select-none group">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <input type="checkbox" data-hero-company-checkbox value="${esc(item.value)}" ${isChecked?'checked':''} class="w-4 h-4 rounded text-[#0A66C2] focus:ring-[#0A66C2] border-zinc-400 dark:border-zinc-600 bg-white dark:bg-zinc-800 cursor-pointer">
+        <span class="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold border shrink-0 ${hue}">${esc(initial)}</span>
+        <span class="truncate ${isChecked?'font-bold text-[#0A66C2] dark:text-[#70B5F9]':'text-slate-800 dark:text-zinc-200 group-hover:text-slate-900 dark:group-hover:text-white'}">${esc(item.value)}</span>
+      </div>
+      <span class="text-[10px] font-mono text-ink-muted shrink-0">${item.count?Number(item.count).toLocaleString('tr-TR'):''}</span>
+    </label>`;
+  }).join(''):'<p class="px-2.5 py-3 text-xs text-ink-muted">Eşleşen şirket bulunamadı.</p>';
+
+  list.innerHTML=allBtn+itemsHtml;
+}
+
 function renderHeroLocationOptions(){
   const list=$('heroLocationOptionsList')||$('countryCityOptionsList');if(!list)return;
   const country=filters.country||'';
@@ -1362,6 +1430,106 @@ function initHeroSearchAndPopovers(){
     });
   }
 
+  // Hero Şirket Filtresi Olay Dinleyicileri
+  const hcTrigger = $('heroCompanyTriggerBtn');
+  const hcPopover = $('heroCompanyPopover');
+  const hcChevron = $('heroCompanyChevron');
+  const hcOptionsList = $('heroCompanyOptionsList');
+  const hcQuickSearch = $('heroCompanyQuickSearch');
+  const hcClearBtn = $('clearCompanyBtn');
+  const hcResetBtn = $('heroCompanyResetBtn');
+  const hcApplyBtn = $('heroCompanyApplyBtn');
+
+  if (hcTrigger && hcPopover) {
+    hcTrigger.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = hcPopover.classList.toggle('hidden');
+      hcTrigger.setAttribute('aria-expanded', String(open));
+      if (hcChevron) hcChevron.classList.toggle('rotate-180', open);
+      if (open) {
+        // Konum popover açıksa kapat
+        $('heroLocationPopover')?.classList.add('hidden');
+        $('heroLocationTriggerBtn')?.setAttribute('aria-expanded', 'false');
+        $('heroLocationChevron')?.classList.remove('rotate-180');
+        renderHeroCompanyOptions();
+        setTimeout(() => hcQuickSearch?.focus(), 50);
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (!hcPopover.contains(e.target) && !hcTrigger.contains(e.target)) {
+        hcPopover.classList.add('hidden');
+        hcTrigger.setAttribute('aria-expanded', 'false');
+        if (hcChevron) hcChevron.classList.remove('rotate-180');
+      }
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !hcPopover.classList.contains('hidden')) {
+        hcPopover.classList.add('hidden');
+        hcTrigger.setAttribute('aria-expanded', 'false');
+        if (hcChevron) hcChevron.classList.remove('rotate-180');
+      }
+    });
+  }
+
+  if (hcApplyBtn) {
+    hcApplyBtn.addEventListener('click', () => {
+      hcPopover?.classList.add('hidden');
+      hcTrigger?.setAttribute('aria-expanded', 'false');
+      if (hcChevron) hcChevron.classList.remove('rotate-180');
+    });
+  }
+
+  const clearCompanySelection = (e) => {
+    if (e) e.stopPropagation();
+    delete filters.company;
+    if (hcQuickSearch) hcQuickSearch.value = '';
+    syncControls();
+    persist(true);
+    renderChips();
+    loadAll();
+    renderHeroCompanyOptions();
+  };
+
+  if (hcClearBtn) hcClearBtn.addEventListener('click', clearCompanySelection);
+  if (hcResetBtn) hcResetBtn.addEventListener('click', clearCompanySelection);
+
+  if (hcQuickSearch) {
+    hcQuickSearch.addEventListener('input', renderHeroCompanyOptions);
+  }
+
+  if (hcOptionsList) {
+    hcOptionsList.addEventListener('change', e => {
+      const checkbox = e.target.closest('[data-hero-company-checkbox]');
+      if (checkbox) {
+        const val = checkbox.value;
+        let current = getSelectedCompanies();
+        if (checkbox.checked) {
+          if (!current.includes(val)) current.push(val);
+        } else {
+          current = current.filter(c => c !== val);
+        }
+        if (current.length) {
+          filters.company = current;
+        } else {
+          delete filters.company;
+        }
+        syncControls();
+        persist(true);
+        renderChips();
+        loadAll();
+      }
+    });
+
+    hcOptionsList.addEventListener('click', e => {
+      const clearBtn = e.target.closest('[data-hero-company-clear]');
+      if (clearBtn) {
+        clearCompanySelection(e);
+      }
+    });
+  }
+
   const hlTrigger = $('heroLocationTriggerBtn') || $('countryCityTriggerBtn');
   const hlPopover = $('heroLocationPopover') || $('countryCityPopover');
   const hlChevron = $('heroLocationChevron') || $('countryCityChevron');
@@ -1378,6 +1546,9 @@ function initHeroSearchAndPopovers(){
       hlTrigger.setAttribute('aria-expanded', String(open));
       if (hlChevron) hlChevron.classList.toggle('rotate-180', open);
       if (open) {
+        hcPopover?.classList.add('hidden');
+        hcTrigger?.setAttribute('aria-expanded', 'false');
+        if (hcChevron) hcChevron.classList.remove('rotate-180');
         renderHeroLocationOptions();
         setTimeout(() => hlQuickSearch?.focus(), 50);
       }
