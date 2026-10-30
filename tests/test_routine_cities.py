@@ -15,6 +15,10 @@ class RoutineCitiesTests(unittest.TestCase):
     def test_routine_cities_structure_and_countries(self):
         self.assertEqual(len(routine_cities.ROUTINE_CITIES), 30)
         self.assertEqual(routine_cities.CITY_COUNT, 30)
+        self.assertIn("Kalibrasyon Mühendisliği", routine_cities.ROUTINE_PROFESSIONS)
+        self.assertIn("Sistem Mühendisliği", routine_cities.ROUTINE_PROFESSIONS)
+        self.assertEqual(routine_cities.ROUTINE_PROFESSION_KEYWORDS_INTL["Kalibrasyon Mühendisliği"], "Calibration Engineer")
+        self.assertEqual(routine_cities.ROUTINE_PROFESSION_KEYWORDS_INTL["Sistem Mühendisliği"], "System Engineer")
 
         countries = set()
         for city_info in routine_cities.ROUTINE_CITIES:

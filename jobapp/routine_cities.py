@@ -71,6 +71,8 @@ ROUTINE_PROFESSIONS = (
     "Endüstri Mühendisliği",
     "Havacılık ve Uzay Mühendisliği",
     "Robotik Mühendisliği",
+    "Kalibrasyon Mühendisliği",
+    "Sistem Mühendisliği",
 )
 
 ROUTINE_PROFESSION_KEYWORDS_INTL = {
@@ -84,6 +86,8 @@ ROUTINE_PROFESSION_KEYWORDS_INTL = {
     "Endüstri Mühendisliği": "Industrial Engineer",
     "Havacılık ve Uzay Mühendisliği": "Aerospace Engineer",
     "Robotik Mühendisliği": "Robotics Engineer",
+    "Kalibrasyon Mühendisliği": "Calibration Engineer",
+    "Sistem Mühendisliği": "System Engineer",
 }
 
 ROUTINE_CITIES = tuple(
@@ -139,7 +143,7 @@ def _city_snapshot(session, city, row, now):
 
 
 def dispatch(session, now, source):
-    """Queue one due city batch; the shared supervisor runs its 10 tasks serially."""
+    """Queue one due city batch; the shared supervisor runs its tasks serially."""
     if source.get("paused") or is_paused(session):
         return None
     rows = _ensure_schedules(session)

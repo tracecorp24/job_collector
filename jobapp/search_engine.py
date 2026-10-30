@@ -120,6 +120,7 @@ JOB_ROLE_EQUIVALENTS = [
     ["it_specialist", "bilgi işlem", "it uzmanı", "it specialist", "it support", "it administrator", "teknik destek"],
     ["hardware_engineer", "donanım mühendisi", "donanım uzmanı", "donanım", "hardware engineer", "hardware designer", "hardwareentwickler"],
     ["system_engineer", "sistem mühendisi", "sistem mühendisliği", "system engineer", "systems engineer", "systemingenieur"],
+    ["calibration_engineer", "kalibrasyon mühendisi", "kalibrasyon mühendisliği", "calibration engineer", "kalibrierungsingenieur"],
     ["product_owner", "product owner", "ürün sahibi", "po"],
     ["scrum_master", "scrum master", "agile coach", "çevik koç"],
     ["remote_work", "uzaktan", "evden", "remote", "homeoffice", "telearbeit", "teletravail"]
