@@ -10,54 +10,54 @@ from .models import RoutineCitySchedule, SearchRun, SearchTask, Setting
 
 
 # --- Şu an devre dışı şehirler (ileride tekrar aktif edilebilir) -----------
-# ("Budapeşte", "Macaristan", "Budapest, Hungary", 50, False),
-# ("Bükreş", "Romanya", "Bucharest, Romania", 50, False),
-# ("Cambridge", "Birleşik Krallık", "Cambridge, England, United Kingdom", 50, False),
-# ("Cenevre", "İsviçre", "Geneva, Switzerland", 50, False),
-# ("Edinburg", "Birleşik Krallık", "Edinburgh, Scotland, United Kingdom", 50, False),
-# ("Eindhoven", "Hollanda", "Eindhoven, Netherlands", 50, False),
-# ("Göteborg", "İsveç", "Gothenburg, Sweden", 50, False),
-# ("Köln", "Almanya", "Cologne, Germany", 50, False),
-# ("Krakow", "Polonya", "Krakow, Poland", 50, False),
-# ("Lozan", "İsviçre", "Lausanne, Switzerland", 50, False),
-# ("Lyon", "Fransa", "Lyon, France", 50, False),
-# ("Oxford", "Birleşik Krallık", "Oxford, England, United Kingdom", 50, False),
-# ("Sofya", "Bulgaristan", "Sofia, Bulgaria", 50, False),
-# ("Torino", "İtalya", "Turin, Italy", 50, False),
+# ("Budapeşte", "Macaristan", "Budapest, Hungary", 25, False),
+# ("Bükreş", "Romanya", "Bucharest, Romania", 25, False),
+# ("Cambridge", "Birleşik Krallık", "Cambridge, England, United Kingdom", 25, False),
+# ("Cenevre", "İsviçre", "Geneva, Switzerland", 25, False),
+# ("Edinburg", "Birleşik Krallık", "Edinburgh, Scotland, United Kingdom", 25, False),
+# ("Eindhoven", "Hollanda", "Eindhoven, Netherlands", 25, False),
+# ("Göteborg", "İsveç", "Gothenburg, Sweden", 25, False),
+# ("Köln", "Almanya", "Cologne, Germany", 25, False),
+# ("Krakow", "Polonya", "Krakow, Poland", 25, False),
+# ("Lozan", "İsviçre", "Lausanne, Switzerland", 25, False),
+# ("Lyon", "Fransa", "Lyon, France", 25, False),
+# ("Oxford", "Birleşik Krallık", "Oxford, England, United Kingdom", 25, False),
+# ("Sofya", "Bulgaristan", "Sofia, Bulgaria", 25, False),
+# ("Torino", "İtalya", "Turin, Italy", 25, False),
 # --------------------------------------------------------------------------
 
 _CITY_ROWS = (
     # Istanbul is deliberately first: it is the critical routine location.
-    ("İstanbul", "Türkiye", "Istanbul, Turkey", 50, True),
-    ("Amsterdam", "Hollanda", "Amsterdam, Netherlands", 50, False),
-    ("Ankara", "Türkiye", "Ankara, Turkey", 50, False),
-    ("Barcelona", "İspanya", "Barcelona, Spain", 50, False),
-    ("Berlin", "Almanya", "Berlin, Germany", 50, False),
-    ("Brüksel", "Belçika", "Brussels, Belgium", 50, False),
-    ("Dublin", "İrlanda", "Dublin, Ireland", 50, False),
-    ("Frankfurt", "Almanya", "Frankfurt, Germany", 50, False),
-    ("Hamburg", "Almanya", "Hamburg, Germany", 50, False),
-    ("Helsinki", "Finlandiya", "Helsinki, Finland", 50, False),
-    ("İzmir", "Türkiye", "Izmir, Turkey", 50, False),
-    ("Kopenhag", "Danimarka", "Copenhagen, Denmark", 50, False),
-    ("Lizbon", "Portekiz", "Lisbon, Portugal", 50, False),
-    ("Londra", "Birleşik Krallık", "London, United Kingdom", 50, False),
-    ("Madrid", "İspanya", "Madrid, Spain", 50, False),
-    ("Milano", "İtalya", "Milan, Italy", 50, False),
-    ("Münih", "Almanya", "Munich, Germany", 50, False),
-    ("Oslo", "Norveç", "Oslo, Norway", 50, False),
-    ("Paris", "Fransa", "Paris, France", 50, False),
-    ("Prag", "Çekya", "Prague, Czechia", 50, False),
-    ("Roma", "İtalya", "Rome, Italy", 50, False),
-    ("Stockholm", "İsveç", "Stockholm, Sweden", 50, False),
-    ("Stuttgart", "Almanya", "Stuttgart, Germany", 50, False),
-    ("Tallinn", "Estonya", "Tallinn, Estonia", 50, False),
-    ("Utrecht", "Hollanda", "Utrecht, Netherlands", 50, False),
-    ("Valensiya", "İspanya", "Valencia, Spain", 50, False),
-    ("Varşova", "Polonya", "Warsaw, Poland", 50, False),
-    ("Viyana", "Avusturya", "Vienna, Austria", 50, False),
-    ("Wroclaw", "Polonya", "Wroclaw, Poland", 50, False),
-    ("Zürih", "İsviçre", "Zurich, Switzerland", 50, False),
+    ("İstanbul", "Türkiye", "Istanbul, Turkey", 25, True),
+    ("Amsterdam", "Hollanda", "Amsterdam, Netherlands", 25, False),
+    ("Ankara", "Türkiye", "Ankara, Turkey", 25, False),
+    ("Barcelona", "İspanya", "Barcelona, Spain", 25, False),
+    ("Berlin", "Almanya", "Berlin, Germany", 25, False),
+    ("Brüksel", "Belçika", "Brussels, Belgium", 25, False),
+    ("Dublin", "İrlanda", "Dublin, Ireland", 25, False),
+    ("Frankfurt", "Almanya", "Frankfurt, Germany", 25, False),
+    ("Hamburg", "Almanya", "Hamburg, Germany", 25, False),
+    ("Helsinki", "Finlandiya", "Helsinki, Finland", 25, False),
+    ("İzmir", "Türkiye", "Izmir, Turkey", 25, False),
+    ("Kopenhag", "Danimarka", "Copenhagen, Denmark", 25, False),
+    ("Lizbon", "Portekiz", "Lisbon, Portugal", 25, False),
+    ("Londra", "Birleşik Krallık", "London, United Kingdom", 25, False),
+    ("Madrid", "İspanya", "Madrid, Spain", 25, False),
+    ("Milano", "İtalya", "Milan, Italy", 25, False),
+    ("Münih", "Almanya", "Munich, Germany", 25, False),
+    ("Oslo", "Norveç", "Oslo, Norway", 25, False),
+    ("Paris", "Fransa", "Paris, France", 25, False),
+    ("Prag", "Çekya", "Prague, Czechia", 25, False),
+    ("Roma", "İtalya", "Rome, Italy", 25, False),
+    ("Stockholm", "İsveç", "Stockholm, Sweden", 25, False),
+    ("Stuttgart", "Almanya", "Stuttgart, Germany", 25, False),
+    ("Tallinn", "Estonya", "Tallinn, Estonia", 25, False),
+    ("Utrecht", "Hollanda", "Utrecht, Netherlands", 25, False),
+    ("Valensiya", "İspanya", "Valencia, Spain", 25, False),
+    ("Varşova", "Polonya", "Warsaw, Poland", 25, False),
+    ("Viyana", "Avusturya", "Vienna, Austria", 25, False),
+    ("Wroclaw", "Polonya", "Wroclaw, Poland", 25, False),
+    ("Zürih", "İsviçre", "Zurich, Switzerland", 25, False),
 )
 
 ROUTINE_PROFESSIONS = (
@@ -73,6 +73,7 @@ ROUTINE_PROFESSIONS = (
     "Robotik Mühendisliği",
     "Kalibrasyon Mühendisliği",
     "Sistem Mühendisliği",
+    "Moleküler Biyoloji",
 )
 
 ROUTINE_PROFESSION_KEYWORDS_INTL = {
@@ -88,6 +89,7 @@ ROUTINE_PROFESSION_KEYWORDS_INTL = {
     "Robotik Mühendisliği": "Robotics Engineer",
     "Kalibrasyon Mühendisliği": "Calibration Engineer",
     "Sistem Mühendisliği": "System Engineer",
+    "Moleküler Biyoloji": "Molecular Biology",
 }
 
 ROUTINE_CITIES = tuple(
@@ -174,10 +176,11 @@ def dispatch(session, now, source):
         for position, profession in enumerate(ROUTINE_PROFESSIONS):
             task_id = runs.identifier()
             keyword = profession if is_turkey else ROUTINE_PROFESSION_KEYWORDS_INTL.get(profession, profession)
+            group = "Sağlık ve Yaşam Bilimleri" if "Biyoloji" in profession else "Mühendislik"
             task = SearchTask(
                 id=task_id, run_id=run_id, position=position,
                 keyword=keyword, location=city["location"], limit=city["quota"],
-                package=f"Rutin · {city['city']}", profession_group="Mühendislik",
+                package=f"Rutin · {city['city']}", profession_group=group,
                 profession_code=f"routine-engineering-{position + 1}",
             )
             session.add(task)
@@ -211,7 +214,7 @@ def install(server):
             paused = is_paused(session)
             cities = [_city_snapshot(session, city, rows[city["city"]], now) for city in ROUTINE_CITIES]
             country_count = len({city["country"] for city in ROUTINE_CITIES if city.get("country")})
-            return jsonify(cities=cities, total=len(cities), default_quota=50,
+            return jsonify(cities=cities, total=len(cities), default_quota=25,
                            country_count=country_count,
                            professions=list(ROUTINE_PROFESSIONS), profession_count=PROFESSION_COUNT,
                            interval_seconds=ROUTINE_INTERVAL_SECONDS, paused=paused, now=now)

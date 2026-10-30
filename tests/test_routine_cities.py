@@ -17,8 +17,10 @@ class RoutineCitiesTests(unittest.TestCase):
         self.assertEqual(routine_cities.CITY_COUNT, 30)
         self.assertIn("Kalibrasyon Mühendisliği", routine_cities.ROUTINE_PROFESSIONS)
         self.assertIn("Sistem Mühendisliği", routine_cities.ROUTINE_PROFESSIONS)
+        self.assertIn("Moleküler Biyoloji", routine_cities.ROUTINE_PROFESSIONS)
         self.assertEqual(routine_cities.ROUTINE_PROFESSION_KEYWORDS_INTL["Kalibrasyon Mühendisliği"], "Calibration Engineer")
         self.assertEqual(routine_cities.ROUTINE_PROFESSION_KEYWORDS_INTL["Sistem Mühendisliği"], "System Engineer")
+        self.assertEqual(routine_cities.ROUTINE_PROFESSION_KEYWORDS_INTL["Moleküler Biyoloji"], "Molecular Biology")
 
         countries = set()
         for city_info in routine_cities.ROUTINE_CITIES:
@@ -26,6 +28,7 @@ class RoutineCitiesTests(unittest.TestCase):
             self.assertIn("country", city_info)
             self.assertIn("location", city_info)
             self.assertIn("quota", city_info)
+            self.assertEqual(city_info["quota"], 25)
             self.assertIn("critical", city_info)
             self.assertIn("order", city_info)
 
@@ -53,6 +56,7 @@ class RoutineCitiesTests(unittest.TestCase):
 
         self.assertEqual(data["total"], 30)
         self.assertEqual(data["country_count"], 19)
+        self.assertEqual(data["default_quota"], 25)
         self.assertEqual(len(data["cities"]), 30)
 
         for city in data["cities"]:

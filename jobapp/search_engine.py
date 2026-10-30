@@ -121,6 +121,7 @@ JOB_ROLE_EQUIVALENTS = [
     ["hardware_engineer", "donanım mühendisi", "donanım uzmanı", "donanım", "hardware engineer", "hardware designer", "hardwareentwickler"],
     ["system_engineer", "sistem mühendisi", "sistem mühendisliği", "system engineer", "systems engineer", "systemingenieur"],
     ["calibration_engineer", "kalibrasyon mühendisi", "kalibrasyon mühendisliği", "calibration engineer", "kalibrierungsingenieur"],
+    ["molecular_biology", "moleküler biyoloji", "moleküler biyoloji ve genetik", "moleküler biyolog", "molecular biology", "molecular biologist", "molekularbiologie"],
     ["product_owner", "product owner", "ürün sahibi", "po"],
     ["scrum_master", "scrum master", "agile coach", "çevik koç"],
     ["remote_work", "uzaktan", "evden", "remote", "homeoffice", "telearbeit", "teletravail"]

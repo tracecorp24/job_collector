@@ -44,6 +44,9 @@ class SearchEngineTests(unittest.TestCase):
         sys_terms = [t.lower() for t in expand_search_terms("system engineer")]
         self.assertTrue(any("sistem mühendisi" in t or "sistem mühendisliği" in t for t in sys_terms))
 
+        bio_terms = [t.lower() for t in expand_search_terms("moleküler biyoloji")]
+        self.assertTrue(any("molecular biology" in t or "molecular biologist" in t for t in bio_terms))
+
     def test_build_search_filter_returns_valid_clause(self):
         clause = build_search_filter(Job, "makine mühendisi")
         self.assertIsNotNone(clause)

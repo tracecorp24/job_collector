@@ -40,6 +40,7 @@ OCCUPATIONS = (
     ("Sağlık ve Yaşam Bilimleri", "Hemşirelik ve Hasta Bakımı", "nursing_patient_care", ("registered nurse", "nurse", "nursing assistant", "caregiver", "midwife", "hemsire", "hasta bakici", "ebe", "paramedic", "acil tip teknisyeni")),
     ("Sağlık ve Yaşam Bilimleri", "Eczacılık ve İlaç", "pharmacy", ("pharmacist", "pharmacy technician", "clinical pharmacist", "eczaci", "eczane teknisyeni", "farmakovijilans", "medical representative", "ilac ruhsatlandirma")),
     ("Sağlık ve Yaşam Bilimleri", "Laboratuvar ve Biyomedikal", "clinical_laboratory", ("lab technician", "laboratory technician", "medical laboratory", "biomedical engineer", "clinical research associate", "lab technician", "laboratuvar teknisyeni", "biyomedikal muhendisi", "klinik arastirma")),
+    ("Sağlık ve Yaşam Bilimleri", "Moleküler Biyoloji ve Genetik", "molecular_biology", ("molecular biology", "molecular biologist", "molekuler biyoloji", "molekuler biyolog", "molekuler biyoloji ve genetik", "genetik muhendisi", "genetic engineer", "biyolog", "biologist")),
     ("Lojistik ve Operasyon", "Lojistik ve Taşımacılık", "logistics_transport", ("logistics coordinator", "logistics specialist", "transport planner", "fleet manager", "customs specialist", "lojistik uzmani", "lojistik planlama", "tasimacilik", "gümrük uzmani")),
     ("Lojistik ve Operasyon", "Tedarik Zinciri ve Planlama", "supply_chain", ("supply chain", "demand planner", "supply planner", "inventory planner", "supply chain analyst", "tedarik zinciri", "talep planlama", "stok planlama")),
     ("Lojistik ve Operasyon", "Depo ve Envanter", "warehouse_inventory", ("warehouse associate", "warehouse manager", "inventory specialist", "inventory control", "forklift operator", "depo sorumlusu", "depo elemani", "envanter uzmani", "forklift operatoru")),
@@ -137,8 +138,8 @@ def classify(title, description=""):
             "profession_code": primary[2], "normalized_title": canonical_title}
 
 
-_TURKISH_WORDS = frozenset("uzmani uzman muhendis muhendisi muhendislik yazilim yazilimci gelistirici gelistirme yoneticisi yonetici mudur analisti analist veri operasyon operasyonu satis finans muhasebe pazarlama tasarim urun lojistik tedarik musteri guvenlik egitim saglik hukuk tarim sorumlusu teknisyeni ogretmen hemsire avukat muhasebeci egitmen eczaci calisan kalibrasyon".split())
-_ENGLISH_WORDS = frozenset("engineer engineering developer software analyst data manager director specialist technician teacher nurse accountant accounting attorney recruiter designer design consultant coordinator associate assistant administrator executive scientist researcher operations sales finance marketing product logistics supply customer security education healthcare lawyer calibration".split())
+_TURKISH_WORDS = frozenset("uzmani uzman muhendis muhendisi muhendislik yazilim yazilimci gelistirici gelistirme yoneticisi yonetici mudur analisti analist veri operasyon operasyonu satis finans muhasebe pazarlama tasarim urun lojistik tedarik musteri guvenlik egitim saglik hukuk tarim sorumlusu teknisyeni ogretmen hemsire avukat muhasebeci egitmen eczaci calisan kalibrasyon biyoloji biyolog molekuler".split())
+_ENGLISH_WORDS = frozenset("engineer engineering developer software analyst data manager director specialist technician teacher nurse accountant accounting attorney recruiter designer design consultant coordinator associate assistant administrator executive scientist researcher operations sales finance marketing product logistics supply customer security education healthcare lawyer calibration biology biologist molecular".split())
 
 
 def query_metadata(keyword, location=""):

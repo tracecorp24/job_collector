@@ -19,7 +19,7 @@ Tek toplayıcı, hazır işleri şu sırayla çalıştırır:
    Önce alınmış veri kaydedilir, ardından yeni detay istenir.
 3. **Rutin taramalar:** Kayıtlı şehir × meslek listeleri ve zamanlanmış tekrarlar.
 
-Rutin tarama havuzu 44 şehir (22 ülke) ve 12 mühendislik mesleğinin şehir başına günlük taramasını oluşturur. İstanbul ilk sırada ve kritik önceliktedir; tüm şehirlerde meslek başına hedef 50 ilandır. Son 7 gündeki ilanlar en yeniden eskiye taranır; kaynak hız sınırı ve öncelikli kuyruk uygulanır. Şehirlerin ülkeleri, durumları ve hedefleri İş alarmları ekranında ve `GET /api/routine-cities` uç noktasında görüntülenir. Rutin şehir taramaları aynı ekrandan duraklatılıp sürdürülebilir; “Tüm kuyruğu iptal et” bu taramaları da duraklatır.
+Rutin tarama havuzu 44 şehir (22 ülke) ve 13 mesleğin şehir başına günlük taramasını oluşturur. İstanbul ilk sırada ve kritik önceliktedir; tüm şehirlerde meslek başına hedef 25 ilandır. Son 7 gündeki ilanlar en yeniden eskiye taranır; kaynak hız sınırı ve öncelikli kuyruk uygulanır. Şehirlerin ülkeleri, durumları ve hedefleri İş alarmları ekranında ve `GET /api/routine-cities` uç noktasında görüntülenir. Rutin şehir taramaları aynı ekrandan duraklatılıp sürdürülebilir; “Tüm kuyruğu iptal et” bu taramaları da duraklatır.
 
 Daha yüksek öncelikli hazır iş geldiğinde alt katman güvenli noktada sırayı bırakır;
 devam noktası ve elde edilen ilanlar korunur. Kullanıcının duraklattığı işler otomatik başlamaz.

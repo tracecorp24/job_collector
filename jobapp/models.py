@@ -273,7 +273,7 @@ class Watch(Base):
     keywords = Column(Text, default="[]")
     locations = Column(Text, default="[]")
     interval_seconds = Column(Integer, default=21600)
-    limit = Column(Integer, default=50)
+    limit = Column(Integer, default=25)
     posted_within = Column(Integer, default=86400)
     enabled = Column(Boolean, default=True)
     next_due_at = Column(Float, default=0)

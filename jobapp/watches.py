@@ -73,7 +73,7 @@ def validate(body, current=None):
         name=str(base.get("name") or "").strip()[:200] or f"{keywords[0]} · {locations[0]}",
         keywords=keywords, locations=locations,
         interval_seconds=_integer(base.get("interval_seconds", 21600), "Tarama sıklığı", allowed=INTERVALS),
-        limit=_integer(base.get("limit", 50), "Kombinasyon başına ilan hedefi", low=1, high=MAX_LIMIT),
+        limit=_integer(base.get("limit", 25), "Kombinasyon başına ilan hedefi", low=1, high=MAX_LIMIT),
         posted_within=_integer(base.get("posted_within", 86400), "Yayın tarihi aralığı", allowed=POSTED_WITHIN),
         enabled=bool(base.get("enabled", True)),
     )

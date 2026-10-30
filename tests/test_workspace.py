@@ -102,6 +102,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('Robotik Mühendisliği', html)
         self.assertIn('Kalibrasyon Mühendisliği', html)
         self.assertIn('Sistem Mühendisliği', html)
+        self.assertIn('Moleküler Biyoloji', html)
 
     def test_discovery_ids_survive_later_searches(self):
         first,_,_=self.scrape([response(card(31)),response(DETAIL)],1)
