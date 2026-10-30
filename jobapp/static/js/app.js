@@ -148,6 +148,7 @@ function syncControls(){
   if (hcFooter) {
     hcFooter.textContent = selectedCompanies.length ? `${selectedCompanies.length} şirket seçili` : 'Tüm şirketler aktif';
   }
+  renderHeroCompanyOptions();
 
   // Hero Konum Tetikleyici ve Rozet Güncellemesi
   const hlActive = $('heroLocationActiveText') || $('countryCityActiveText');
@@ -332,7 +333,7 @@ function jobCard(j){
         </div>
 
         <p class="text-xs font-semibold text-slate-800 dark:text-zinc-200 truncate mt-0.5">
-          ${esc(j.company || 'Şirket belirtilmemiş')}
+          <button type="button" data-filter-company="${esc(j.company || '')}" class="hover:text-[#0A66C2] dark:hover:text-[#70B5F9] hover:underline cursor-pointer transition-colors text-left" title="${esc(j.company || 'Şirket belirtilmemiş')} ile filtrele">${esc(j.company || 'Şirket belirtilmemiş')}</button>
         </p>
 
         <p class="text-[11px] text-ink-muted truncate mt-0.5 flex items-center gap-1">
@@ -519,7 +520,7 @@ async function loadNewCount(){
   }catch{}
 }
 function markAllSeen(){if(filters.created_from===seen.mark)delete filters.created_from;seen.mark=new Date().toISOString();saveSeen();syncControls();renderChips();persist(true);loadAll();toast('Tüm ilanlar görüldü sayıldı. Bundan sonra eklenenler “yeni” olarak işaretlenir.');}
-function resetFilters(){filters={};syncControls();renderChips();persist(true);loadAll();}
+function resetFilters(){filters={};const qs=$('heroCompanyQuickSearch');if(qs)qs.value='';syncControls();renderChips();persist(true);loadAll();}
 const scheduleFilters=debounce((key,value)=>setFilter(key,value));
 function applySearch(){
   const value=$('search').value.trim();
@@ -553,7 +554,7 @@ function renderJobDetailHtml(j, n){
       </div>
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9]">${esc(j.company||'Şirket belirtilmemiş')}</span>
+          <button type="button" data-filter-company="${esc(j.company||'')}" class="text-xs font-semibold text-[#0A66C2] dark:text-[#70B5F9] hover:underline text-left cursor-pointer" title="${esc(j.company || 'Şirket belirtilmemiş')} ile filtrele">${esc(j.company||'Şirket belirtilmemiş')}</button>
           <span class="text-black/20 dark:text-white/20">·</span>
           <span class="text-xs text-ink-muted">${esc(j.location||'Konum belirtilmemiş')}</span>
         </div>
@@ -1342,6 +1343,7 @@ async function dispatch(action,el){
 document.addEventListener('click',async event=>{
   const close=event.target.closest('[data-close]');if(close){closeDialog(close.dataset.close);return;}
   const chip=event.target.closest('[data-remove-filter]');if(chip){const key=chip.dataset.removeFilter;const value=filters[key];setFilter(key,Array.isArray(value)?value.filter(v=>v!==chip.dataset.value):'');return;}
+  const comp=event.target.closest('[data-filter-company]');if(comp){const c=(comp.dataset.filterCompany||'').trim();if(c&&c!=='Şirket belirtilmemiş'){event.stopPropagation();setFilter('company',[c]);$('results')?.scrollIntoView({behavior:'smooth',block:'start'});return;}}
   const dash=event.target.closest('[data-dash-filter],[data-dash-window]');if(dash){openJobsFromDashboard(dash);return;}
   const quick=event.target.closest('[data-quick]');if(quick){toggleQuick(quick.dataset.quick);return;}
   const more=event.target.closest('[data-facet-more]');if(more){const key=more.dataset.facetMore;if(expandedFacets.has(key))expandedFacets.delete(key);else expandedFacets.add(key);facetCollapse($('facet-'+key));return;}
