@@ -528,7 +528,7 @@ function applySearch(){
   if(value)filters.search=value;else delete filters.search;
   delete filters.page;syncControls();persist(true);renderChips();loadAll();
 }
-const scheduleSearch=debounce(applySearch);
+const scheduleSearch=debounce(applySearch, 400);
 function submitSearch(){scheduleSearch.cancel();applySearch();}
 
 function descriptionHtml(text){return esc(text||'İlan açıklaması bulunamadı.').split(/\n\s*\n/).map(p=>'<p>'+p+'</p>').join('');}

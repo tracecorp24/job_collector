@@ -46,7 +46,7 @@ def number(args, key, integer=False):
         raise ValueError(f"{key}: sıfır veya daha büyük geçerli bir sayı girin.")
 
 
-def filtered(session, args, omit=None):
+def filtered(session, args, omit=None, search_ids=None):
     q = session.query(Job)
     trash = args.get("visibility", "active")
     if trash not in ("active", "trash", "all"):
@@ -128,13 +128,19 @@ def filtered(session, args, omit=None):
         if norm_pair[0] != "Belirtilmemiş" and norm_pair[1] != "Belirtilmemiş":
             loc_conditions.append(and_(Job.location_country == norm_pair[0], Job.location_city == norm_pair[1]))
         q = q.filter(or_(*loc_conditions))
-    text = args.get("search", "").strip()
-    if text and args.get("semantic") not in ("1", "true"):
-        from . import search_engine
-        country_filter = (args.get("country") or "").strip() or None
-        search_clause = search_engine.build_search_filter(Job, text, country=country_filter)
-        if search_clause is not None:
-            q = q.filter(search_clause)
+    if search_ids is not None:
+        if search_ids:
+            q = q.filter(Job.id.in_(search_ids))
+        else:
+            q = q.filter(Job.id == -1)
+    else:
+        text = args.get("search", "").strip()
+        if text and args.get("semantic") not in ("1", "true"):
+            from . import search_engine
+            country_filter = (args.get("country") or "").strip() or None
+            search_clause = search_engine.build_search_filter(Job, text, country=country_filter)
+            if search_clause is not None:
+                q = q.filter(search_clause)
     if args.get("phrase", "").strip():
         q = q.filter(or_(contains(Job.title, args["phrase"]), contains(Job.description, args["phrase"])))
     for term in args.get("exclude", "").split(","):

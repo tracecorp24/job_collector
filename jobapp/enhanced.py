@@ -230,12 +230,21 @@ def install(server):
     def facets():
         with server.SessionLocal() as session:
             result = {}
+            search_text = request.args.get("search", "").strip()
+            search_ids = None
+            if search_text and request.args.get("semantic") not in ("1", "true"):
+                from . import search_engine
+                country_filter = (request.args.get("country") or "").strip() or None
+                search_clause = search_engine.build_search_filter(Job, search_text, country=country_filter)
+                if search_clause is not None:
+                    search_ids = [r[0] for r in session.query(Job.id).filter(search_clause).all()]
+
             for key, column in filters.FIELDS.items():
                 if key in ("profession_group", "profession_subgroup"):
                     continue
                 if key in ("country", "city"):
                     continue
-                q = filters.filtered(session, request.args, omit=key)
+                q = filters.filtered(session, request.args, omit=key, search_ids=search_ids)
                 if key in ("search_term", "search_location"):
                     column = SearchTask.keyword if key == "search_term" else SearchTask.location
                     q = q.join(TaskJob, TaskJob.job_id == Job.id).join(SearchTask, SearchTask.id == TaskJob.task_id)
@@ -243,20 +252,20 @@ def install(server):
                 result[key] = [{"value": value or "__missing__", "count": n}
                                for value, n in q.with_entities(func.coalesce(column, ""), count).group_by(func.coalesce(column, "")).order_by(count.desc()).all()]
             count = func.count(func.distinct(Job.id))
-            country_query = filters.filtered(session, request.args, omit=("country", "city"))
+            country_query = filters.filtered(session, request.args, omit=("country", "city"), search_ids=search_ids)
             result["country"] = [{"value": value or "Belirtilmemiş", "count": n}
                                  for value, n in country_query.with_entities(Job.location_country, count)
                                  .group_by(Job.location_country).order_by(count.desc(), Job.location_country).all()]
             selected_country = request.args.get("country", "").strip()
             if selected_country:
-                city_query = filters.filtered(session, request.args, omit="city")
+                city_query = filters.filtered(session, request.args, omit="city", search_ids=search_ids)
                 result["city"] = [{"value": value or "Belirtilmemiş", "count": n}
                                   for value, n in city_query.with_entities(Job.location_city, count)
                                   .group_by(Job.location_city).order_by(count.desc(), Job.location_city).all()]
             else:
                 result["city"] = []
             counts = {}
-            for row in filters.filtered(session, request.args, omit=("skills", "profession_group", "profession_subgroup")).with_entities(Job.tags):
+            for row in filters.filtered(session, request.args, omit=("skills", "profession_group", "profession_subgroup"), search_ids=search_ids).with_entities(Job.tags):
                 try:
                     values = set(json.loads(row[0] or "[]"))
                 except (ValueError, TypeError):
@@ -265,7 +274,7 @@ def install(server):
                     counts[tag] = counts.get(tag, 0) + 1
             result["skills"] = [{"value": k, "count": v} for k, v in sorted(counts.items(), key=lambda i: (-i[1], i[0]))]
             tree_counts = {}
-            tree_jobs = filters.filtered(session, request.args, omit=("profession_group", "profession_subgroup"))
+            tree_jobs = filters.filtered(session, request.args, omit=("profession_group", "profession_subgroup"), search_ids=search_ids)
             for column_name, column in (("profession_groups", Job.profession_groups),
                                         ("profession_subgroups", Job.profession_subgroups)):
                 for row in tree_jobs.with_entities(Job.id, column):
@@ -284,7 +293,7 @@ def install(server):
                                            for group in professions.MAIN_GROUPS]
             result["profession_subgroup"] = [{"value": subgroup, "count": tree_counts.get(subgroup, 0)}
                                                for subgroup in professions.SUBGROUPS]
-            base = filters.filtered(session, request.args)
+            base = filters.filtered(session, request.args, search_ids=search_ids)
             result.update(total=base.count(), active_total=session.query(Job).filter(Job.deleted_at.is_(None), Job.quality_ok.is_(True)).count(),
                           missing_embeddings=base.filter(Job.embedding.is_(None)).count(),
                           not_locally_classified=base.filter(Job.classified_by != "local").count(),

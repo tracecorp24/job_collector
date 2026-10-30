@@ -44,26 +44,26 @@ GENERAL_ROLES = {
 
 # Trace / NextStep uyumlu çok dilli meslek eşdeğerleri
 JOB_ROLE_EQUIVALENTS = [
-    ["software_engineer", "yazılım mühendisi", "yazılım mühendisliği", "yazılım geliştirici", "yazılım geliştiricisi", "yazılım uzmanı", "yazılımcı", "yazılım", "software engineer", "software developer", "softwareentwickler", "softwareentwicklerin", "développeur logiciel", "ingeniero de software", "software dev", "sw engineer", "swe", "software"],
-    ["computer_engineer", "bilgisayar mühendisi", "bilgisayar mühendisliği", "computer engineer"],
-    ["mechanical_engineer", "makine mühendisi", "makine mühendisliği", "makina mühendisi", "makina mühendisliği", "mechanical engineer", "maschinenbauingenieur", "ingeniero mecánico"],
-    ["mechanical_design", "mekanik tasarım mühendisi", "mekanik tasarım mühendisliği", "mekanik tasarım uzmanı", "mekanik tasarımcı", "mekanik tasarım", "makine tasarım mühendisi", "makine tasarımı", "mechanical design engineer", "mechanical designer", "mechanical design", "mechanische konstruktion", "conception mécanique"],
-    ["electrical_engineer", "elektrik mühendisi", "elektrik mühendisliği", "electrical engineer", "elektroingenieur"],
-    ["electronics_engineer", "elektronik mühendisi", "elektronik mühendisliği", "electronics engineer"],
-    ["industrial_engineer", "endüstri mühendisi", "endüstri mühendisliği", "industrial engineer", "wirtschaftsingenieur"],
-    ["civil_engineer", "inşaat mühendisi", "inşaat mühendisliği", "civil engineer", "bauingenieur"],
-    ["chemical_engineer", "kimya mühendisi", "kimya mühendisliği", "chemical engineer", "chemieingenieur"],
-    ["data_engineer", "veri mühendisi", "veri mühendisliği", "data engineer", "dateningenieur"],
+    ["software_engineer", "yazılım mühendisi", "yazılım mühendisliği", "yazılım mühendis", "yazılım geliştirici", "yazılım geliştiricisi", "yazılım uzmanı", "yazılımcı", "yazılım", "software engineer", "software developer", "softwareentwickler", "softwareentwicklerin", "développeur logiciel", "ingeniero de software", "software dev", "sw engineer", "swe", "software"],
+    ["computer_engineer", "bilgisayar mühendisi", "bilgisayar mühendisliği", "bilgisayar mühendis", "computer engineer"],
+    ["mechanical_engineer", "makine mühendisi", "makine mühendisliği", "makine mühendis", "makina mühendisi", "makina mühendisliği", "makina mühendis", "mechanical engineer", "maschinenbauingenieur", "ingeniero mecánico"],
+    ["mechanical_design", "mekanik tasarım mühendisi", "mekanik tasarım mühendisliği", "mekanik tasarım mühendis", "mekanik tasarım uzmanı", "mekanik tasarımcı", "mekanik tasarım", "makine tasarım mühendisi", "makine tasarım mühendis", "makine tasarımı", "mechanical design engineer", "mechanical designer", "mechanical design", "mechanische konstruktion", "conception mécanique"],
+    ["electrical_engineer", "elektrik mühendisi", "elektrik mühendisliği", "elektrik mühendis", "electrical engineer", "elektroingenieur"],
+    ["electronics_engineer", "elektronik mühendisi", "elektronik mühendisliği", "elektronik mühendis", "electronics engineer"],
+    ["industrial_engineer", "endüstri mühendisi", "endüstri mühendisliği", "endüstri mühendis", "industrial engineer", "wirtschaftsingenieur"],
+    ["civil_engineer", "inşaat mühendisi", "inşaat mühendisliği", "inşaat mühendis", "civil engineer", "bauingenieur"],
+    ["chemical_engineer", "kimya mühendisi", "kimya mühendisliği", "kimya mühendis", "chemical engineer", "chemieingenieur"],
+    ["data_engineer", "veri mühendisi", "veri mühendisliği", "veri mühendis", "data engineer", "dateningenieur"],
     ["data_scientist", "veri bilimci", "veri bilimcisi", "data scientist", "datenwissenschaftler"],
-    ["cloud_engineer", "bulut mühendisi", "bulut bilişim mühendisliği", "cloud engineer"],
-    ["devops_engineer", "devops mühendisi", "devops mühendisliği", "devops engineer"],
-    ["sre_engineer", "sre", "site reliability engineer", "site reliability", "sre mühendisi", "site reliability engineering", "reliability engineer"],
-    ["ml_engineer", "makine öğrenmesi mühendisi", "machine learning engineer"],
-    ["ai_engineer", "yapay zeka mühendisi", "yapay zeka mühendisliği", "yapay zeka uzmanı", "yapay zeka geliştirici", "yapay zeka", "ai engineer", "ai developer", "ai specialist", "artificial intelligence engineer", "artificial intelligence", "ai", "ki ingenieur", "ki entwickler"],
-    ["cybersecurity_engineer", "siber güvenlik mühendisi", "siber güvenlik mühendisliği", "cybersecurity engineer", "cyber security engineer"],
-    ["robotics_engineer", "robotik mühendisi", "robotik mühendisliği", "robotics engineer"],
-    ["mechatronics_engineer", "mekatronik mühendisi", "mekatronik mühendisliği", "mechatronics engineer"],
-    ["aerospace_engineer", "havacılık ve uzay mühendisi", "havacılık ve uzay mühendisliği", "aerospace engineer"],
+    ["cloud_engineer", "bulut mühendisi", "bulut bilişim mühendisliği", "bulut mühendis", "cloud engineer"],
+    ["devops_engineer", "devops mühendisi", "devops mühendisliği", "devops mühendis", "devops engineer"],
+    ["sre_engineer", "sre", "site reliability engineer", "site reliability", "sre mühendisi", "sre mühendis", "site reliability engineering", "reliability engineer"],
+    ["ml_engineer", "makine öğrenmesi mühendisi", "makine öğrenmesi mühendis", "machine learning engineer"],
+    ["ai_engineer", "yapay zeka mühendisi", "yapay zeka mühendisliği", "yapay zeka mühendis", "yapay zeka uzmanı", "yapay zeka geliştirici", "yapay zeka", "ai engineer", "ai developer", "ai specialist", "artificial intelligence engineer", "artificial intelligence", "ai", "ki ingenieur", "ki entwickler"],
+    ["cybersecurity_engineer", "siber güvenlik mühendisi", "siber güvenlik mühendisliği", "siber güvenlik mühendis", "cybersecurity engineer", "cyber security engineer"],
+    ["robotics_engineer", "robotik mühendisi", "robotik mühendisliği", "robotik mühendis", "robotics engineer"],
+    ["mechatronics_engineer", "mekatronik mühendisi", "mekatronik mühendisliği", "mekatronik mühendis", "mechatronics engineer"],
+    ["aerospace_engineer", "havacılık ve uzay mühendisi", "havacılık ve uzay mühendisliği", "havacılık ve uzay mühendis", "aerospace engineer"],
     ["frontend_developer", "ön yüz geliştirici", "ön yüz geliştiricisi", "frontend developer", "front-end developer", "frontend geliştirici", "frontend", "front-end", "front end", "ön yüz", "önyüz", "önyüz geliştirici"],
     ["backend_developer", "arka uç geliştirici", "arka uç geliştiricisi", "backend developer", "back-end developer", "backend geliştirici", "backend", "back-end", "back end", "arka uç", "arka yüz", "arka yüz geliştirici"],
     ["fullstack_developer", "full stack developer", "full-stack developer", "fullstack developer", "fullstack geliştirici", "fullstack", "full stack", "full-stack", "tam yığın geliştirici"],
@@ -71,24 +71,24 @@ JOB_ROLE_EQUIVALENTS = [
     ["sales_manager", "satış müdürü", "sales manager", "vertriebsleiter"],
     ["project_manager", "proje yöneticisi", "project manager", "projektmanager"],
     ["product_manager", "ürün yöneticisi", "product manager", "produktmanager"],
-    ["qa_engineer", "test mühendisi", "yazılım test mühendisi", "software test engineer", "qa engineer", "quality assurance engineer", "testingenieur", "ingénieur test", "kalite güvence"],
+    ["qa_engineer", "test mühendisi", "test mühendis", "yazılım test mühendisi", "yazılım test mühendis", "software test engineer", "qa engineer", "quality assurance engineer", "testingenieur", "ingénieur test", "kalite güvence"],
     ["qa_tester", "yazılım test uzmanı", "software tester", "qa tester", "test uzmanı"],
-    ["automation_engineer", "otomasyon mühendisi", "automation engineer", "automatisierungsingenieur", "ingénieur automatisme"],
-    ["network_engineer", "ağ mühendisi", "network engineer", "netzwerkingenieur", "ingénieur réseau"],
+    ["automation_engineer", "otomasyon mühendisi", "otomasyon mühendis", "automation engineer", "automatisierungsingenieur", "ingénieur automatisme"],
+    ["network_engineer", "ağ mühendisi", "ağ mühendis", "network engineer", "netzwerkingenieur", "ingénieur réseau"],
     ["system_administrator", "sistem yöneticisi", "system administrator", "systems administrator", "sysadmin", "systemadministrator", "administrateur système"],
     ["database_administrator", "veritabanı yöneticisi", "veri tabanı yöneticisi", "database administrator", "datenbankadministrator", "administrateur de bases de données"],
-    ["business_analyst", "iş analisti", "business analyst", "iş analiz uzmanı", "analyste métier"],
-    ["data_analyst", "veri analisti", "veri analistliği", "veri analizi", "data analyst", "datenanalyst", "analyste de données", "analista de datos"],
+    ["business_analyst", "iş analisti", "iş analist", "business analyst", "iş analiz uzmanı", "analyste métier"],
+    ["data_analyst", "veri analisti", "veri analist", "veri analistliği", "veri analizi", "data analyst", "datenanalyst", "analyste de données", "analista de datos"],
     ["mobile_developer", "mobil geliştirici", "mobil uygulama geliştirici", "mobile developer", "mobile application developer", "développeur mobile", "mobil", "mobile"],
     ["android_developer", "android geliştirici", "android developer", "android entwickler", "développeur android"],
     ["ios_developer", "ios geliştirici", "ios developer", "ios entwickler", "développeur ios"],
     ["game_developer", "oyun geliştirici", "game developer", "spieleentwickler", "développeur de jeux"],
-    ["embedded_engineer", "gömülü yazılım mühendisi", "embedded software engineer", "gömülü sistem mühendisi", "embedded systems engineer"],
-    ["electrical_electronics_engineer", "elektrik elektronik mühendisi", "elektrik-elektronik mühendisi", "elektrik elektronik mühendisliği", "elektrik-elektronik mühendisliği", "electrical and electronics engineer"],
-    ["environmental_engineer", "çevre mühendisi", "çevre mühendisliği", "environmental engineer", "umweltingenieur", "ingénieur environnement"],
-    ["biomedical_engineer", "biyomedikal mühendisi", "biyomedikal mühendisliği", "biomedical engineer", "biomedizintechniker"],
-    ["quality_engineer", "kalite mühendisi", "quality engineer", "qualitätsingenieur", "ingénieur qualité"],
-    ["production_engineer", "üretim mühendisi", "production engineer", "manufacturing engineer", "produktionsingenieur", "ingénieur production"],
+    ["embedded_engineer", "gömülü yazılım mühendisi", "gömülü yazılım mühendis", "embedded software engineer", "gömülü sistem mühendisi", "gömülü sistem mühendis", "embedded systems engineer"],
+    ["electrical_electronics_engineer", "elektrik elektronik mühendisi", "elektrik-elektronik mühendisi", "elektrik elektronik mühendisliği", "elektrik-elektronik mühendisliği", "elektrik elektronik mühendis", "elektrik-elektronik mühendis", "electrical and electronics engineer"],
+    ["environmental_engineer", "çevre mühendisi", "çevre mühendisliği", "çevre mühendis", "environmental engineer", "umweltingenieur", "ingénieur environnement"],
+    ["biomedical_engineer", "biyomedikal mühendisi", "biyomedikal mühendisliği", "biyomedikal mühendis", "biomedical engineer", "biomedizintechniker"],
+    ["quality_engineer", "kalite mühendisi", "kalite mühendis", "quality engineer", "qualitätsingenieur", "ingénieur qualité"],
+    ["production_engineer", "üretim mühendisi", "üretim mühendis", "production engineer", "manufacturing engineer", "produktionsingenieur", "ingénieur production"],
     ["software_architect", "yazılım mimarı", "software architect", "softwarearchitekt", "architecte logiciel"],
     ["building_architect", "mimar", "architect", "architekt", "architecte", "arquitecto"],
     ["graphic_designer", "grafik tasarımcı", "grafik tasarımcısı", "graphic designer", "grafikdesigner", "graphiste", "diseñador gráfico"],
@@ -118,9 +118,9 @@ JOB_ROLE_EQUIVALENTS = [
     ["specialist_general", "uzman", "uzmanı", "specialist", "spezialist"],
     ["analyst_general", "analist", "analisti", "analyst", "analyste"],
     ["it_specialist", "bilgi işlem", "it uzmanı", "it specialist", "it support", "it administrator", "teknik destek"],
-    ["hardware_engineer", "donanım mühendisi", "donanım uzmanı", "donanım", "hardware engineer", "hardware designer", "hardwareentwickler"],
-    ["system_engineer", "sistem mühendisi", "sistem mühendisliği", "system engineer", "systems engineer", "systemingenieur"],
-    ["calibration_engineer", "kalibrasyon mühendisi", "kalibrasyon mühendisliği", "calibration engineer", "kalibrierungsingenieur"],
+    ["hardware_engineer", "donanım mühendisi", "donanım mühendis", "donanım uzmanı", "donanım", "hardware engineer", "hardware designer", "hardwareentwickler"],
+    ["system_engineer", "sistem mühendisi", "sistem mühendisliği", "sistem mühendis", "system engineer", "systems engineer", "systemingenieur"],
+    ["calibration_engineer", "kalibrasyon mühendisi", "kalibrasyon mühendisliği", "kalibrasyon mühendis", "calibration engineer", "kalibrierungsingenieur"],
     ["molecular_biology", "moleküler biyoloji", "moleküler biyoloji ve genetik", "moleküler biyolog", "molecular biology", "molecular biologist", "molekularbiologie"],
     ["product_owner", "product owner", "ürün sahibi", "po"],
     ["scrum_master", "scrum master", "agile coach", "çevik koç"],
@@ -331,11 +331,14 @@ def build_search_filter(model_cls, search_text: str, country: str = None):
     f_raw = search_fold(raw)
 
     or_conditions = []
-    # 1. Ham sorgu şirket adı, başlık, açıklama ve etiketlerde aranır
+    # 1. Ham sorgu şirket adı, başlık, etiketler ve varsa normalize unvanda aranır
+    # (Açıklama araması performansı korumak ve alakasız eşleşmeleri önlemek için
+    # yalnızca filtre panelinden açıkça talep edildiğinde kullanılır)
     or_conditions.append(contains(model_cls.company, f_raw))
     or_conditions.append(contains(model_cls.title, f_raw))
     or_conditions.append(contains(model_cls.tags, f_raw))
-    or_conditions.append(contains(model_cls.description, f_raw))
+    if hasattr(model_cls, "normalized_title"):
+        or_conditions.append(contains(model_cls.normalized_title, f_raw))
 
     # 2. Çok dilli eşdeğer terimler başlık ve etiketlerde aranır
     for term in terms:
@@ -344,6 +347,8 @@ def build_search_filter(model_cls, search_text: str, country: str = None):
             continue
         or_conditions.append(contains(model_cls.title, f_term))
         or_conditions.append(contains(model_cls.tags, f_term))
+        if hasattr(model_cls, "normalized_title"):
+            or_conditions.append(contains(model_cls.normalized_title, f_term))
 
         # Çok kelimeli ise (örn. 'mechanical engineer'), kelimelerin tamamının başlıkta yer alması
         tokens = [tk for tk in f_term.split() if len(tk) >= 3]

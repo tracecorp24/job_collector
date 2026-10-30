@@ -81,7 +81,18 @@ def register(app, server):
         # Bound query input; SQLAlchemy binds every search term as a parameter.
         query = request.args.get('q', '').strip()[:200]
         if not query: return jsonify(ids=[])
-        from .filters import filtered
+        from sqlalchemy import or_
+        from .search_engine import build_search_filter, search_fold
+        from .search_text import contains
         with server.SessionLocal() as session:
-            rows = filtered(session, MultiDict({'search': query})).filter(func.coalesce(Job.flag, '').notin_(('scam', 'ghost'))).with_entities(Job.source, Job.external_id).all()
+            f_q = search_fold(query)
+            base_filter = build_search_filter(Job, query)
+            desc_filter = Job.description.ilike(f'%{f_q}%') if f_q.isascii() else contains(Job.description, f_q)
+            search_clause = or_(base_filter, desc_filter) if base_filter is not None else desc_filter
+            rows = session.query(Job.source, Job.external_id).filter(
+                Job.deleted_at.is_(None),
+                Job.quality_ok.is_(True),
+                func.coalesce(Job.flag, '').notin_(('scam', 'ghost')),
+                search_clause
+            ).limit(250).all()
             return jsonify(ids=[f'{source}-{external_id}' for source, external_id in rows])
